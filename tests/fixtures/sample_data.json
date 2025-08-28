@@ -1,0 +1,156 @@
+{
+  "users": [
+    {
+      "id": "user_001",
+      "email": "john.doe@example.com",
+      "name": "John Doe",
+      "tenant_id": "tenant_001",
+      "role": "admin",
+      "created_at": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": "user_002",
+      "email": "jane.smith@example.com",
+      "name": "Jane Smith",
+      "tenant_id": "tenant_001",
+      "role": "user",
+      "created_at": "2024-01-02T00:00:00Z"
+    },
+    {
+      "id": "user_003",
+      "email": "bob.wilson@another.com",
+      "name": "Bob Wilson",
+      "tenant_id": "tenant_002",
+      "role": "admin",
+      "created_at": "2024-01-03T00:00:00Z"
+    }
+  ],
+  "tenants": [
+    {
+      "id": "tenant_001",
+      "name": "Acme Corporation",
+      "plan": "enterprise",
+      "status": "active",
+      "created_at": "2024-01-01T00:00:00Z",
+      "settings": {
+        "max_users": 100,
+        "features": ["semantic_cache", "model_switching", "advanced_analytics"],
+        "rate_limits": {
+          "requests_per_minute": 1000,
+          "tokens_per_day": 10000000
+        }
+      }
+    },
+    {
+      "id": "tenant_002",
+      "name": "StartUp Inc",
+      "plan": "basic",
+      "status": "active",
+      "created_at": "2024-01-02T00:00:00Z",
+      "settings": {
+        "max_users": 5,
+        "features": ["basic_chat"],
+        "rate_limits": {
+          "requests_per_minute": 100,
+          "tokens_per_day": 100000
+        }
+      }
+    }
+  ],
+  "chat_sessions": [
+    {
+      "id": "session_001",
+      "user_id": "user_001",
+      "tenant_id": "tenant_001",
+      "created_at": "2024-01-10T10:00:00Z",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is artificial intelligence?"
+        },
+        {
+          "role": "assistant",
+          "content": "Artificial Intelligence (AI) refers to the simulation of human intelligence in machines..."
+        }
+      ]
+    },
+    {
+      "id": "session_002",
+      "user_id": "user_002",
+      "tenant_id": "tenant_001",
+      "created_at": "2024-01-11T14:30:00Z",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Can you help me write Python code?"
+        },
+        {
+          "role": "assistant",
+          "content": "Of course! I'd be happy to help you write Python code..."
+        }
+      ]
+    }
+  ],
+  "api_keys": [
+    {
+      "id": "key_001",
+      "key": "sk-test-1234567890abcdef",
+      "name": "Production API Key",
+      "tenant_id": "tenant_001",
+      "created_by": "user_001",
+      "created_at": "2024-01-05T00:00:00Z",
+      "last_used": "2024-01-15T12:00:00Z",
+      "status": "active"
+    },
+    {
+      "id": "key_002",
+      "key": "sk-test-fedcba0987654321",
+      "name": "Development API Key",
+      "tenant_id": "tenant_002",
+      "created_by": "user_003",
+      "created_at": "2024-01-06T00:00:00Z",
+      "last_used": null,
+      "status": "active"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "prompt_001",
+      "name": "Code Assistant",
+      "template": "You are a helpful coding assistant. Help the user with: {task}",
+      "variables": ["task"],
+      "tenant_id": "tenant_001"
+    },
+    {
+      "id": "prompt_002",
+      "name": "Data Analyst",
+      "template": "Analyze the following data and provide insights: {data}",
+      "variables": ["data"],
+      "tenant_id": "tenant_001"
+    }
+  ],
+  "usage_metrics": [
+    {
+      "tenant_id": "tenant_001",
+      "date": "2024-01-15",
+      "requests": 5432,
+      "tokens_used": 2345678,
+      "cache_hits": 1234,
+      "cache_misses": 4198,
+      "average_latency_ms": 145,
+      "p95_latency_ms": 189,
+      "errors": 12
+    },
+    {
+      "tenant_id": "tenant_002",
+      "date": "2024-01-15",
+      "requests": 234,
+      "tokens_used": 45678,
+      "cache_hits": 45,
+      "cache_misses": 189,
+      "average_latency_ms": 167,
+      "p95_latency_ms": 198,
+      "errors": 2
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+# Load Testing Dependencies
+# Note: Use versions from base/dev requirements for consistency
+
+locust==2.17.0
+pandas==2.1.1
+matplotlib==3.7.2
+seaborn==0.12.2
+
+# These should match versions in base.txt
+websockets==12.0
+aiohttp==3.9.1
+numpy==1.24.3
+
+# These should match versions in dev.txt
+pytest==7.4.3
+pytest-asyncio==0.21.1

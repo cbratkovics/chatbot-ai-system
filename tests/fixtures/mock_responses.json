@@ -1,0 +1,244 @@
+{
+  "openai": {
+    "chat_completion": {
+      "id": "chatcmpl-123456789",
+      "object": "chat.completion",
+      "created": 1705325400,
+      "model": "gpt-4",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "This is a mock response from GPT-4."
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 20,
+        "total_tokens": 30
+      }
+    },
+    "streaming_chunk": {
+      "id": "chatcmpl-123456789",
+      "object": "chat.completion.chunk",
+      "created": 1705325400,
+      "model": "gpt-4",
+      "choices": [
+        {
+          "index": 0,
+          "delta": {
+            "content": "This "
+          },
+          "finish_reason": null
+        }
+      ]
+    },
+    "embedding": {
+      "object": "list",
+      "data": [
+        {
+          "object": "embedding",
+          "embedding": [0.1, 0.2, 0.3, 0.4, 0.5],
+          "index": 0
+        }
+      ],
+      "model": "text-embedding-ada-002",
+      "usage": {
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      }
+    },
+    "error": {
+      "error": {
+        "message": "Rate limit exceeded",
+        "type": "rate_limit_error",
+        "code": "rate_limit_exceeded"
+      }
+    }
+  },
+  "anthropic": {
+    "message": {
+      "id": "msg_123456789",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "This is a mock response from Claude."
+        }
+      ],
+      "model": "claude-3-opus-20240229",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 15,
+        "output_tokens": 25
+      }
+    },
+    "streaming_chunk": {
+      "type": "content_block_delta",
+      "index": 0,
+      "delta": {
+        "type": "text_delta",
+        "text": "This "
+      }
+    },
+    "error": {
+      "type": "error",
+      "error": {
+        "type": "rate_limit_error",
+        "message": "Rate limit exceeded"
+      }
+    }
+  },
+  "cache_responses": {
+    "semantic_match": {
+      "query": "What is machine learning?",
+      "embedding": [0.1, 0.2, 0.3],
+      "response": {
+        "content": "Machine learning is a subset of artificial intelligence...",
+        "cached": true,
+        "cache_hit_score": 0.92,
+        "original_timestamp": "2024-01-15T10:00:00Z"
+      }
+    },
+    "exact_match": {
+      "query": "2+2",
+      "response": {
+        "content": "4",
+        "cached": true,
+        "cache_type": "exact"
+      }
+    }
+  },
+  "websocket_messages": {
+    "auth_success": {
+      "type": "auth_success",
+      "authenticated": true,
+      "user_id": "user_123",
+      "tenant_id": "tenant_001",
+      "timestamp": "2024-01-15T10:00:00Z"
+    },
+    "chat_chunk": {
+      "type": "stream_chunk",
+      "content": "This is ",
+      "index": 0,
+      "finish_reason": null
+    },
+    "chat_complete": {
+      "type": "stream_end",
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 50,
+        "total_tokens": 60
+      }
+    },
+    "error": {
+      "type": "error",
+      "error": "Invalid message format",
+      "code": "INVALID_FORMAT"
+    },
+    "heartbeat": {
+      "type": "heartbeat",
+      "timestamp": "2024-01-15T10:00:00Z"
+    }
+  },
+  "database_responses": {
+    "user": {
+      "id": "user_123",
+      "email": "test@example.com",
+      "name": "Test User",
+      "tenant_id": "tenant_001",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-15T10:00:00Z"
+    },
+    "chat_session": {
+      "id": "session_123",
+      "user_id": "user_123",
+      "tenant_id": "tenant_001",
+      "created_at": "2024-01-15T10:00:00Z",
+      "messages": [],
+      "metadata": {}
+    },
+    "tenant": {
+      "id": "tenant_001",
+      "name": "Test Company",
+      "plan": "enterprise",
+      "status": "active",
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  "metrics": {
+    "system": {
+      "cpu_usage": 45.2,
+      "memory_usage": 62.8,
+      "disk_usage": 38.5,
+      "network_in": 1024000,
+      "network_out": 2048000
+    },
+    "api": {
+      "requests_per_second": 125,
+      "average_latency_ms": 142,
+      "p50_latency_ms": 120,
+      "p95_latency_ms": 195,
+      "p99_latency_ms": 250,
+      "error_rate": 0.002,
+      "cache_hit_rate": 0.35
+    },
+    "models": {
+      "gpt-4": {
+        "requests": 5000,
+        "tokens_used": 2500000,
+        "average_latency_ms": 180,
+        "error_rate": 0.001
+      },
+      "claude-3-opus": {
+        "requests": 3000,
+        "tokens_used": 1500000,
+        "average_latency_ms": 165,
+        "error_rate": 0.002
+      },
+      "gpt-3.5-turbo": {
+        "requests": 10000,
+        "tokens_used": 3000000,
+        "average_latency_ms": 95,
+        "error_rate": 0.001
+      }
+    }
+  },
+  "errors": {
+    "validation": {
+      "type": "validation_error",
+      "message": "Invalid request format",
+      "details": [
+        {
+          "field": "message",
+          "error": "Field is required"
+        }
+      ]
+    },
+    "authentication": {
+      "type": "authentication_error",
+      "message": "Invalid or expired token",
+      "code": "AUTH_FAILED"
+    },
+    "rate_limit": {
+      "type": "rate_limit_error",
+      "message": "Rate limit exceeded",
+      "retry_after": 60,
+      "limit": 100,
+      "remaining": 0,
+      "reset": "2024-01-15T11:00:00Z"
+    },
+    "server": {
+      "type": "server_error",
+      "message": "Internal server error",
+      "request_id": "req_123456789",
+      "timestamp": "2024-01-15T10:00:00Z"
+    }
+  }
+}

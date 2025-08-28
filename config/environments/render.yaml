@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: ai-chatbot-backend
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ai-chat-redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+    healthCheckPath: /health
+    autoDeploy: true
+      
+  - type: redis
+    name: ai-chat-redis
+    ipAllowList: []
+    plan: starter

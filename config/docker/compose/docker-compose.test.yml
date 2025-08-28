@@ -1,0 +1,79 @@
+# Docker Compose for CI/CD Testing
+version: '3.8'
+
+services:
+  # Application under test
+  api:
+    image: ${API_IMAGE:-ghcr.io/cbratkovics/ai-chatbot-system:latest}
+    environment:
+      - ENVIRONMENT=test
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:test123@postgres:5432/test_db
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-test-key}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-test-key}
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - test-network
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # PostgreSQL for persistent data
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=test_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=test123
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # Test runner container
+  test-runner:
+    image: ${API_IMAGE:-ghcr.io/cbratkovics/ai-chatbot-system:latest}
+    command: ["pytest", "tests/", "-v", "--tb=short"]
+    environment:
+      - ENVIRONMENT=test
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:test123@postgres:5432/test_db
+      - API_BASE_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - test-network
+    profiles:
+      - test
+
+networks:
+  test-network:
+    driver: bridge

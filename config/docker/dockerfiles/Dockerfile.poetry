@@ -1,0 +1,166 @@
+# Multi-stage Dockerfile optimized for Poetry and AI/ML workloads
+# Supports both CPU and GPU variants with intelligent caching
+
+# Base image with Poetry
+FROM python:3.11-slim as python-base
+
+# Environment variables for Poetry
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.7.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    PYSETUP_PATH="/opt/pysetup" \
+    VENV_PATH="/opt/pysetup/.venv"
+
+# Add Poetry and venv to PATH
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+
+# Builder stage - Install Poetry and dependencies
+FROM python-base as builder-base
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        curl \
+        build-essential \
+        git \
+        && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VERSION
+
+# Set working directory
+WORKDIR $PYSETUP_PATH
+
+# Copy dependency files
+COPY pyproject.toml poetry.lock* ./
+
+# Install runtime dependencies only (no dev deps)
+RUN poetry install --only main --no-root
+
+# Development stage - Includes all dependencies
+FROM builder-base as development
+
+# Install all dependencies including dev
+RUN poetry install --with dev --no-root
+
+# Copy application code
+COPY . /app
+WORKDIR /app
+
+# Install project in editable mode
+RUN poetry install
+
+# Set up development environment
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# ML-CPU stage - CPU-optimized ML dependencies
+FROM builder-base as ml-cpu
+
+# Install CPU ML dependencies
+RUN poetry install --only main --with ml-cpu --no-root
+
+# Copy application
+COPY . /app
+WORKDIR /app
+
+# Install project
+RUN poetry install --only-root
+
+# ML-GPU stage - GPU-optimized ML dependencies  
+FROM builder-base as ml-gpu
+
+# Install CUDA dependencies (example for CUDA 12.1)
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        cuda-libraries-12-1 \
+        cuda-cudart-12-1 \
+        && rm -rf /var/lib/apt/lists/*
+
+# Install GPU ML dependencies
+RUN poetry install --only main --with ml-gpu --no-root
+
+# Copy application
+COPY . /app
+WORKDIR /app
+
+# Install project
+RUN poetry install --only-root
+
+# Production stage - Minimal runtime
+FROM python-base as production
+
+# Install only runtime system dependencies
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+        libpq5 \
+        curl \
+        && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder
+COPY --from=builder-base $VENV_PATH $VENV_PATH
+
+# Create non-root user
+RUN groupadd -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser appuser && \
+    mkdir -p /app && \
+    chown -R appuser:appuser /app
+
+# Copy application code
+COPY --chown=appuser:appuser . /app
+WORKDIR /app
+
+# Switch to non-root user
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run with gunicorn for production
+CMD ["gunicorn", "app.main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "4", \
+     "--bind", "0.0.0.0:8000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
+
+# Testing stage - For CI/CD
+FROM builder-base as testing
+
+# Install test dependencies
+RUN poetry install --with dev --with test --no-root
+
+# Copy application and tests
+COPY . /app
+WORKDIR /app
+
+# Install project
+RUN poetry install
+
+# Run tests
+CMD ["poetry", "run", "pytest", "-v", "--cov=app", "--cov=api", "--cov-report=xml"]
+
+# Edge deployment stage - Minimal size with ONNX runtime
+FROM python:3.11-alpine as edge
+
+# Install minimal dependencies
+RUN apk add --no-cache \
+    libstdc++ \
+    libgomp
+
+# Copy only necessary files
+COPY --from=builder-base $VENV_PATH/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY . /app
+WORKDIR /app
+
+# Install ONNX runtime for edge inference
+RUN pip install --no-cache-dir onnxruntime
+
+# Run with minimal resources
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

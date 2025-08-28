@@ -1,0 +1,92 @@
+# Docker Compose for Load Testing
+version: '3.8'
+
+services:
+  # Application for load testing
+  api:
+    image: ${API_IMAGE:-ghcr.io/cbratkovics/ai-chatbot-system:latest}
+    environment:
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:load123@postgres:5432/load_db
+      - LOG_LEVEL=WARNING  # Reduce logging during load test
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    networks:
+      - load-network
+
+  # Redis with production-like config
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    networks:
+      - load-network
+
+  # PostgreSQL for load testing
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=load_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=load123
+      - POSTGRES_SHARED_PRELOAD_LIBRARIES=pg_stat_statements
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    networks:
+      - load-network
+
+  # Monitoring during load test
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus-load.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - load-network
+    profiles:
+      - monitoring
+
+networks:
+  load-network:
+    driver: bridge

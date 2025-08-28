@@ -1,0 +1,16 @@
+# Message Flow Diagram Placeholder
+
+This is a placeholder for the message flow diagram.
+
+To generate the actual diagram:
+1. Open message_flow.drawio in draw.io or diagrams.net
+2. Export as PNG
+3. Replace this file
+
+The diagram shows:
+- Client → WebSocket Gateway → Middleware Chain → Router → Provider Adapter → AI Providers
+- Cache integration for semantic search
+- Embeddings service for vector generation
+- Database for persistence
+- Monitoring stack (Jaeger, Prometheus, Grafana)
+- Bidirectional streaming response flow

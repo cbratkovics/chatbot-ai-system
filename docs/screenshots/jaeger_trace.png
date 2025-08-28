@@ -1,0 +1,19 @@
+# Jaeger Trace Screenshot Placeholder
+
+This is a placeholder for the Jaeger trace screenshot.
+
+To generate an actual trace:
+1. Start Jaeger: `docker-compose -f docker-compose.tracing.yml up -d`
+2. Run the application with tracing enabled
+3. Make several API requests
+4. Access Jaeger UI at http://localhost:16686
+5. Select "ai-chatbot-system" service
+6. View trace details showing:
+   - Request receipt
+   - Authentication (50ms)
+   - Guardrails processing (120ms)
+   - Model routing (30ms)
+   - Provider API call (1500ms)
+   - Cache hit/miss (45ms)
+   - Response streaming (200ms)
+7. Take screenshot and replace this file

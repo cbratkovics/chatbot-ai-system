@@ -1,0 +1,1577 @@
+openapi: 3.0.3
+info:
+  title: Enterprise AI Chatbot System API
+  description: |
+    # Enterprise-Scale Conversational AI Platform
+    
+    A production-grade API for conversational AI with enterprise features including:
+    
+    - **Multi-Model Support**: GPT-4, Claude-3, and more
+    - **Real-time Streaming**: WebSocket and Server-Sent Events
+    - **Enterprise SSO**: SAML 2.0, OAuth 2.0, API keys
+    - **Advanced Analytics**: Usage tracking, quality scoring
+    - **Safety & Compliance**: Content filtering, audit trails
+    - **Cost Optimization**: Intelligent model routing, caching
+    - **Multi-Region**: Global deployment with failover
+    
+    ## Authentication
+    
+    This API supports multiple authentication methods:
+    
+    - **Bearer Token**: OAuth 2.0 JWT tokens for user authentication
+    - **API Key**: Server-to-server authentication with scoped permissions  
+    - **Session Cookie**: Web application session management
+    
+    ## Rate Limiting
+    
+    API endpoints are rate limited based on your subscription tier:
+    
+    | Tier | Requests/Hour | Concurrent WebSocket |
+    |------|---------------|---------------------|
+    | Free | 1,000 | 1 |
+    | Pro | 10,000 | 10 |
+    | Enterprise | 100,000+ | 1,000+ |
+    
+    ## Error Handling
+    
+    The API uses standard HTTP status codes and returns detailed error information:
+    
+    ```json
+    {
+      "error": {
+        "code": "RATE_LIMIT_EXCEEDED",
+        "message": "Too many requests",
+        "details": {
+          "limit": 1000,
+          "window": 3600,
+          "retry_after": 1234567890
+        }
+      }
+    }
+    ```
+    
+    ## WebSocket Connection
+    
+    For real-time communication, establish a WebSocket connection:
+    
+    ```javascript
+    const ws = new WebSocket('wss://api.example.com/ws/chat/{session_id}?token={auth_token}');
+    ```
+    
+  version: 2.0.0
+  contact:
+    name: AI Chatbot Support
+    url: https://docs.example.com
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: https://example.com/terms
+
+servers:
+  - url: https://api.example.com/v2
+    description: Production server
+  - url: https://staging-api.example.com/v2
+    description: Staging server
+  - url: http://localhost:8000/api/v2
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+  - SessionAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login with credentials
+      description: Authenticate user with email/password and return JWT tokens
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              standard_login:
+                summary: Standard email/password login
+                value:
+                  email: "user@example.com"
+                  password: "SecurePassword123!"
+                  remember_me: true
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+      security: []
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Exchange refresh token for new access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  format: uuid
+                  description: Valid refresh token
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/sso/saml/{provider}:
+    post:
+      tags:
+        - Authentication
+      summary: SAML SSO authentication
+      description: Authenticate user via SAML 2.0 identity provider
+      operationId: samlLogin
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - okta
+              - azure-ad
+              - auth0
+              - pingidentity
+          description: SAML identity provider
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - SAMLResponse
+              properties:
+                SAMLResponse:
+                  type: string
+                  format: byte
+                  description: Base64 encoded SAML response
+      responses:
+        '200':
+          description: SAML authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+      security: []
+
+  /auth/api-keys:
+    get:
+      tags:
+        - Authentication
+      summary: List API keys
+      description: Get all API keys for the authenticated user
+      operationId: listApiKeys
+      responses:
+        '200':
+          description: API keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKey'
+    post:
+      tags:
+        - Authentication
+      summary: Create API key
+      description: Create a new API key with specified scopes
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_key:
+                    type: string
+                    description: The actual API key (only shown once)
+                    example: "sk_1234567890abcdef"
+                  key_info:
+                    $ref: '#/components/schemas/ApiKey'
+
+  /auth/api-keys/{keyId}:
+    delete:
+      tags:
+        - Authentication
+      summary: Revoke API key
+      description: Permanently revoke an API key
+      operationId: revokeApiKey
+      parameters:
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: API key ID to revoke
+      responses:
+        '204':
+          description: API key revoked successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # Chat Session Management
+  /chat/sessions:
+    get:
+      tags:
+        - Chat Sessions
+      summary: List chat sessions
+      description: Get paginated list of chat sessions for the user
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - completed
+              - archived
+          description: Filter by session status
+      responses:
+        '200':
+          description: Sessions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatSession'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+    post:
+      tags:
+        - Chat Sessions
+      summary: Create chat session
+      description: Create a new chat session with specified configuration
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+            examples:
+              gpt4_session:
+                summary: GPT-4 session for complex queries
+                value:
+                  model: "gpt-4"
+                  temperature: 0.7
+                  max_tokens: 2000
+                  system_prompt: "You are a helpful AI assistant."
+              claude_session:
+                summary: Claude-3 session for analysis
+                value:
+                  model: "claude-3-sonnet"
+                  temperature: 0.3
+                  max_tokens: 4000
+                  system_prompt: "You are an expert analyst."
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /chat/sessions/{sessionId}:
+    get:
+      tags:
+        - Chat Sessions
+      summary: Get chat session
+      description: Retrieve details and configuration of a specific chat session
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      responses:
+        '200':
+          description: Session retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags:
+        - Chat Sessions
+      summary: Update chat session
+      description: Update session configuration or status
+      operationId: updateSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionRequest'
+      responses:
+        '200':
+          description: Session updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - Chat Sessions
+      summary: Delete chat session
+      description: Permanently delete a chat session and all associated messages
+      operationId: deleteSession
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      responses:
+        '204':
+          description: Session deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # Message Management
+  /chat/sessions/{sessionId}/messages:
+    get:
+      tags:
+        - Messages
+      summary: Get session messages
+      description: Retrieve paginated message history for a session
+      operationId: getMessages
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/OffsetParam'
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages before this timestamp
+        - name: after
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages after this timestamp
+      responses:
+        '200':
+          description: Messages retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+    post:
+      tags:
+        - Messages
+      summary: Send message
+      description: Send a message and get AI response
+      operationId: sendMessage
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+            examples:
+              simple_message:
+                summary: Simple text message
+                value:
+                  content: "Hello, how are you?"
+                  stream: false
+              streaming_message:
+                summary: Message with streaming response
+                value:
+                  content: "Explain quantum computing"
+                  stream: true
+              message_with_attachments:
+                summary: Message with file attachments
+                value:
+                  content: "Analyze this image"
+                  attachments:
+                    - type: "image"
+                      url: "https://example.com/image.jpg"
+                      metadata:
+                        filename: "diagram.jpg"
+                        size: 1024000
+      responses:
+        '200':
+          description: Message sent successfully (non-streaming)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '202':
+          description: Message accepted for streaming
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id:
+                    type: string
+                    format: uuid
+                  stream_url:
+                    type: string
+                    format: uri
+                    description: WebSocket URL for streaming response
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /chat/sessions/{sessionId}/messages/{messageId}:
+    get:
+      tags:
+        - Messages
+      summary: Get specific message
+      description: Retrieve a specific message by ID
+      operationId: getMessage
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Message ID
+      responses:
+        '200':
+          description: Message retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /chat/sessions/{sessionId}/messages/{messageId}/feedback:
+    post:
+      tags:
+        - Messages
+      summary: Provide message feedback
+      description: Rate a message and provide feedback for quality improvement
+      operationId: provideFeedback
+      parameters:
+        - $ref: '#/components/parameters/SessionIdParam'
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Message ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+      responses:
+        '204':
+          description: Feedback recorded successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # File Upload and Management
+  /upload/image:
+    post:
+      tags:
+        - File Upload
+      summary: Upload image
+      description: Upload an image for analysis in chat conversations
+      operationId: uploadImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Image file (PNG, JPEG, WebP)
+                alt_text:
+                  type: string
+                  description: Alternative text description
+                metadata:
+                  type: object
+                  description: Additional metadata
+            encoding:
+              image:
+                contentType: image/png, image/jpeg, image/webp
+      responses:
+        '201':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /upload/document:
+    post:
+      tags:
+        - File Upload
+      summary: Upload document
+      description: Upload a document for analysis and processing
+      operationId: uploadDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - document
+              properties:
+                document:
+                  type: string
+                  format: binary
+                  description: Document file (PDF, DOCX, TXT)
+                extract_text:
+                  type: boolean
+                  default: true
+                  description: Whether to extract text content
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+
+  # Analytics and Reporting
+  /analytics/usage:
+    get:
+      tags:
+        - Analytics
+      summary: Get usage analytics
+      description: Retrieve detailed usage analytics and metrics
+      operationId: getUsageAnalytics
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date for analytics period
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date for analytics period
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum:
+              - hour
+              - day
+              - week
+              - month
+            default: day
+          description: Data granularity
+        - name: metrics
+          in: query
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - requests
+                - tokens
+                - cost
+                - latency
+                - errors
+          description: Specific metrics to include
+      responses:
+        '200':
+          description: Analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAnalytics'
+
+  /analytics/quality:
+    get:
+      tags:
+        - Analytics
+      summary: Get quality metrics
+      description: Retrieve conversation quality scores and analysis
+      operationId: getQualityMetrics
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: session_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by specific session
+      responses:
+        '200':
+          description: Quality metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityMetrics'
+
+  # System Health and Status
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Basic health check
+      description: Simple health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+      security: []
+
+  /health/detailed:
+    get:
+      tags:
+        - Health
+      summary: Detailed health check
+      description: Comprehensive health check including dependencies
+      operationId: detailedHealthCheck
+      responses:
+        '200':
+          description: Detailed health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthStatus'
+        '503':
+          description: Service unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthStatus'
+
+  /status:
+    get:
+      tags:
+        - Health
+      summary: System status
+      description: Get current system status and performance metrics
+      operationId: getSystemStatus
+      responses:
+        '200':
+          description: System status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemStatus'
+
+# WebSocket endpoints (documented for reference)
+# These are not standard OpenAPI but provided for completeness
+websockets:
+  /ws/chat/{sessionId}:
+    summary: Real-time chat WebSocket
+    description: |
+      WebSocket endpoint for real-time chat communication.
+      
+      **Connection URL**: `wss://api.example.com/ws/chat/{sessionId}?token={auth_token}`
+      
+      **Message Format**:
+      ```json
+      {
+        "type": "message",
+        "content": "Hello world",
+        "timestamp": "2024-01-01T12:00:00Z"
+      }
+      ```
+      
+      **Response Format**:
+      ```json
+      {
+        "type": "response",
+        "content": "Hello! How can I help you?",
+        "message_id": "uuid",
+        "timestamp": "2024-01-01T12:00:01Z"
+      }
+      ```
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: token
+        in: query
+        required: true
+        schema:
+          type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for server-to-server authentication
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session_id
+      description: Session cookie for web applications
+
+  parameters:
+    SessionIdParam:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Chat session identifier
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Maximum number of items to return
+    OffsetParam:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Number of items to skip
+
+  responses:
+    BadRequestError:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+    ForbiddenError:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimitError:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per hour
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in current window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Unix timestamp when limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # Authentication Schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "SecurePassword123!"
+        remember_me:
+          type: boolean
+          default: false
+        mfa_code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: 6-digit MFA code if enabled
+
+    AuthResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          format: uuid
+          description: Refresh token for obtaining new access tokens
+        token_type:
+          type: string
+          enum:
+            - bearer
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+        scope:
+          type: string
+          description: Space-separated list of granted scopes
+        user:
+          $ref: '#/components/schemas/User'
+
+    CreateApiKeyRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          description: Human-readable name for the API key
+          example: "Production API Key"
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+              - chat:read
+              - chat:write
+              - analytics:read
+              - admin:write
+          description: Permissions granted to this API key
+          example:
+            - "chat:read"
+            - "chat:write"
+        expires_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+          description: Days until key expires (optional)
+        rate_limit:
+          type: integer
+          minimum: 100
+          maximum: 100000
+          description: Requests per hour limit
+
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        rate_limit:
+          type: integer
+
+    # User and Session Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+            enum:
+              - admin
+              - user
+              - developer
+              - viewer
+        tenant_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+
+    CreateSessionRequest:
+      type: object
+      required:
+        - model
+      properties:
+        model:
+          type: string
+          enum:
+            - gpt-4
+            - gpt-4-turbo
+            - gpt-3.5-turbo
+            - claude-3-opus
+            - claude-3-sonnet
+            - claude-3-haiku
+          description: AI model to use for this session
+        temperature:
+          type: number
+          minimum: 0.0
+          maximum: 2.0
+          default: 0.7
+          description: Randomness in responses (0.0 = deterministic)
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 32000
+          default: 1000
+          description: Maximum tokens in response
+        system_prompt:
+          type: string
+          maxLength: 4000
+          description: System prompt to set AI behavior
+        metadata:
+          type: object
+          description: Additional session metadata
+          additionalProperties: true
+
+    ChatSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - active
+            - completed
+            - archived
+        config:
+          type: object
+          properties:
+            model:
+              type: string
+            temperature:
+              type: number
+            max_tokens:
+              type: integer
+            system_prompt:
+              type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        message_count:
+          type: integer
+        total_tokens:
+          type: integer
+        total_cost:
+          type: number
+          format: float
+        metadata:
+          type: object
+          additionalProperties: true
+
+    UpdateSessionRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - active
+            - completed
+            - archived
+        config:
+          type: object
+          properties:
+            temperature:
+              type: number
+              minimum: 0.0
+              maximum: 2.0
+            max_tokens:
+              type: integer
+              minimum: 1
+              maximum: 32000
+        metadata:
+          type: object
+          additionalProperties: true
+
+    # Message Schemas
+    SendMessageRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          maxLength: 32000
+          description: Message content
+        stream:
+          type: boolean
+          default: false
+          description: Whether to stream the response
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+          description: File attachments
+        context:
+          type: object
+          description: Additional context for the AI
+          properties:
+            user_preferences:
+              type: object
+            conversation_style:
+              type: string
+              enum:
+                - formal
+                - casual
+                - technical
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+            - system
+        content:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        metadata:
+          type: object
+          properties:
+            model:
+              type: string
+            tokens:
+              type: integer
+            cost:
+              type: number
+              format: float
+            response_time:
+              type: number
+              format: float
+            quality_score:
+              type: number
+              format: float
+        created_at:
+          type: string
+          format: date-time
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          $ref: '#/components/schemas/Message'
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+            cost:
+              type: number
+              format: float
+
+    Attachment:
+      type: object
+      required:
+        - type
+        - url
+      properties:
+        type:
+          type: string
+          enum:
+            - image
+            - document
+            - audio
+            - video
+        url:
+          type: string
+          format: uri
+        filename:
+          type: string
+        size:
+          type: integer
+          description: File size in bytes
+        metadata:
+          type: object
+          additionalProperties: true
+
+    FeedbackRequest:
+      type: object
+      required:
+        - rating
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Rating from 1 (poor) to 5 (excellent)
+        feedback:
+          type: string
+          maxLength: 1000
+          description: Optional text feedback
+        categories:
+          type: array
+          items:
+            type: string
+            enum:
+              - accuracy
+              - relevance
+              - helpfulness
+              - clarity
+              - creativity
+          description: Specific feedback categories
+
+    # Analytics Schemas
+    UsageAnalytics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+        metrics:
+          type: object
+          properties:
+            total_requests:
+              type: integer
+            total_tokens:
+              type: integer
+            total_cost:
+              type: number
+              format: float
+            average_response_time:
+              type: number
+              format: float
+            success_rate:
+              type: number
+              format: float
+        breakdowns:
+          type: object
+          properties:
+            by_model:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  requests:
+                    type: integer
+                  tokens:
+                    type: integer
+                  cost:
+                    type: number
+                    format: float
+            by_day:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  requests:
+                    type: integer
+                  tokens:
+                    type: integer
+                  cost:
+                    type: number
+                    format: float
+
+    QualityMetrics:
+      type: object
+      properties:
+        overall_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+        dimension_scores:
+          type: object
+          properties:
+            relevance:
+              type: number
+              format: float
+            coherence:
+              type: number
+              format: float
+            completeness:
+              type: number
+              format: float
+            accuracy:
+              type: number
+              format: float
+            safety:
+              type: number
+              format: float
+        trends:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              score:
+                type: number
+                format: float
+
+    # Upload Schemas
+    UploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        filename:
+          type: string
+        size:
+          type: integer
+        content_type:
+          type: string
+        metadata:
+          type: object
+          properties:
+            extracted_text:
+              type: string
+              description: Extracted text content (for documents)
+            image_analysis:
+              type: object
+              description: Image analysis results
+              properties:
+                objects:
+                  type: array
+                  items:
+                    type: string
+                text:
+                  type: string
+                faces:
+                  type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    # Health and Status Schemas
+    DetailedHealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        dependencies:
+          type: object
+          properties:
+            database:
+              $ref: '#/components/schemas/ServiceHealth'
+            redis:
+              $ref: '#/components/schemas/ServiceHealth'
+            openai:
+              $ref: '#/components/schemas/ServiceHealth'
+            anthropic:
+              $ref: '#/components/schemas/ServiceHealth'
+        metrics:
+          type: object
+          properties:
+            uptime_seconds:
+              type: integer
+            active_connections:
+              type: integer
+            memory_usage_mb:
+              type: number
+            cpu_usage_percent:
+              type: number
+
+    ServiceHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - degraded
+            - unhealthy
+        response_time_ms:
+          type: number
+        last_check:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    SystemStatus:
+      type: object
+      properties:
+        region:
+          type: string
+        environment:
+          type: string
+        version:
+          type: string
+        build:
+          type: string
+        performance:
+          type: object
+          properties:
+            requests_per_second:
+              type: number
+            average_response_time:
+              type: number
+            p95_response_time:
+              type: number
+            error_rate:
+              type: number
+        capacity:
+          type: object
+          properties:
+            active_sessions:
+              type: integer
+            concurrent_users:
+              type: integer
+            cpu_usage:
+              type: number
+            memory_usage:
+              type: number
+
+    # Utility Schemas
+    PaginationInfo:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+        next_url:
+          type: string
+          format: uri
+          nullable: true
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: object
+              description: Additional error details
+              additionalProperties: true
+            request_id:
+              type: string
+              format: uuid
+              description: Request ID for debugging
+
+# Tags for grouping endpoints
+tags:
+  - name: Authentication
+    description: User authentication and API key management
+  - name: Chat Sessions
+    description: Chat session lifecycle management
+  - name: Messages
+    description: Message sending and retrieval
+  - name: File Upload
+    description: File upload and processing
+  - name: Analytics
+    description: Usage analytics and reporting
+  - name: Health
+    description: System health and status endpoints
+
+# External documentation
+externalDocs:
+  description: Find more info here
+  url: https://docs.example.com

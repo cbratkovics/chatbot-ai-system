@@ -1,0 +1,67 @@
+# Production Dockerfile for Backend
+# Multi-stage build with security hardening
+
+# Stage 1: Builder
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# Stage 2: Security scanner
+FROM aquasec/trivy:latest AS scanner
+COPY --from=builder /root/.local /root/.local
+RUN trivy fs /root/.local --exit-code 0 --severity HIGH,CRITICAL
+
+# Stage 3: Production
+FROM python:3.11-slim
+
+# Security: Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy Python packages from builder
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Security: Set environment variables
+ENV PATH=/home/appuser/.local/bin:$PATH \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Security: Drop privileges
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Labels for GitHub Container Registry
+LABEL org.opencontainers.image.source="https://github.com/your-username/ai-chatbot-system"
+LABEL org.opencontainers.image.description="AI Chatbot System Backend"
+LABEL org.opencontainers.image.licenses="MIT"
+
+# Start command with production server
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--loop", "uvloop", "--access-log", "--log-level", "info"]

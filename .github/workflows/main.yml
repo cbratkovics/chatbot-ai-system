@@ -1,0 +1,237 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  POETRY_VERSION: "2.1.4"
+
+jobs:
+  quality-checks:
+    name: Code Quality and Type Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        id: py
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        run: |
+          pipx install "poetry==${POETRY_VERSION}"
+          poetry --version
+
+      - name: Configure Poetry (in-project venv; bind to active Python)
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry env use "$(python -c 'import sys; print(sys.executable)')"
+
+      - name: Cache .venv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-ansi --with dev
+
+      - name: Lint (Ruff/Black/Isort) — fail on issues
+        run: poetry run task lint
+
+      - name: Type check (mypy)
+        run: poetry run task typecheck
+
+  tests:
+    name: Unit and Integration Tests
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        run: pipx install "poetry==${POETRY_VERSION}"
+
+      - name: Configure Poetry (in-project venv; bind to active Python)
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry env use "$(python -c 'import sys; print(sys.executable)')"
+
+      - name: Cache .venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-ansi --with dev
+
+      - name: Ensure results dir exists
+        run: mkdir -p benchmarks/results
+
+      - name: Run tests (with JUnit)
+        run: |
+          poetry run pytest -q --maxfail=1 --disable-warnings \
+            --junitxml=benchmarks/results/junit_ci.xml
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-and-logs
+          path: benchmarks/results/junit_ci.xml
+          if-no-files-found: error
+
+  performance-tests:
+    name: k6 Smoke Tests
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Ensure results dir exists
+        run: mkdir -p benchmarks/results
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 Smoke Test (REST)
+        run: |
+          k6 run --quiet \
+            --summary-export=benchmarks/results/rest_api_smoke.json \
+            --vus 5 --duration 30s \
+            benchmarks/load_tests/k6_api_test.js
+        continue-on-error: true
+
+      - name: Run k6 Smoke Test (WebSocket)
+        run: |
+          k6 run --quiet \
+            --summary-export=benchmarks/results/websocket_smoke.json \
+            --vus 5 --duration 30s \
+            benchmarks/load_tests/k6_websocket_test.js
+        continue-on-error: true
+
+      - name: Upload Performance Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: |
+            benchmarks/results/*.json
+            benchmarks/results/*.html
+            benchmarks/results/*.csv
+          if-no-files-found: ignore
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: quality-checks
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (cache only)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ai-gateway:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  monitoring-validation:
+    name: Validate Monitoring Configs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Prometheus Rules
+        if: ${{ hashFiles('monitoring/prometheus_rules.yml') != '' }}
+        run: |
+          docker run --rm -v "$(pwd)/monitoring:/config" prom/prometheus:latest \
+            promtool check rules /config/prometheus_rules.yml
+
+      - name: Validate Grafana Dashboard JSON
+        if: ${{ hashFiles('docs/performance/grafana_dashboard.json') != '' }}
+        run: |
+          python -m json.tool docs/performance/grafana_dashboard.json > /dev/null
+          echo "Grafana dashboard JSON is valid"
+
+      - name: Upload Monitoring Configs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-configs
+          path: |
+            monitoring/prometheus_rules.yml
+            docs/performance/grafana_dashboard.json
+            docs/performance/*.png
+          if-no-files-found: ignore
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [quality-checks, tests, performance-tests, docker-build, monitoring-validation]
+    if: always()
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate Summary Report
+        run: |
+          echo "# CI Pipeline Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Completed Checks" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Check | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Code Quality | ${{ needs.quality-checks.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Tests | ${{ needs.tests.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Performance | ${{ needs.performance-tests.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Docker Build | ${{ needs.docker-build.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Monitoring | ${{ needs.monitoring-validation.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Artifacts" >> "$GITHUB_STEP_SUMMARY"
+          echo "- junit-and-logs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- performance-results" >> "$GITHUB_STEP_SUMMARY"
+          echo "- monitoring-configs" >> "$GITHUB_STEP_SUMMARY"

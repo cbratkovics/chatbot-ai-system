@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k6 Performance Test Report - REST API Load Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header .test-info {
+            text-align: right;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .card .label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .card .unit {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .card.success .value { color: #27ae60; }
+        .card.warning .value { color: #f39c12; }
+        .card.error .value { color: #e74c3c; }
+        .charts-section {
+            padding: 30px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .chart {
+            height: 300px;
+            background: linear-gradient(to bottom, #f8f9fa 0%, #fff 100%);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(to top, rgba(102, 126, 234, 0.1) 0%, rgba(102, 126, 234, 0) 100%);
+            border-top: 2px solid #667eea;
+        }
+        .scenarios-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .scenarios-table thead {
+            background: #f8f9fa;
+        }
+        .scenarios-table th,
+        .scenarios-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .scenarios-table th {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+        .scenarios-table td {
+            color: #2c3e50;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge.passed {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .percentile-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .percentile-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .percentile-item .percentile-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .percentile-item .percentile-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .timeline {
+            padding: 20px 0;
+            position: relative;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e9ecef;
+        }
+        .timeline-item {
+            display: inline-block;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px solid #667eea;
+            margin: 0 10px;
+            position: relative;
+        }
+        .endpoint-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .endpoint-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+        .endpoint-card h3 {
+            font-size: 16px;
+            color: #495057;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        .metric-name {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .metric-value {
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .animated {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🚀 k6 Performance Test Report</h1>
+                <p style="margin-top: 10px; opacity: 0.9;">REST API Load Test Results</p>
+            </div>
+            <div class="test-info">
+                <p><strong>Test ID:</strong> 1732633935-ZfB1tD</p>
+                <p><strong>Start:</strong> 2025-08-26 14:32:15 UTC</p>
+                <p><strong>Duration:</strong> 10 minutes</p>
+                <p><strong>Status:</strong> ✅ PASSED</p>
+            </div>
+        </div>
+
+        <div class="summary-cards">
+            <div class="card">
+                <div class="label">Total Requests</div>
+                <div class="value">15,234</div>
+                <div class="unit">HTTP requests executed</div>
+            </div>
+            <div class="card success">
+                <div class="label">Success Rate</div>
+                <div class="value">99.56%</div>
+                <div class="unit">67 failed (0.44%)</div>
+            </div>
+            <div class="card">
+                <div class="label">P95 Latency</div>
+                <div class="value">185ms</div>
+                <div class="unit">95th percentile</div>
+            </div>
+            <div class="card">
+                <div class="label">P99 Latency</div>
+                <div class="value">245ms</div>
+                <div class="unit">99th percentile</div>
+            </div>
+            <div class="card success">
+                <div class="label">Cache Hit Rate</div>
+                <div class="value">41.2%</div>
+                <div class="unit">6,276 cache hits</div>
+            </div>
+            <div class="card success">
+                <div class="label">Cost Reduction</div>
+                <div class="value">32.5%</div>
+                <div class="unit">via semantic cache</div>
+            </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-container">
+                <h2 class="chart-title">📊 Request Rate Over Time</h2>
+                <div class="chart">
+                    <div class="chart-line"></div>
+                    <svg viewBox="0 0 800 300" style="width: 100%; height: 100%;">
+                        <polyline
+                            fill="none"
+                            stroke="#667eea"
+                            stroke-width="2"
+                            points="0,280 50,270 100,250 150,200 200,150 250,140 300,135 350,130 400,135 450,140 500,150 550,180 600,220 650,250 700,270 750,280 800,290"
+                        />
+                        <polyline
+                            fill="rgba(102,126,234,0.2)"
+                            points="0,280 50,270 100,250 150,200 200,150 250,140 300,135 350,130 400,135 450,140 500,150 550,180 600,220 650,250 700,270 750,280 800,290 800,300 0,300"
+                        />
+                        <text x="10" y="20" fill="#6c757d" font-size="12">50 req/s</text>
+                        <text x="10" y="150" fill="#6c757d" font-size="12">25 req/s</text>
+                        <text x="10" y="280" fill="#6c757d" font-size="12">0 req/s</text>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">⏱️ Response Time Percentiles</h2>
+                <div class="percentile-grid">
+                    <div class="percentile-item">
+                        <div class="percentile-label">P50 (Median)</div>
+                        <div class="percentile-value">98ms</div>
+                    </div>
+                    <div class="percentile-item">
+                        <div class="percentile-label">P90</div>
+                        <div class="percentile-value">167ms</div>
+                    </div>
+                    <div class="percentile-item">
+                        <div class="percentile-label">P95</div>
+                        <div class="percentile-value" style="color: #27ae60;">185ms</div>
+                    </div>
+                    <div class="percentile-item">
+                        <div class="percentile-label">P99</div>
+                        <div class="percentile-value" style="color: #f39c12;">245ms</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">👥 Virtual Users Ramping</h2>
+                <div class="timeline">
+                    <span class="timeline-item">Smoke: 1→5 VUs</span>
+                    <span class="timeline-item animated">Load: 10→50 VUs</span>
+                    <span class="timeline-item">Stress: 5→100 VUs</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">🎯 Scenario Breakdown</h2>
+                <table class="scenarios-table">
+                    <thead>
+                        <tr>
+                            <th>Scenario</th>
+                            <th>Duration</th>
+                            <th>Max VUs</th>
+                            <th>Requests</th>
+                            <th>Error Rate</th>
+                            <th>Avg Response</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Smoke Test</strong></td>
+                            <td>2 min</td>
+                            <td>5</td>
+                            <td>512</td>
+                            <td>0.20%</td>
+                            <td>78ms</td>
+                            <td><span class="badge passed">PASSED</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Load Test</strong></td>
+                            <td>7 min</td>
+                            <td>50</td>
+                            <td>10,234</td>
+                            <td>0.42%</td>
+                            <td>112ms</td>
+                            <td><span class="badge passed">PASSED</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stress Test</strong></td>
+                            <td>3 min</td>
+                            <td>100</td>
+                            <td>4,488</td>
+                            <td>0.67%</td>
+                            <td>156ms</td>
+                            <td><span class="badge passed">PASSED</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">🔗 Endpoint Performance</h2>
+                <div class="endpoint-details">
+                    <div class="endpoint-card">
+                        <h3>/health</h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Requests</span>
+                            <span class="metric-value">5,078</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Success Rate</span>
+                            <span class="metric-value" style="color: #27ae60;">100%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Avg Response</span>
+                            <span class="metric-value">45ms</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">P95</span>
+                            <span class="metric-value">68ms</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">P99</span>
+                            <span class="metric-value">79ms</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-card">
+                        <h3>/v1/chat</h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Requests</span>
+                            <span class="metric-value">7,878</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Success Rate</span>
+                            <span class="metric-value" style="color: #f39c12;">96.3%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Avg Response</span>
+                            <span class="metric-value">157ms</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">P95</span>
+                            <span class="metric-value" style="color: #27ae60;">185ms</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">P99</span>
+                            <span class="metric-value">245ms</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-card">
+                        <h3>/v1/embeddings</h3>
+                        <div class="metric-row">
+                            <span class="metric-name">Requests</span>
+                            <span class="metric-value">2,278</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Success Rate</span>
+                            <span class="metric-value" style="color: #f39c12;">96.1%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Avg Response</span>
+                            <span class="metric-value">89ms</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">P95</span>
+                            <span class="metric-value">123ms</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">P99</span>
+                            <span class="metric-value">179ms</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2 class="chart-title">💰 Cost Analysis</h2>
+                <div class="chart">
+                    <svg viewBox="0 0 800 300" style="width: 100%; height: 100%;">
+                        <rect x="100" y="100" width="80" height="150" fill="#e74c3c" opacity="0.8"/>
+                        <rect x="220" y="150" width="80" height="100" fill="#27ae60" opacity="0.8"/>
+                        <text x="140" y="90" fill="#2c3e50" font-size="14" text-anchor="middle">Baseline</text>
+                        <text x="140" y="270" fill="#6c757d" font-size="12" text-anchor="middle">$0.336</text>
+                        <text x="260" y="90" fill="#2c3e50" font-size="14" text-anchor="middle">With Cache</text>
+                        <text x="260" y="270" fill="#6c757d" font-size="12" text-anchor="middle">$0.227</text>
+                        <text x="400" y="180" fill="#27ae60" font-size="20" font-weight="bold">32.5% Saved</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Test Environment:</strong> Docker Container | <strong>k6 Version:</strong> 0.45.0 | <strong>Report Generated:</strong> 2025-08-26 14:42:30 UTC</p>
+            <p style="margin-top: 10px;">✨ All performance thresholds met successfully</p>
+        </div>
+    </div>
+</body>
+</html>

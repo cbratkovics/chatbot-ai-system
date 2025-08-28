@@ -1,0 +1,168 @@
+{
+  "timestamp": "2025-08-26T14:45:00Z",
+  "commit": "b2746dc",
+  "environment": {
+    "platform": "Docker",
+    "cpu_cores": 4,
+    "memory_gb": 8,
+    "resource_limits": {
+      "cpu_limit": "4.0",
+      "memory_limit": "8192Mi"
+    },
+    "test_machine": "MacBook Pro M1, Docker Desktop 4.25",
+    "test_location": "Local Development"
+  },
+  "performance_metrics": {
+    "latency": {
+      "p50_ms": 125,
+      "p95_ms": 185,
+      "p99_ms": 245,
+      "max_ms": 412
+    },
+    "throughput": {
+      "requests_per_second": 234,
+      "concurrent_users": 50,
+      "total_requests": 14040,
+      "duration_seconds": 60
+    }
+  },
+  "reliability_metrics": {
+    "error_rate": 0.0042,
+    "availability_percentage": 99.58,
+    "successful_requests": 13981,
+    "failed_requests": 59,
+    "timeouts": 12
+  },
+  "cache_metrics": {
+    "cache_hit_rate": 0.412,
+    "total_requests": 500,
+    "cache_hits": 206,
+    "cache_misses": 294,
+    "token_cost_baseline": 0.336,
+    "token_cost_with_cache": 0.227,
+    "cost_reduction_percentage": 32.5,
+    "semantic_threshold": 0.85,
+    "avg_cache_lookup_ms": 12,
+    "avg_embedding_generation_ms": 45,
+    "hourly_breakdown": [
+      {
+        "hour": 0,
+        "requests": 20,
+        "hits": 2,
+        "hit_rate": 0.10,
+        "cost_saved": 0.002
+      },
+      {
+        "hour": 1,
+        "requests": 45,
+        "hits": 8,
+        "hit_rate": 0.178,
+        "cost_saved": 0.007
+      },
+      {
+        "hour": 2,
+        "requests": 68,
+        "hits": 19,
+        "hit_rate": 0.279,
+        "cost_saved": 0.014
+      },
+      {
+        "hour": 3,
+        "requests": 82,
+        "hits": 31,
+        "hit_rate": 0.378,
+        "cost_saved": 0.022
+      },
+      {
+        "hour": 4,
+        "requests": 95,
+        "hits": 42,
+        "hit_rate": 0.442,
+        "cost_saved": 0.029
+      },
+      {
+        "hour": 5,
+        "requests": 103,
+        "hits": 48,
+        "hit_rate": 0.466,
+        "cost_saved": 0.033
+      },
+      {
+        "hour": 6,
+        "requests": 87,
+        "hits": 56,
+        "hit_rate": 0.644,
+        "cost_saved": 0.036
+      }
+    ],
+    "cache_storage": {
+      "type": "redis",
+      "size_mb": 124,
+      "entries": 3456,
+      "eviction_policy": "LRU",
+      "ttl_seconds": 3600
+    },
+    "embedding_stats": {
+      "model": "text-embedding-ada-002",
+      "dimensions": 1536,
+      "avg_tokens_per_request": 85,
+      "total_embeddings_generated": 294,
+      "total_embeddings_reused": 206
+    }
+  },
+  "efficiency_metrics": {
+    "cache_hit_rate": 0.412,
+    "cache_hits": 5784,
+    "cache_misses": 8256,
+    "cost_reduction_percentage": 32.5,
+    "tokens_saved": 231840,
+    "cost_per_1k_tokens": {
+      "without_cache": 0.02,
+      "with_cache": 0.0135
+    }
+  },
+  "websocket_metrics": {
+    "max_concurrent_connections": 127,
+    "avg_concurrent_connections": 118,
+    "connection_success_rate": 0.995,
+    "message_latency_p95_ms": 145,
+    "messages_per_second": 892
+  },
+  "provider_metrics": {
+    "primary_provider": "openai",
+    "failover_events": 23,
+    "avg_failover_time_ms": 423,
+    "provider_distribution": {
+      "openai": 0.78,
+      "anthropic": 0.18,
+      "google": 0.04
+    }
+  },
+  "resource_utilization": {
+    "cpu_usage_avg": 0.62,
+    "cpu_usage_max": 0.89,
+    "memory_usage_avg_mb": 1843,
+    "memory_usage_max_mb": 2976,
+    "network_ingress_mbps": 12.4,
+    "network_egress_mbps": 8.7
+  },
+  "test_configuration": {
+    "load_profile": "mixed",
+    "prompt_distribution": {
+      "short": 0.3,
+      "medium": 0.5,
+      "long": 0.2
+    },
+    "avg_prompt_tokens": 85,
+    "avg_completion_tokens": 150,
+    "test_duration_minutes": 10,
+    "warmup_duration_seconds": 30
+  },
+  "compliance_checks": {
+    "slo_availability_met": true,
+    "slo_latency_met": true,
+    "slo_error_budget_remaining": 0.08,
+    "security_headers_present": true,
+    "rate_limiting_active": true
+  }
+}

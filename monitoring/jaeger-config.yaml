@@ -1,0 +1,170 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger-config
+  namespace: monitoring
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      jaeger:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:14250
+          thrift_http:
+            endpoint: 0.0.0.0:14268
+          thrift_compact:
+            endpoint: 0.0.0.0:6831
+          thrift_binary:
+            endpoint: 0.0.0.0:6832
+    
+    processors:
+      batch:
+        timeout: 1s
+        send_batch_size: 1024
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+      resource:
+        attributes:
+          - key: environment
+            value: production
+          - key: service.namespace
+            value: ai-chatbot
+    
+    exporters:
+      jaeger:
+        endpoint: jaeger-collector:14250
+        tls:
+          insecure: true
+      prometheus:
+        endpoint: 0.0.0.0:8889
+    
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      pprof:
+        endpoint: 0.0.0.0:1777
+      zpages:
+        endpoint: 0.0.0.0:55679
+    
+    service:
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        traces:
+          receivers: [otlp, jaeger]
+          processors: [memory_limiter, batch, resource]
+          exporters: [jaeger]
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus]
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+      - name: jaeger
+        image: jaegertracing/all-in-one:1.45
+        ports:
+        - containerPort: 6831
+          protocol: UDP
+        - containerPort: 6832
+          protocol: UDP
+        - containerPort: 5778
+          protocol: TCP
+        - containerPort: 16686
+          protocol: TCP
+        - containerPort: 14250
+          protocol: TCP
+        - containerPort: 14268
+          protocol: TCP
+        - containerPort: 14269
+          protocol: TCP
+        - containerPort: 4317
+          protocol: TCP
+        - containerPort: 4318
+          protocol: TCP
+        env:
+        - name: COLLECTOR_ZIPKIN_HOST_PORT
+          value: ":9411"
+        - name: SPAN_STORAGE_TYPE
+          value: elasticsearch
+        - name: ES_SERVER_URLS
+          value: http://elasticsearch:9200
+        - name: ES_TAGS_AS_FIELDS_ALL
+          value: "true"
+        - name: COLLECTOR_OTLP_ENABLED
+          value: "true"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: monitoring
+spec:
+  type: ClusterIP
+  ports:
+  - name: agent-compact
+    port: 6831
+    protocol: UDP
+    targetPort: 6831
+  - name: agent-binary
+    port: 6832
+    protocol: UDP
+    targetPort: 6832
+  - name: agent-configs
+    port: 5778
+    protocol: TCP
+    targetPort: 5778
+  - name: query-http
+    port: 16686
+    protocol: TCP
+    targetPort: 16686
+  - name: collector-grpc
+    port: 14250
+    protocol: TCP
+    targetPort: 14250
+  - name: collector-http
+    port: 14268
+    protocol: TCP
+    targetPort: 14268
+  - name: collector-metrics
+    port: 14269
+    protocol: TCP
+    targetPort: 14269
+  - name: otlp-grpc
+    port: 4317
+    protocol: TCP
+    targetPort: 4317
+  - name: otlp-http
+    port: 4318
+    protocol: TCP
+    targetPort: 4318
+  selector:
+    app: jaeger

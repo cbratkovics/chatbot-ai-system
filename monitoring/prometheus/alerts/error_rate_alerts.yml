@@ -1,0 +1,105 @@
+groups:
+  - name: error_rate_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 1%)"
+          runbook: "https://wiki.example.com/runbooks/high-error-rate"
+
+      - alert: HighClientErrorRate
+        expr: sum(rate(http_requests_total{status=~"4.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "High client error rate"
+          description: "Client error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+
+      - alert: ModelProviderErrors
+        expr: sum(rate(model_provider_errors_total[5m])) by (provider) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          team: ml
+        annotations:
+          summary: "Model provider experiencing errors"
+          description: "Provider {{ $labels.provider }} error rate: {{ $value }} errors/sec"
+
+      - alert: DatabaseConnectionErrors
+        expr: sum(rate(database_connection_errors_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: database
+        annotations:
+          summary: "Database connection errors"
+          description: "Database connection error rate: {{ $value }} errors/sec"
+          runbook: "https://wiki.example.com/runbooks/database-connection-errors"
+
+      - alert: CacheErrors
+        expr: sum(rate(cache_operation_errors_total[5m])) by (operation) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Cache operation errors"
+          description: "Cache {{ $labels.operation }} error rate: {{ $value }} errors/sec"
+
+      - alert: AuthenticationFailures
+        expr: sum(rate(authentication_failures_total[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "High authentication failure rate"
+          description: "Authentication failure rate: {{ $value }} failures/sec"
+
+      - alert: RateLimitExceeded
+        expr: sum(rate(rate_limit_exceeded_total[5m])) by (tenant_id) > 10
+        for: 5m
+        labels:
+          severity: info
+          team: backend
+        annotations:
+          summary: "Rate limit frequently exceeded"
+          description: "Tenant {{ $labels.tenant_id }} exceeding rate limit: {{ $value }} times/sec"
+
+      - alert: WebSocketErrors
+        expr: sum(rate(websocket_errors_total[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "WebSocket errors detected"
+          description: "WebSocket error rate: {{ $value }} errors/sec"
+
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Circuit breaker opened"
+          description: "Circuit breaker for {{ $labels.service }} is open"
+
+      - alert: FallbackActivated
+        expr: sum(rate(fallback_activated_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Fallback frequently activated"
+          description: "Fallback activation rate: {{ $value }} times/sec"

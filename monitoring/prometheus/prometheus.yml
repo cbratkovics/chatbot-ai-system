@@ -1,0 +1,77 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'ai-chatbot-system'
+    environment: 'production'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+rule_files:
+  - "alerts/*.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'api-1:8000'
+          - 'api-2:8000'
+          - 'api-3:8000'
+          - 'api-4:8000'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):.*'
+        replacement: '${1}'
+
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    params:
+      collect[]:
+        - 'database'
+        - 'table'
+        - 'index'
+        - 'functions'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: 'node'
+    static_configs:
+      - targets:
+          - 'node-exporter-1:9100'
+          - 'node-exporter-2:9100'
+          - 'node-exporter-3:9100'
+          - 'node-exporter-4:9100'
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets:
+          - 'cadvisor:8080'
+
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://api.example.com/health
+          - https://api.example.com/ready
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115

@@ -1,0 +1,436 @@
+# Docker Compose for Complete Observability Stack
+# Prometheus, Grafana, ELK Stack, Jaeger for AI Chatbot System
+
+version: '3.8'
+
+networks:
+  observability:
+    driver: bridge
+  chatbot-network:
+    external: true
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  elasticsearch-data:
+  jaeger-data:
+
+services:
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus-config.yml:/etc/prometheus/prometheus.yml
+      - ./alerting-rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--query.max-samples=50000000'
+    networks:
+      - observability
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-dashboards.json:/etc/grafana/provisioning/dashboards/dashboards.json
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin123}
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel,grafana-clock-panel
+      GF_FEATURE_TOGGLES_ENABLE: publicDashboards
+      GF_SMTP_ENABLED: true
+      GF_SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com:587}
+      GF_SMTP_USER: ${SMTP_USER}
+      GF_SMTP_PASSWORD: ${SMTP_PASSWORD}
+      GF_SMTP_FROM_ADDRESS: ${SMTP_FROM:-alerts@chatbot.com}
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Alertmanager - Alert Management
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Elasticsearch - Log Storage
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    container_name: elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: "-Xms2g -Xmx2g"
+      xpack.security.enabled: false
+      xpack.security.enrollment.enabled: false
+      cluster.name: chatbot-logs
+      node.name: elasticsearch-single
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Logstash - Log Processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.8.0
+    container_name: logstash
+    restart: unless-stopped
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - ./logstash.yml:/usr/share/logstash/config/logstash.yml
+    environment:
+      LS_JAVA_OPTS: "-Xms1g -Xmx1g"
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kibana - Log Visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    container_name: kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      SERVER_HOST: 0.0.0.0
+      SERVER_NAME: kibana
+    networks:
+      - observability
+    depends_on:
+      - elasticsearch
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.47
+    container_name: jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14250:14250"  # gRPC
+      - "14268:14268"  # HTTP
+      - "6831:6831/udp"  # Agent UDP
+      - "6832:6832/udp"  # Agent UDP
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: :9411
+    volumes:
+      - jaeger-data:/tmp
+    networks:
+      - observability
+      - chatbot-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:14269/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node Exporter - System Metrics
+  node-exporter:
+    image: prom/node-exporter:v1.6.0
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - observability
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.51.0
+    container_name: redis-exporter
+    restart: unless-stopped
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+    networks:
+      - observability
+      - chatbot-network
+
+  # PostgreSQL Exporter
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.12.1
+    container_name: postgres-exporter
+    restart: unless-stopped
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+    networks:
+      - observability
+      - chatbot-network
+
+  # Blackbox Exporter - External Service Monitoring
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./blackbox.yml:/etc/blackbox_exporter/config.yml
+    networks:
+      - observability
+
+  # Custom AI Model Metrics Exporter
+  ai-model-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai-exporter
+    container_name: ai-model-exporter
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - prometheus
+
+  # Business Metrics Exporter
+  business-metrics-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.business-exporter
+    container_name: business-metrics-exporter
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - prometheus
+
+  # Cost Monitoring Exporter
+  cost-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.cost-exporter
+    container_name: cost-exporter
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+
+  # Filebeat - Log Shipping
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.8.0
+    container_name: filebeat
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      LOGSTASH_HOSTS: http://logstash:5044
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - elasticsearch
+      - logstash
+
+  # Metricbeat - Infrastructure Metrics
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:8.8.0
+    container_name: metricbeat
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./metricbeat.yml:/usr/share/metricbeat/metricbeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro
+      - /proc:/hostfs/proc:ro
+      - /:/hostfs:ro
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - elasticsearch
+
+  # OTEL Collector - OpenTelemetry
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.81.0
+    container_name: otel-collector
+    restart: unless-stopped
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "8888:8888"   # Prometheus metrics
+      - "8889:8889"   # Prometheus exporter metrics
+    volumes:
+      - ./otel-collector.yml:/etc/otel-collector-config.yml
+    command: ["--config=/etc/otel-collector-config.yml"]
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - prometheus
+      - jaeger
+
+  # Loki - Log Aggregation (Alternative to ELK)
+  loki:
+    image: grafana/loki:2.8.3
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki.yml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - observability
+
+  # Promtail - Log Collection for Loki
+  promtail:
+    image: grafana/promtail:2.8.3
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - observability
+      - chatbot-network
+    depends_on:
+      - loki
+
+  # cAdvisor - Container Metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - observability
+
+  # Uptime Kuma - Uptime Monitoring
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.0
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    networks:
+      - observability
+      - chatbot-network
+
+volumes:
+  uptime-kuma-data:

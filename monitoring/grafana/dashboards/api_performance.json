@@ -1,0 +1,292 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "api-performance",
+    "title": "API Performance Dashboard",
+    "tags": ["api", "performance", "latency"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-3h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 3, "w": 4, "x": 0, "y": 0},
+        "type": "stat",
+        "title": "Requests/sec",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[1m]))",
+            "legendFormat": "RPS"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 3, "w": 4, "x": 4, "y": 0},
+        "type": "stat",
+        "title": "P50 Latency",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+            "legendFormat": "P50"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 1,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 3, "w": 4, "x": 8, "y": 0},
+        "type": "stat",
+        "title": "P95 Latency",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+            "legendFormat": "P95"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 1,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 150},
+                {"color": "red", "value": 200}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 3, "w": 4, "x": 12, "y": 0},
+        "type": "stat",
+        "title": "P99 Latency",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[1m])) by (le)) * 1000",
+            "legendFormat": "P99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 1,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 400},
+                {"color": "red", "value": 500}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 3, "w": 4, "x": 16, "y": 0},
+        "type": "stat",
+        "title": "Success Rate",
+        "targets": [
+          {
+            "expr": "(1 - (sum(rate(http_requests_total{status=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m])))) * 100",
+            "legendFormat": "Success %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "min": 0,
+            "max": 100,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 95},
+                {"color": "green", "value": 99}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 3, "w": 4, "x": 20, "y": 0},
+        "type": "stat",
+        "title": "Concurrent Users",
+        "targets": [
+          {
+            "expr": "sum(websocket_active_connections)",
+            "legendFormat": "Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 80},
+                {"color": "red", "value": 100}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 3},
+        "type": "graph",
+        "title": "Request Rate by Endpoint",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[1m])) by (endpoint, method)",
+            "legendFormat": "{{ method }} {{ endpoint }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "show": true},
+          {"format": "short", "show": false}
+        ],
+        "legend": {
+          "show": true,
+          "rightSide": true
+        }
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 3},
+        "type": "graph",
+        "title": "Latency by Endpoint",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (endpoint, le)) * 1000",
+            "legendFormat": "{{ endpoint }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "show": true},
+          {"format": "short", "show": false}
+        ],
+        "legend": {
+          "show": true,
+          "rightSide": true
+        }
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 11},
+        "type": "graph",
+        "title": "Status Code Distribution",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[1m])) by (status)",
+            "legendFormat": "{{ status }}"
+          }
+        ],
+        "stack": true,
+        "yaxes": [
+          {"format": "reqps", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 11},
+        "type": "graph",
+        "title": "Request Body Size",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_size_bytes_bucket[1m])) by (le))",
+            "legendFormat": "P95 Request Size"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_response_size_bytes_bucket[1m])) by (le))",
+            "legendFormat": "P95 Response Size"
+          }
+        ],
+        "yaxes": [
+          {"format": "decbytes", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 11},
+        "type": "graph",
+        "title": "Model Provider Latency",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(model_request_duration_seconds_bucket[1m])) by (provider, model, le)) * 1000",
+            "legendFormat": "{{ provider }}/{{ model }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 12,
+        "gridPos": {"h": 6, "w": 24, "x": 0, "y": 19},
+        "type": "table",
+        "title": "Slowest Endpoints (P95)",
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (endpoint, method, le)) * 1000)",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true
+              },
+              "renameByName": {
+                "endpoint": "Endpoint",
+                "method": "Method",
+                "Value": "P95 Latency (ms)"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

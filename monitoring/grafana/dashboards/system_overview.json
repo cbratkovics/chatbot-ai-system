@@ -1,0 +1,260 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "system-overview",
+    "title": "AI Chatbot System Overview",
+    "tags": ["chatbot", "overview", "system"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "30s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "type": "stat",
+        "title": "Total Requests",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) * 60",
+            "legendFormat": "Requests/min"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 1000},
+                {"color": "red", "value": 2000}
+              ]
+            },
+            "unit": "reqpm"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "type": "stat",
+        "title": "P95 Latency",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P95"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 150},
+                {"color": "red", "value": 200}
+              ]
+            },
+            "unit": "ms"
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "type": "stat",
+        "title": "Error Rate",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m])) * 100",
+            "legendFormat": "Error %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.5},
+                {"color": "red", "value": 1}
+              ]
+            },
+            "unit": "percent"
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "type": "stat",
+        "title": "Cache Hit Rate",
+        "targets": [
+          {
+            "expr": "sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m]))) * 100",
+            "legendFormat": "Hit Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 20},
+                {"color": "green", "value": 30}
+              ]
+            },
+            "unit": "percent",
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "type": "graph",
+        "title": "Request Rate by Endpoint",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+            "legendFormat": "{{ endpoint }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "show": true},
+          {"format": "short", "show": false}
+        ],
+        "xaxis": {"show": true}
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "type": "graph",
+        "title": "Response Time Percentiles",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+            "legendFormat": "P99"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+        "type": "graph",
+        "title": "Active WebSocket Connections",
+        "targets": [
+          {
+            "expr": "sum(websocket_active_connections)",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+        "type": "graph",
+        "title": "Model Provider Usage",
+        "targets": [
+          {
+            "expr": "sum(rate(model_requests_total[5m])) by (provider)",
+            "legendFormat": "{{ provider }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+        "type": "graph",
+        "title": "Database Connections",
+        "targets": [
+          {
+            "expr": "postgresql_connections_active",
+            "legendFormat": "Active"
+          },
+          {
+            "expr": "postgresql_connections_idle",
+            "legendFormat": "Idle"
+          },
+          {
+            "expr": "postgresql_connections_max",
+            "legendFormat": "Max"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 6, "w": 12, "x": 0, "y": 20},
+        "type": "heatmap",
+        "title": "Request Latency Heatmap",
+        "targets": [
+          {
+            "expr": "sum(increase(http_request_duration_seconds_bucket[1m])) by (le)",
+            "format": "heatmap",
+            "legendFormat": "{{ le }}"
+          }
+        ],
+        "dataFormat": "tsbuckets",
+        "yAxis": {
+          "format": "ms",
+          "decimals": 0
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 6, "w": 12, "x": 12, "y": 20},
+        "type": "table",
+        "title": "Top Tenants by Usage",
+        "targets": [
+          {
+            "expr": "topk(10, sum(rate(http_requests_total[5m])) by (tenant_id))",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "align": "auto",
+              "displayMode": "auto"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

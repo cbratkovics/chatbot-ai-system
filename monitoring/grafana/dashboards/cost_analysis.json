@@ -1,0 +1,253 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "cost-analysis",
+    "title": "Cost Analysis Dashboard",
+    "tags": ["cost", "billing", "usage"],
+    "timezone": "browser",
+    "schemaVersion": 30,
+    "version": 1,
+    "refresh": "5m",
+    "time": {
+      "from": "now-30d",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "type": "stat",
+        "title": "Monthly Cost",
+        "targets": [
+          {
+            "expr": "sum(increase(api_cost_total[30d]))",
+            "legendFormat": "Total Cost"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 2,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 4000},
+                {"color": "red", "value": 5000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "type": "stat",
+        "title": "Cost Savings (Cache)",
+        "targets": [
+          {
+            "expr": "sum(increase(cache_cost_savings_total[30d]))",
+            "legendFormat": "Savings"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 2,
+            "color": {"mode": "fixed", "fixedColor": "green"}
+          }
+        }
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "type": "stat",
+        "title": "Tokens Used",
+        "targets": [
+          {
+            "expr": "sum(increase(tokens_used_total[30d]))",
+            "legendFormat": "Tokens"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "type": "stat",
+        "title": "API Calls",
+        "targets": [
+          {
+            "expr": "sum(increase(model_requests_total[30d]))",
+            "legendFormat": "API Calls"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "type": "graph",
+        "title": "Daily Cost Breakdown",
+        "targets": [
+          {
+            "expr": "sum(increase(api_cost_total[1d])) by (provider)",
+            "legendFormat": "{{ provider }}"
+          }
+        ],
+        "stack": true,
+        "yaxes": [
+          {"format": "currencyUSD", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "type": "piechart",
+        "title": "Cost by Provider",
+        "targets": [
+          {
+            "expr": "sum(increase(api_cost_total[30d])) by (provider)",
+            "legendFormat": "{{ provider }}"
+          }
+        ],
+        "pieType": "donut",
+        "legendDisplayMode": "table",
+        "legendPlacement": "right",
+        "unit": "currencyUSD"
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+        "type": "graph",
+        "title": "Token Usage by Model",
+        "targets": [
+          {
+            "expr": "sum(rate(tokens_used_total[1h])) by (model)",
+            "legendFormat": "{{ model }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "show": true, "label": "Tokens/sec"},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+        "type": "graph",
+        "title": "Cost per Tenant",
+        "targets": [
+          {
+            "expr": "topk(10, sum(increase(api_cost_total[1d])) by (tenant_id))",
+            "legendFormat": "{{ tenant_id }}"
+          }
+        ],
+        "yaxes": [
+          {"format": "currencyUSD", "show": true},
+          {"format": "short", "show": false}
+        ]
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 20},
+        "type": "bargauge",
+        "title": "Cost by Operation Type",
+        "targets": [
+          {
+            "expr": "sum(increase(api_cost_total[30d])) by (operation)",
+            "instant": true
+          }
+        ],
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 1000}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 20},
+        "type": "stat",
+        "title": "Cache Efficiency",
+        "targets": [
+          {
+            "expr": "(sum(increase(cache_cost_savings_total[30d])) / sum(increase(api_cost_total[30d]))) * 100",
+            "legendFormat": "Savings %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 1,
+            "color": {"mode": "thresholds"},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 20},
+                {"color": "green", "value": 30}
+              ]
+            },
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 20},
+        "type": "table",
+        "title": "Monthly Budget vs Actual",
+        "targets": [
+          {
+            "expr": "budget_monthly",
+            "legendFormat": "Budget",
+            "instant": true
+          },
+          {
+            "expr": "sum(increase(api_cost_total[30d]))",
+            "legendFormat": "Actual",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "merge"
+          },
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "Value #A": "Budget",
+                "Value #B": "Actual"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

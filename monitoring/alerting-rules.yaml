@@ -1,0 +1,144 @@
+groups:
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.instance }}"
+
+      # API latency
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile latency is {{ $value }}s for {{ $labels.instance }}"
+
+      # Pod restarts
+      - alert: PodRestartingTooOften
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Pod restarting frequently"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is restarting {{ $value }} times per minute"
+
+  - name: resource_alerts
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% for {{ $labels.pod }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% for {{ $labels.pod }}"
+
+      # Disk space
+      - alert: DiskSpaceRunningLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: "Disk space running low"
+          description: "Only {{ $value }}% disk space remaining on {{ $labels.instance }}"
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      # Database connection pool
+      - alert: DatabaseConnectionPoolExhausted
+        expr: pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Database connection pool near limit"
+          description: "{{ $value | humanizePercentage }} of connections used for {{ $labels.datname }}"
+
+      # Slow queries
+      - alert: DatabaseSlowQueries
+        expr: rate(pg_stat_statements_mean_exec_time[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Database queries running slow"
+          description: "Average query time is {{ $value }}s"
+
+      # Redis memory
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Redis memory usage critical"
+          description: "Redis using {{ $value | humanizePercentage }} of available memory"
+
+  - name: business_alerts
+    interval: 60s
+    rules:
+      # Request rate drop
+      - alert: RequestRateDropped
+        expr: rate(http_requests_total[5m]) < 0.5 * rate(http_requests_total[5m] offset 1h)
+        for: 15m
+        labels:
+          severity: warning
+          team: business
+        annotations:
+          summary: "Significant drop in request rate"
+          description: "Request rate dropped by {{ $value | humanizePercentage }}"
+
+      # Cost threshold
+      - alert: DailyCostThresholdExceeded
+        expr: sum(increase(ai_cost_total[24h])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: finance
+        annotations:
+          summary: "Daily cost threshold exceeded"
+          description: "Daily AI costs: ${{ $value }}"
+
+      # Tenant quota exhausted
+      - alert: TenantQuotaExhausted
+        expr: tenant_quota_remaining == 0
+        for: 5m
+        labels:
+          severity: info
+          team: customer_success
+        annotations:
+          summary: "Tenant quota exhausted"
+          description: "Tenant {{ $labels.tenant_id }} has exhausted their quota"

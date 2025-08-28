@@ -1,0 +1,355 @@
+# SLI/SLO Configuration for AI Chatbot System
+# Enterprise-grade Service Level Objectives and Monitoring
+
+slos:
+  # API Availability SLO
+  api_availability:
+    name: "API Availability"
+    description: "Percentage of successful API requests"
+    objective: 99.9  # 99.9% availability
+    window: "30d"    # 30-day rolling window
+    error_budget: 0.1  # 0.1% error budget
+    sli_query: |
+      sum(rate(http_requests_total{status!~"5.."}[5m])) /
+      sum(rate(http_requests_total[5m])) * 100
+    burn_rate_alerts:
+      - name: "High Burn Rate - 1h"
+        threshold: 14.4  # 2% of 30d budget in 1h
+        window: "1h"
+        severity: "critical"
+      - name: "Medium Burn Rate - 6h"
+        threshold: 6     # 2% of 30d budget in 6h
+        window: "6h"
+        severity: "warning"
+    
+  # Response Time SLO
+  response_time:
+    name: "API Response Time"
+    description: "95th percentile response time under 2 seconds"
+    objective: 95   # 95% of requests under 2s
+    threshold: 2000 # 2000ms
+    window: "7d"
+    sli_query: |
+      histogram_quantile(0.95,
+        sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+      ) < 2.0
+    alerts:
+      - name: "High Response Time"
+        threshold: 2500  # 2.5s
+        window: "5m"
+        severity: "warning"
+      - name: "Critical Response Time"
+        threshold: 5000  # 5s
+        window: "5m"
+        severity: "critical"
+
+  # AI Model Success Rate SLO
+  ai_model_success:
+    name: "AI Model Success Rate"
+    description: "Percentage of successful AI model requests"
+    objective: 99.0  # 99% success rate
+    window: "7d"
+    error_budget: 1.0
+    sli_query: |
+      sum(rate(ai_model_requests_total{status="success"}[5m])) /
+      sum(rate(ai_model_requests_total[5m])) * 100
+    alerts:
+      - name: "AI Model High Error Rate"
+        threshold: 5.0   # 5% error rate
+        window: "10m"
+        severity: "warning"
+      - name: "AI Model Critical Error Rate"
+        threshold: 10.0  # 10% error rate
+        window: "5m"
+        severity: "critical"
+
+  # WebSocket Connection Stability SLO
+  websocket_stability:
+    name: "WebSocket Connection Stability"
+    description: "Percentage of stable WebSocket connections"
+    objective: 95.0  # 95% connection stability
+    window: "24h"
+    sli_query: |
+      sum(websocket_connections_active) /
+      sum(websocket_connections_total) * 100
+    alerts:
+      - name: "WebSocket Connection Drops"
+        threshold: 90.0  # Below 90% stability
+        window: "15m"
+        severity: "warning"
+
+  # Data Durability SLO
+  data_durability:
+    name: "Data Durability"
+    description: "Percentage of data operations that complete successfully"
+    objective: 99.99  # 99.99% durability
+    window: "30d"
+    sli_query: |
+      sum(rate(database_operations_total{status="success"}[5m])) /
+      sum(rate(database_operations_total[5m])) * 100
+    alerts:
+      - name: "Data Loss Risk"
+        threshold: 99.9  # Below 99.9%
+        window: "5m"
+        severity: "critical"
+
+slis:
+  # Request-based SLIs
+  - name: "http_success_rate"
+    type: "ratio"
+    good_query: 'sum(rate(http_requests_total{status!~"5.."}[5m]))'
+    total_query: 'sum(rate(http_requests_total[5m]))'
+    labels:
+      service: "api"
+      
+  - name: "http_latency"
+    type: "distribution"
+    query: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))'
+    threshold: 2.0
+    labels:
+      service: "api"
+
+  # AI Model SLIs
+  - name: "ai_model_success_rate"
+    type: "ratio"
+    good_query: 'sum(rate(ai_model_requests_total{status="success"}[5m]))'
+    total_query: 'sum(rate(ai_model_requests_total[5m]))'
+    labels:
+      service: "ai-model"
+
+  - name: "ai_model_latency"
+    type: "distribution"
+    query: 'histogram_quantile(0.95, sum(rate(ai_model_response_time_seconds_bucket[5m])) by (le))'
+    threshold: 10.0
+    labels:
+      service: "ai-model"
+
+  # Infrastructure SLIs
+  - name: "database_availability"
+    type: "ratio"
+    good_query: 'sum(pg_up)'
+    total_query: 'count(pg_up)'
+    labels:
+      service: "database"
+
+  - name: "cache_availability"
+    type: "ratio"
+    good_query: 'sum(redis_up)'
+    total_query: 'count(redis_up)'
+    labels:
+      service: "cache"
+
+# Error Budget Policies
+error_budget_policies:
+  - name: "Conservative Policy"
+    description: "Strict error budget policy for critical services"
+    burn_rate_thresholds:
+      - window: "1h"
+        threshold: 14.4    # 2% of 30d budget
+        severity: "page"
+      - window: "6h"
+        threshold: 6       # 2% of 30d budget
+        severity: "page"
+      - window: "3d"
+        threshold: 1       # 10% of 30d budget
+        severity: "ticket"
+    applies_to:
+      - "api_availability"
+      - "data_durability"
+
+  - name: "Standard Policy"
+    description: "Standard error budget policy for regular services"
+    burn_rate_thresholds:
+      - window: "1h"
+        threshold: 20      # Faster burn rate allowed
+        severity: "page"
+      - window: "6h"
+        threshold: 8
+        severity: "ticket"
+    applies_to:
+      - "response_time"
+      - "ai_model_success"
+
+# Alerting Rules
+alerting_rules:
+  - name: "SLO Burn Rate Alerts"
+    rules:
+      - alert: "HighErrorBudgetBurnRate1h"
+        expr: |
+          (
+            (1 - (sum(rate(http_requests_total{status!~"5.."}[1h])) / sum(rate(http_requests_total[1h]))))
+            / (1 - 0.999)
+          ) > 14.4
+        for: "2m"
+        labels:
+          severity: "critical"
+          service: "api"
+        annotations:
+          summary: "High error budget burn rate detected"
+          description: "API is burning through error budget at {{ $value }}x normal rate"
+          runbook_url: "https://runbooks.company.com/slo-burn-rate"
+
+      - alert: "HighErrorBudgetBurnRate6h"
+        expr: |
+          (
+            (1 - (sum(rate(http_requests_total{status!~"5.."}[6h])) / sum(rate(http_requests_total[6h]))))
+            / (1 - 0.999)
+          ) > 6
+        for: "15m"
+        labels:
+          severity: "warning"
+          service: "api"
+        annotations:
+          summary: "Elevated error budget burn rate"
+          description: "API error budget burning at {{ $value }}x normal rate over 6 hours"
+
+      - alert: "AIModelHighLatency"
+        expr: |
+          histogram_quantile(0.95, sum(rate(ai_model_response_time_seconds_bucket[5m])) by (le)) > 10
+        for: "5m"
+        labels:
+          severity: "warning"
+          service: "ai-model"
+        annotations:
+          summary: "AI model response time high"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: "ErrorBudgetExhausted"
+        expr: |
+          (
+            1 - (
+              sum(rate(http_requests_total{status!~"5.."}[30d])) /
+              sum(rate(http_requests_total[30d]))
+            )
+          ) >= 0.001
+        for: "5m"
+        labels:
+          severity: "critical"
+          service: "api"
+        annotations:
+          summary: "Error budget exhausted"
+          description: "30-day error budget has been exhausted"
+          runbook_url: "https://runbooks.company.com/error-budget-exhausted"
+
+# SLO Dashboard Configuration
+dashboard_config:
+  refresh_interval: "1m"
+  time_range: "7d"
+  panels:
+    - title: "SLO Compliance Overview"
+      type: "stat"
+      targets:
+        - "api_availability"
+        - "response_time"
+        - "ai_model_success"
+        - "websocket_stability"
+    
+    - title: "Error Budget Burn Rate"
+      type: "graph"
+      targets:
+        - "1h_burn_rate"
+        - "6h_burn_rate"
+        - "1d_burn_rate"
+    
+    - title: "SLI Trends"
+      type: "graph"
+      targets:
+        - "http_success_rate"
+        - "http_latency"
+        - "ai_model_success_rate"
+
+# Notification Channels
+notification_channels:
+  - name: "slo-alerts-slack"
+    type: "slack"
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#sre-alerts"
+    title_template: "SLO Alert: {{ .CommonLabels.alertname }}"
+    text_template: |
+      {{ range .Alerts }}
+      *Alert:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      *Service:* {{ .Labels.service }}
+      *Severity:* {{ .Labels.severity }}
+      *Runbook:* {{ .Annotations.runbook_url }}
+      {{ end }}
+
+  - name: "slo-alerts-pagerduty"
+    type: "pagerduty"
+    routing_key: "${PAGERDUTY_ROUTING_KEY}"
+    severity_mapping:
+      critical: "critical"
+      warning: "warning"
+      info: "info"
+
+# Reporting Configuration
+reporting:
+  monthly_slo_report:
+    enabled: true
+    recipients:
+      - "sre-team@company.com"
+      - "leadership@company.com"
+    template: "monthly_slo_report.html"
+    include_sections:
+      - "slo_compliance_summary"
+      - "error_budget_usage"
+      - "incident_correlation"
+      - "improvement_recommendations"
+
+  weekly_burn_rate_summary:
+    enabled: true
+    recipients:
+      - "sre-team@company.com"
+    template: "weekly_burn_rate.html"
+
+# Multi-window, Multi-burn-rate Alerting
+multiwindow_multiburn_alerts:
+  - name: "API Availability Multi-Burn"
+    slo: "api_availability"
+    short_window: "5m"
+    long_window: "1h"
+    burn_rate_threshold: 14.4
+    error_budget_consumed_threshold: 2
+    severity: "critical"
+    
+  - name: "AI Model Success Multi-Burn"
+    slo: "ai_model_success" 
+    short_window: "2m"
+    long_window: "10m"
+    burn_rate_threshold: 9
+    error_budget_consumed_threshold: 1
+    severity: "warning"
+
+# Custom SLO Expressions
+custom_expressions:
+  user_facing_availability: |
+    (sum(rate(http_requests_total{endpoint=~"/api/(chat|auth).*", status!~"5.."}[5m])) /
+     sum(rate(http_requests_total{endpoint=~"/api/(chat|auth).*"}[5m]))) * 100
+     
+  critical_user_journey_success: |
+    (sum(rate(user_journey_completions_total{journey="chat_completion", status="success"}[5m])) /
+     sum(rate(user_journey_completions_total{journey="chat_completion"}[5m]))) * 100
+     
+  cost_efficiency_sli: |
+    sum(rate(successful_requests_total[5m])) / 
+    sum(rate(infrastructure_cost_usd_hourly[1h]))
+
+# SLO Testing and Validation
+slo_tests:
+  - name: "Validate SLI Query Syntax"
+    type: "query_validation"
+    queries:
+      - 'sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))'
+      - 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))'
+    
+  - name: "Error Budget Math Verification"
+    type: "calculation_test"
+    test_cases:
+      - objective: 99.9
+        actual_good_events: 999
+        actual_total_events: 1000
+        expected_budget_consumed: 0
+      - objective: 99.9
+        actual_good_events: 998
+        actual_total_events: 1000
+        expected_budget_consumed: 100  # 100% of error budget

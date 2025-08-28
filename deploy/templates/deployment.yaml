@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-chatbot-api
+  labels:
+    app: ai-chatbot
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-chatbot
+      component: api
+  template:
+    metadata:
+      labels:
+        app: ai-chatbot
+        component: api
+    spec:
+      containers:
+      - name: api
+        image: IMAGE_TAG_PLACEHOLDER
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ENVIRONMENT
+          value: production
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5

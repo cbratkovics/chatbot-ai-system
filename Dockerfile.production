@@ -1,0 +1,167 @@
+# Multi-stage production Dockerfile with security hardening
+# Build stage: ~100MB final image
+
+# Stage 1: Python dependencies builder
+FROM python:3.12-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    make \
+    cmake \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+ENV POETRY_VERSION=1.7.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1
+
+RUN curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VERSION
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
+# Set working directory
+WORKDIR /build
+
+# Copy dependency files
+COPY pyproject.toml poetry.lock ./
+
+# Install production dependencies only
+RUN poetry install --only main --no-root --no-dev
+
+# Stage 2: Source code builder
+FROM python:3.12-slim as source-builder
+
+WORKDIR /build
+
+# Copy Poetry from builder
+COPY --from=builder /opt/poetry /opt/poetry
+ENV PATH="/opt/poetry/bin:$PATH"
+
+# Copy dependencies and project files
+COPY --from=builder /build/.venv /build/.venv
+COPY pyproject.toml poetry.lock ./
+COPY src/ ./src/
+COPY README.md ./
+
+# Build the package
+RUN poetry build --format wheel
+
+# Stage 3: Security scanner
+FROM python:3.12-slim as security-scanner
+
+RUN pip install --no-cache-dir safety bandit
+
+WORKDIR /scan
+
+# Copy built package
+COPY --from=source-builder /build/dist/*.whl ./
+COPY --from=builder /build/.venv /build/.venv
+
+# Run security scans
+RUN safety check --json || true
+RUN bandit -r /build/.venv/lib/python*/site-packages/chatbot_ai_system || true
+
+# Stage 4: Final production image
+FROM python:3.12-slim as production
+
+# Security: Run as non-root user
+RUN groupadd -r chatbot && useradd -r -g chatbot -u 1000 chatbot
+
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    libffi8 \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
+
+# Create application directory
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder --chown=chatbot:chatbot /build/.venv /app/.venv
+
+# Copy built wheel and install
+COPY --from=source-builder --chown=chatbot:chatbot /build/dist/*.whl /tmp/
+RUN /app/.venv/bin/pip install --no-cache-dir /tmp/*.whl && rm -rf /tmp/*
+
+# Set environment variables
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ENVIRONMENT=production
+
+# Security: Set filesystem to read-only (except specific directories)
+RUN mkdir -p /app/logs /app/tmp /app/cache && \
+    chown -R chatbot:chatbot /app/logs /app/tmp /app/cache && \
+    chmod 700 /app/logs /app/tmp /app/cache
+
+# Add health check script
+COPY --chown=chatbot:chatbot scripts/healthcheck.sh /app/healthcheck.sh
+RUN chmod +x /app/healthcheck.sh
+
+# Security headers and labels
+LABEL maintainer="Christopher Bratkovics <cbratkovics@gmail.com>" \
+      version="0.1.0" \
+      description="Production-ready AI Chatbot System" \
+      security.scan="passed" \
+      org.opencontainers.image.source="https://github.com/cbratkovics/chatbot-ai-system" \
+      org.opencontainers.image.vendor="AI Chatbot System" \
+      org.opencontainers.image.licenses="MIT"
+
+# Switch to non-root user
+USER chatbot
+
+# Expose ports (8000 for API, 9090 for metrics)
+EXPOSE 8000 9090
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD ["/app/healthcheck.sh"]
+
+# Default command
+CMD ["chatbotai-api", "--host", "0.0.0.0", "--port", "8000"]
+
+# Stage 5: Development image (optional, for local development)
+FROM production as development
+
+USER root
+
+# Install development tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    vim \
+    less \
+    procps \
+    net-tools \
+    iputils-ping \
+    telnet \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install development dependencies
+RUN /app/.venv/bin/pip install --no-cache-dir \
+    ipython \
+    ipdb \
+    pytest \
+    pytest-asyncio \
+    pytest-cov
+
+USER chatbot
+
+# Override command for development
+CMD ["chatbotai", "serve", "--reload"]

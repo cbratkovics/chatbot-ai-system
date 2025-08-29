@@ -1,0 +1,187 @@
+# Pre-commit hooks configuration
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^docs/|\.md$
+      - id: end-of-file-fixer
+        exclude: ^docs/
+      - id: check-yaml
+        args: [--safe]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-docstring-first
+      - id: debug-statements
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: name-tests-test
+        args: [--pytest-test-first]
+      - id: requirements-txt-fixer
+
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        args: [--line-length=100, --target-version=py311]
+        language_version: python3.12
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=100]
+
+  # Linting with ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        args: [--strict, --ignore-missing-imports]
+        additional_dependencies:
+          - types-redis
+          - types-requests
+          - types-pyyaml
+          - types-setuptools
+        exclude: ^(tests/|docs/|examples/)
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: [-ll, --skip=B101]
+        exclude: ^tests/
+
+  # Detect secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: >
+          (?x)^(
+            .*\.(lock|png|jpg|jpeg|gif|svg|ico)|
+            poetry\.lock|
+            \.secrets\.baseline
+          )$
+
+  # Markdown formatting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+        exclude: ^(CHANGELOG\.md|docs/api/)
+
+  # YAML formatting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [-d, '{extends: default, rules: {line-length: {max: 120}}}']
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: [--ignore=DL3008, --ignore=DL3009]
+
+  # SQL formatting (if needed)
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.0.0a1
+    hooks:
+      - id: sqlfluff-lint
+        exclude: ^migrations/
+      - id: sqlfluff-fix
+        exclude: ^migrations/
+
+  # License headers
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.4
+    hooks:
+      - id: insert-license
+        files: \.py$
+        args:
+          - --license-filepath
+          - .license-header.txt
+          - --comment-style
+          - "#"
+        exclude: ^(migrations/|__pycache__/)
+
+  # Commit message linting
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.13.0
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [push]
+
+  # Poetry checks
+  - repo: https://github.com/python-poetry/poetry
+    rev: 1.7.0
+    hooks:
+      - id: poetry-check
+      - id: poetry-lock
+        args: [--no-update]
+      - id: poetry-export
+        args: [-f, requirements.txt, -o, requirements.txt, --without-hashes]
+
+  # Custom hooks
+  - repo: local
+    hooks:
+      - id: no-print-statements
+        name: No print statements
+        entry: '(?<!def )print\('
+        language: pygrep
+        types: [python]
+        exclude: ^(tests/|examples/|scripts/)
+      
+      - id: no-todo-comments
+        name: No TODO comments in production
+        entry: '(TODO|FIXME|XXX)'
+        language: pygrep
+        types: [python]
+        exclude: ^(tests/|docs/|examples/)
+        stages: [push]
+      
+      - id: check-added-tests
+        name: Check tests for new code
+        entry: scripts/check_test_coverage.sh
+        language: script
+        pass_filenames: false
+        stages: [push]
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [mypy, poetry-lock, hadolint-docker]
+  submodules: false

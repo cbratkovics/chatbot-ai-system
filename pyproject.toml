@@ -95,7 +95,7 @@ safety = "^3.0.1"
 ipython = "^8.18.0"
 ipdb = "^0.13.13"
 rich = "^13.7.0"
-pre-commit = "^3.6.0"
+pre-commit = "^4.3.0"
 taskipy = "^1.12.2"
 packaging = "^25.0"
 

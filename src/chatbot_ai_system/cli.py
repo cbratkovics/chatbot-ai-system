@@ -1,4 +1,5 @@
 """Command-line interface for AI Chatbot System."""
+
 # ruff: noqa: B008
 
 import asyncio
@@ -43,7 +44,9 @@ def callback():
 
 @app.command()
 def version(
-    format: OutputFormat = typer.Option(OutputFormat.text, "--format", "-f", help="Output format"),  # noqa: B008
+    format: OutputFormat = typer.Option(
+        OutputFormat.text, "--format", "-f", help="Output format"
+    ),  # noqa: B008
 ):
     """Display version and system information."""
     if format == OutputFormat.json:
@@ -66,7 +69,9 @@ def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Bind port"),
     workers: int = typer.Option(1, "--workers", "-w", help="Number of workers"),
     reload: bool = typer.Option(False, "--reload", "-r", help="Auto-reload on changes"),
-    env_file: Path | None = typer.Option(None, "--env", "-e", help="Environment file"),  # noqa: B008
+    env_file: Path | None = typer.Option(
+        None, "--env", "-e", help="Environment file"
+    ),  # noqa: B008
 ):
     """Start the API server with production configurations."""
     with Progress(

@@ -4,8 +4,9 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from chatbot_ai_system.cli import app
 from typer.testing import CliRunner
+
+from chatbot_ai_system.cli import app
 
 runner = CliRunner()
 

@@ -84,9 +84,9 @@ class TenantRateLimiter:
                 "capacity": bucket.capacity,
                 "refill_rate": bucket.refill_rate,
                 "wait_time_seconds": wait_time,
-                "retry_after": datetime.utcnow() + timedelta(seconds=wait_time)
-                if wait_time > 0
-                else None,
+                "retry_after": (
+                    datetime.utcnow() + timedelta(seconds=wait_time) if wait_time > 0 else None
+                ),
             }
 
             return allowed, metadata

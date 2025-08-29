@@ -67,7 +67,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN groupadd -r chatbot && useradd -r -g chatbot chatbot
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Set working directory
 WORKDIR /app
@@ -79,14 +79,15 @@ COPY --from=builder /app/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
 
 # Copy configuration files if they exist
-COPY --chown=chatbot:chatbot config/ ./config/ 2>/dev/null || true
+# Note: Docker doesn't support conditional COPY, so we handle this differently
+# Config files should be mounted as volumes in production
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/data && \
-    chown -R chatbot:chatbot /app
+    chown -R appuser:appuser /app
 
 # Switch to non-root user
-USER chatbot
+USER appuser
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
@@ -96,10 +97,10 @@ ENV PORT=8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/healthz')" || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
 # Run application
-CMD ["uvicorn", "chatbot_system_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "chatbot_ai_system.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -73,10 +73,9 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_database_query_optimization(self, mock_database):
         """Test database query optimization."""
+        from api.models import User
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
-
-        from api.models import User
 
         query = (
             select(User)
@@ -121,9 +120,8 @@ class TestDatabaseOperations:
         """Test database indexing performance."""
         import time
 
-        from sqlalchemy import select
-
         from api.models import Chat
+        from sqlalchemy import select
 
         query_with_index = select(Chat).where(
             Chat.user_id == "user123", Chat.created_at >= datetime.utcnow() - timedelta(days=7)

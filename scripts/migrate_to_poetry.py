@@ -79,7 +79,8 @@ class PoetryMigrator:
 
             # Create restore script
             restore_script = self.backup_dir / "restore.sh"
-            restore_script.write_text("""#!/bin/bash
+            restore_script.write_text(
+                """#!/bin/bash
 # Restore script for migration rollback
 echo "Restoring previous setup..."
 cp -r .migration_backup/requirements/* config/requirements/
@@ -87,7 +88,8 @@ if [ -f .migration_backup/pyproject.toml.bak ]; then
     cp .migration_backup/pyproject.toml.bak pyproject.toml
 fi
 echo "Restore complete!"
-""")
+"""
+            )
             restore_script.chmod(0o755)
 
             logger.info(f"Backup created at {self.backup_dir}")

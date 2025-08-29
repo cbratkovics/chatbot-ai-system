@@ -2,9 +2,9 @@
 
 __version__ = "0.1.0"
 
-from .semantic_cache import SemanticCache
 from .config import Settings
 from .provider_orchestrator import ProviderOrchestrator
+from .semantic_cache import SemanticCache
 from .token_bucket import TokenBucket
 
 __all__ = [

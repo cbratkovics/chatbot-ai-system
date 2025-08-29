@@ -85,7 +85,6 @@ class TestCacheIntegration:
     async def test_distributed_cache_consistency(self):
         """Test distributed cache consistency across instances."""
         import redis.asyncio as aioredis
-
         from api.core.cache.cache_manager import CacheManager
 
         redis1 = await aioredis.create_redis_pool("redis://localhost:6379/0")

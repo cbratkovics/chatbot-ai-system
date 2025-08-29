@@ -88,9 +88,8 @@ class TestWebSocketEndpoints:
     @pytest.mark.asyncio
     async def test_websocket_connection(self, mock_websocket, auth_headers):
         """Test WebSocket connection establishment."""
-        from fastapi.testclient import TestClient
-
         from api.main import app
+        from fastapi.testclient import TestClient
 
         with TestClient(app) as client:
             with client.websocket_connect("/ws/chat", headers=auth_headers) as websocket:
@@ -101,9 +100,8 @@ class TestWebSocketEndpoints:
     @pytest.mark.asyncio
     async def test_websocket_streaming(self, mock_websocket, sample_chat_request):
         """Test WebSocket message streaming."""
-        from fastapi.testclient import TestClient
-
         from api.main import app
+        from fastapi.testclient import TestClient
 
         with TestClient(app) as client:
             with client.websocket_connect("/ws/chat") as websocket:
@@ -121,9 +119,8 @@ class TestWebSocketEndpoints:
     @pytest.mark.asyncio
     async def test_websocket_error_handling(self, mock_websocket):
         """Test WebSocket error handling."""
-        from fastapi.testclient import TestClient
-
         from api.main import app
+        from fastapi.testclient import TestClient
 
         with TestClient(app) as client:
             with client.websocket_connect("/ws/chat") as websocket:

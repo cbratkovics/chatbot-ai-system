@@ -144,7 +144,8 @@ class DependencyVisualizer:
             net.add_edge(source, target, arrows="to")
 
         # Configure physics
-        net.set_options("""
+        net.set_options(
+            """
         {
             "physics": {
                 "enabled": true,
@@ -170,7 +171,8 @@ class DependencyVisualizer:
                 "keyboard": true
             }
         }
-        """)
+        """
+        )
 
         # Save graph
         output_path = self.output_dir / output_file

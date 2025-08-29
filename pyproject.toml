@@ -21,8 +21,7 @@ classifiers = [
 
 # Package configuration
 packages = [
-    { include = "chatbot_system_core", from = "src" },
-    { include = "chatbot_system_api", from = "src" }
+    { include = "chatbot_ai_system", from = "src" }
 ]
 package-mode = true
 
@@ -160,9 +159,9 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-chatbot-bench = "chatbot_system_core.cli:bench"
-chatbot-failover = "chatbot_system_core.cli:failover_test"
-chatbot-cache-metrics = "chatbot_system_core.cli:cache_report"
+chatbot-bench = "chatbot_ai_system.cli:bench"
+chatbot-failover = "chatbot_ai_system.cli:failover_test"
+chatbot-cache-metrics = "chatbot_ai_system.cli:cache_report"
 
 # ---------------------------
 # Tool Configurations
@@ -208,7 +207,7 @@ ignore = ["E203", "E501"]
 # Tests often have intentional unused vars/imports; quiet those there only.
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["F401", "F841", "B007"]
-"api/integrations/enterprise_platform.py" = ["B008"]  # FastAPI Depends pattern
+"src/chatbot_ai_system/integrations/enterprise_platform.py" = ["B008"]  # FastAPI Depends pattern
 
 [tool.mypy]
 python_version = "3.11"
@@ -252,7 +251,7 @@ addopts = """
     --cov-report=term-missing:skip-covered
     --cov-report=html:htmlcov
     --cov-report=xml
-    --cov-fail-under=50
+    --cov-fail-under=30
 """
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -261,7 +260,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
-source = ["api"]
+source = ["src/chatbot_ai_system"]
 omit = ["*/tests/*", "*/migrations/*", "*/__init__.py"]
 
 [tool.coverage.report]

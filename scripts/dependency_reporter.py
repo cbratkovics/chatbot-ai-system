@@ -82,7 +82,8 @@ class DependencyReporter:
 
     def get_email_template(self) -> Template:
         """Get email report template."""
-        return Template("""
+        return Template(
+            """
 <!DOCTYPE html>
 <html>
 <head>
@@ -191,11 +192,13 @@ class DependencyReporter:
     </div>
 </body>
 </html>
-        """)
+        """
+        )
 
     def get_slack_template(self) -> Template:
         """Get Slack report template."""
-        return Template("""
+        return Template(
+            """
 {
     "text": "Dependency Report for {{ project_name }}",
     "blocks": [
@@ -247,11 +250,13 @@ class DependencyReporter:
         {% endif %}
     ]
 }
-        """)
+        """
+        )
 
     def get_markdown_template(self) -> Template:
         """Get Markdown report template."""
-        return Template("""
+        return Template(
+            """
 # Dependency Report
 
 **Project:** {{ project_name }}  
@@ -302,7 +307,8 @@ class DependencyReporter:
 
 ---
 *Report generated automatically by dependency-reporter*
-        """)
+        """
+        )
 
     def collect_report_data(self) -> dict:
         """Collect data for report generation."""

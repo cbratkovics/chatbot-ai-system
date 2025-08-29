@@ -110,7 +110,7 @@ docs = ["mkdocs", "mkdocs-material", "mkdocstrings"]
 optional = true
 [tool.poetry.group.providers.dependencies]
 openai = "^1.6.1"
-anthropic = "^0.8.1"
+anthropic = "^0.64.0"
 tiktoken = "^0.5.2"
 
 [tool.poetry.group.ml]

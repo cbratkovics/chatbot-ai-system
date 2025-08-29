@@ -68,7 +68,7 @@ rich = "^13.7.0"
 
 # Async & Concurrency
 aiocache = "^0.12.2"
-aiofiles = "^23.2.1"
+aiofiles = "^24.1.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing

@@ -125,9 +125,8 @@ class TestConfiguration:
 
     def test_settings_validation(self):
         """Test settings validation."""
-        from pydantic import ValidationError
-
         from chatbot_ai_system.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
             Settings(port="not-a-number")  # Should fail validation

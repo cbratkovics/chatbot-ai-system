@@ -1,5 +1,5 @@
 # Multi-stage build for production
-FROM python:3.11-slim as builder
+FROM python:3.13-slim as builder
 
 # Build arguments
 ARG VERSION=0.1.0
@@ -44,7 +44,7 @@ COPY README.md ./
 RUN poetry build --format wheel
 
 # Final stage
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Build arguments
 ARG VERSION=0.1.0

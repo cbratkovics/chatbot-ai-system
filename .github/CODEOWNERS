@@ -1,0 +1,5 @@
+# Default owner for everything
+*                       @cbratkovics
+src/chatbot_ai_system/  @cbratkovics
+benchmarks/             @cbratkovics
+deploy/                 @cbratkovics

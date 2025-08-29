@@ -1,8 +1,8 @@
 """Retry handler with exponential backoff."""
 
 import asyncio
-import random
-from typing import Any, Callable, Optional, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from tenacity import (
     AsyncRetrying,
@@ -17,7 +17,7 @@ T = TypeVar("T")
 
 class RetryHandler:
     """Intelligent retry handler with exponential backoff."""
-    
+
     def __init__(
         self,
         max_attempts: int = 3,
@@ -32,12 +32,12 @@ class RetryHandler:
         self.max_wait = max_wait
         self.multiplier = multiplier
         self.jitter = jitter
-    
+
     async def execute(
         self,
         func: Callable[..., T],
         *args,
-        on_retry: Optional[Callable[[Exception, int], None]] = None,
+        on_retry: Callable[[Exception, int], None] | None = None,
         **kwargs,
     ) -> T:
         """Execute function with retry logic."""
@@ -54,9 +54,9 @@ class RetryHandler:
                 max=self.max_wait,
             )
         )
-        
+
         attempt = 0
-        
+
         try:
             async for attempt in AsyncRetrying(
                 stop=stop_after_attempt(self.max_attempts),
@@ -75,7 +75,7 @@ class RetryHandler:
                         raise
         except RetryError as e:
             raise e.last_attempt.exception() from None
-    
+
     @staticmethod
     def with_exponential_backoff(
         max_attempts: int = 3,
@@ -90,7 +90,7 @@ class RetryHandler:
             multiplier=2.0,
             jitter=True,
         )
-    
+
     @staticmethod
     def with_linear_backoff(
         max_attempts: int = 3,

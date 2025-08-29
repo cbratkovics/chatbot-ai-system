@@ -2,7 +2,7 @@
 
 import time
 import traceback
-from typing import Callable
+from collections.abc import Callable
 
 import structlog
 from fastapi import Request, Response, status
@@ -15,7 +15,7 @@ logger = structlog.get_logger()
 
 class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     """Global error handler middleware."""
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Handle exceptions globally."""
         try:
@@ -24,7 +24,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             process_time = time.time() - start_time
             response.headers["X-Process-Time"] = str(process_time)
             return response
-            
+
         except ValidationError as exc:
             logger.error(
                 "Validation error",
@@ -40,7 +40,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "request_id": getattr(request.state, "request_id", None),
                 },
             )
-            
+
         except ValueError as exc:
             logger.error(
                 "Value error",
@@ -56,7 +56,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
                     "request_id": getattr(request.state, "request_id", None),
                 },
             )
-            
+
         except Exception as exc:
             logger.exception(
                 "Unhandled exception",

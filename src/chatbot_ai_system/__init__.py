@@ -20,6 +20,7 @@ __all__ = [
     "start_server",
 ]
 
+
 # Version check
 def get_version() -> str:
     """Return the current version."""

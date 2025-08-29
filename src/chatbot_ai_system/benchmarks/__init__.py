@@ -1,8 +1,8 @@
 """Benchmarking utilities for AI Chatbot System."""
 
-import time
 import asyncio
-from typing import Dict, Any
+import time
+from typing import Any, Dict
 
 
 def run_benchmark(scenario: str, duration: int) -> Dict[str, Any]:

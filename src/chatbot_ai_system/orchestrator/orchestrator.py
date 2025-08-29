@@ -3,29 +3,23 @@
 import asyncio
 import hashlib
 import json
-import logging
 import random
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID
 
 import structlog
-from pydantic import BaseModel
 
 from chatbot_ai_system.providers.base import (
     BaseProvider,
     CompletionRequest,
     CompletionResponse,
-    ProviderConfig,
     ProviderError,
-    ProviderProtocol,
-    ProviderStatus,
     RateLimitError,
-    StreamChunk,
 )
 from chatbot_ai_system.telemetry.metrics import metrics_collector
 
@@ -59,24 +53,24 @@ class OrchestratorConfig:
     routing_strategy: RoutingStrategy = RoutingStrategy.LOAD_BALANCED
     cache_strategy: CacheStrategy = CacheStrategy.HYBRID
     cache_ttl: int = 3600  # 1 hour
-    
+
     # Failover configuration
     enable_failover: bool = True
     failover_timeout: int = 5  # Seconds to wait before failover
     max_failover_attempts: int = 3
-    
+
     # Rate limiting
     global_rate_limit: int = 100  # Requests per minute
     per_tenant_rate_limit: int = 50  # Requests per minute per tenant
-    
+
     # Load balancing
     load_balance_window: int = 60  # Seconds to consider for load metrics
     health_check_interval: int = 30  # Seconds between health checks
-    
+
     # Idempotency
     enable_idempotency: bool = True
     idempotency_key_ttl: int = 86400  # 24 hours
-    
+
     # Cost optimization
     max_cost_per_request: float = 1.0  # Maximum cost in USD
     cost_optimization_enabled: bool = True
@@ -126,7 +120,7 @@ class RequestCache:
         """Get cached response if available."""
         async with self._lock:
             now = datetime.now()
-            
+
             # Exact match
             if strategy in [CacheStrategy.EXACT, CacheStrategy.HYBRID]:
                 key = self._generate_key(request)
@@ -139,13 +133,13 @@ class RequestCache:
                         return response
                     else:
                         del self.cache[key]
-            
+
             # Semantic match
             if strategy in [CacheStrategy.SEMANTIC, CacheStrategy.HYBRID]:
                 if request.messages:
                     last_message = request.messages[-1].content
                     semantic_key = self._generate_semantic_key(last_message)
-                    
+
                     if semantic_key in self.semantic_cache:
                         candidates = self.semantic_cache[semantic_key]
                         for cached_content, response, timestamp in candidates:
@@ -156,7 +150,7 @@ class RequestCache:
                                     response.cached = True
                                     metrics_collector.record_cache_hit("semantic")
                                     return response
-            
+
             metrics_collector.record_cache_miss()
             return None
 
@@ -164,21 +158,21 @@ class RequestCache:
         """Cache a response."""
         async with self._lock:
             now = datetime.now()
-            
+
             # Exact cache
             key = self._generate_key(request)
             self.cache[key] = (response, now)
-            
+
             # Semantic cache
             if request.messages:
                 last_message = request.messages[-1].content
                 semantic_key = self._generate_semantic_key(last_message)
-                
+
                 if semantic_key not in self.semantic_cache:
                     self.semantic_cache[semantic_key] = []
-                
+
                 self.semantic_cache[semantic_key].append((last_message, response, now))
-                
+
                 # Limit semantic cache size
                 if len(self.semantic_cache[semantic_key]) > 10:
                     self.semantic_cache[semantic_key] = self.semantic_cache[semantic_key][-10:]
@@ -187,7 +181,7 @@ class RequestCache:
         """Clear expired cache entries."""
         async with self._lock:
             now = datetime.now()
-            
+
             # Clear exact cache
             expired_keys = [
                 key
@@ -196,7 +190,7 @@ class RequestCache:
             ]
             for key in expired_keys:
                 del self.cache[key]
-            
+
             # Clear semantic cache
             for semantic_key in list(self.semantic_cache.keys()):
                 self.semantic_cache[semantic_key] = [
@@ -242,12 +236,12 @@ class ProviderOrchestrator:
         self.providers: list[ProviderWeight] = []
         self.cache = RequestCache(config.cache_ttl)
         self.idempotency_manager = IdempotencyManager(config.idempotency_key_ttl)
-        
+
         # Routing state
         self.round_robin_index = 0
         self.request_counts = defaultdict(int)
         self.request_timestamps = defaultdict(list)
-        
+
         # Health check task
         self._health_check_task: asyncio.Task | None = None
         self._running = False
@@ -279,7 +273,7 @@ class ProviderOrchestrator:
         """Start the orchestrator background tasks."""
         if self._running:
             return
-        
+
         self._running = True
         self._health_check_task = asyncio.create_task(self._health_check_loop())
         asyncio.create_task(self._cache_cleanup_loop())
@@ -324,13 +318,12 @@ class ProviderOrchestrator:
                     pw.current_requests = 0
                     pw.last_reset = datetime.now()
                 self.request_counts.clear()
-                
+
                 # Clean old timestamps
                 now = time.time()
                 for tenant_id in list(self.request_timestamps.keys()):
                     self.request_timestamps[tenant_id] = [
-                        ts for ts in self.request_timestamps[tenant_id]
-                        if now - ts < 60
+                        ts for ts in self.request_timestamps[tenant_id] if now - ts < 60
                     ]
             except Exception as e:
                 logger.error("Rate limit reset error", error=str(e))
@@ -339,8 +332,8 @@ class ProviderOrchestrator:
         """Check health of all providers."""
         tasks = [provider.provider.health_check() for provider in self.providers]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        for provider, result in zip(self.providers, results):
+
+        for provider, result in zip(self.providers, results, strict=False):
             if isinstance(result, Exception):
                 logger.warning(
                     "Provider health check failed",
@@ -357,88 +350,87 @@ class ProviderOrchestrator:
     def _select_provider(self, request: CompletionRequest) -> BaseProvider | None:
         """Select a provider based on routing strategy."""
         available_providers = [
-            pw for pw in self.providers
+            pw
+            for pw in self.providers
             if pw.provider.is_healthy() and pw.provider.supports_model(request.model)
         ]
-        
+
         if not available_providers:
             return None
-        
+
         # Check rate limits
         available_providers = [
-            pw for pw in available_providers
-            if pw.current_requests < pw.max_requests_per_minute
+            pw for pw in available_providers if pw.current_requests < pw.max_requests_per_minute
         ]
-        
+
         if not available_providers:
             return None
-        
+
         if self.config.routing_strategy == RoutingStrategy.ROUND_ROBIN:
             provider = available_providers[self.round_robin_index % len(available_providers)]
             self.round_robin_index += 1
-        
+
         elif self.config.routing_strategy == RoutingStrategy.LEAST_LATENCY:
             provider = min(
                 available_providers,
                 key=lambda pw: pw.provider.metrics.average_latency,
             )
-        
+
         elif self.config.routing_strategy == RoutingStrategy.LEAST_COST:
             # Select based on cost for the model
             provider = min(
                 available_providers,
                 key=lambda pw: pw.provider.config.prompt_cost_per_1k,
             )
-        
+
         elif self.config.routing_strategy == RoutingStrategy.WEIGHTED_RANDOM:
             weights = [pw.weight for pw in available_providers]
             provider = random.choices(available_providers, weights=weights, k=1)[0]
-        
+
         elif self.config.routing_strategy == RoutingStrategy.FAILOVER:
             # Use first available by priority
             provider = available_providers[0]
-        
+
         elif self.config.routing_strategy == RoutingStrategy.LOAD_BALANCED:
             # Select based on current load
             provider = min(
                 available_providers,
                 key=lambda pw: pw.current_requests / pw.max_requests_per_minute,
             )
-        
+
         else:
             provider = available_providers[0]
-        
+
         provider.current_requests += 1
         return provider.provider
 
     async def _check_rate_limit(self, tenant_id: UUID | None) -> bool:
         """Check if request is within rate limits."""
         now = time.time()
-        
+
         # Global rate limit
         global_count = sum(len(timestamps) for timestamps in self.request_timestamps.values())
         if global_count >= self.config.global_rate_limit:
             return False
-        
+
         # Per-tenant rate limit
         if tenant_id:
             tenant_key = str(tenant_id)
             self.request_timestamps[tenant_key] = [
-                ts for ts in self.request_timestamps[tenant_key]
-                if now - ts < 60
+                ts for ts in self.request_timestamps[tenant_key] if now - ts < 60
             ]
-            
+
             if len(self.request_timestamps[tenant_key]) >= self.config.per_tenant_rate_limit:
                 return False
-            
+
             self.request_timestamps[tenant_key].append(now)
-        
+
         return True
 
     async def complete(self, request: CompletionRequest) -> CompletionResponse:
         """Complete a request with orchestration."""
         start_time = time.time()
-        
+
         # Check idempotency
         if self.config.enable_idempotency and request.metadata:
             idempotency_key = request.metadata.get("idempotency_key")
@@ -448,7 +440,7 @@ class ProviderOrchestrator:
                 )
                 if cached_response:
                     return cached_response
-        
+
         # Check rate limits
         if not await self._check_rate_limit(request.tenant_id):
             raise RateLimitError(
@@ -456,12 +448,12 @@ class ProviderOrchestrator:
                 retry_after=60,
                 provider_name="orchestrator",
             )
-        
+
         # Check cache
         cached_response = await self.cache.get(request, self.config.cache_strategy)
         if cached_response:
             return cached_response
-        
+
         # Cost check
         if self.config.cost_optimization_enabled:
             # Estimate cost and check against limit
@@ -473,11 +465,11 @@ class ProviderOrchestrator:
                     error_code="cost_limit",
                     retryable=False,
                 )
-        
+
         # Try providers with failover
         last_error = None
         attempts = 0
-        
+
         while attempts < self.config.max_failover_attempts:
             provider = self._select_provider(request)
             if not provider:
@@ -486,7 +478,7 @@ class ProviderOrchestrator:
                     error_code="no_providers",
                     retryable=True,
                 )
-            
+
             try:
                 logger.info(
                     "Routing request",
@@ -494,18 +486,18 @@ class ProviderOrchestrator:
                     model=request.model,
                     attempt=attempts + 1,
                 )
-                
+
                 response = await provider.complete(request)
-                
+
                 # Cache successful response
                 await self.cache.set(request, response)
-                
+
                 # Store for idempotency
                 if self.config.enable_idempotency and request.metadata:
                     idempotency_key = request.metadata.get("idempotency_key")
                     if idempotency_key:
                         await self.idempotency_manager.store_response(idempotency_key, response)
-                
+
                 # Record metrics
                 latency_ms = (time.time() - start_time) * 1000
                 metrics_collector.record_request(
@@ -516,9 +508,9 @@ class ProviderOrchestrator:
                     cost=response.usage.total_cost,
                     success=True,
                 )
-                
+
                 return response
-                
+
             except ProviderError as e:
                 last_error = e
                 logger.warning(
@@ -527,15 +519,15 @@ class ProviderOrchestrator:
                     error=str(e),
                     attempt=attempts + 1,
                 )
-                
+
                 if not e.retryable:
                     raise
-                
+
                 attempts += 1
-                
+
                 if attempts < self.config.max_failover_attempts:
                     await asyncio.sleep(self.config.failover_timeout)
-        
+
         # All attempts failed
         raise ProviderError(
             f"All providers failed after {attempts} attempts",
@@ -554,7 +546,7 @@ class ProviderOrchestrator:
                 error_code="no_providers",
                 retryable=True,
             )
-        
+
         async for chunk in provider.complete_stream(request):
             yield chunk
 
@@ -563,15 +555,17 @@ class ProviderOrchestrator:
         provider_statuses = []
         for pw in self.providers:
             health = await pw.provider.health_check()
-            provider_statuses.append({
-                "name": pw.provider.name,
-                "weight": pw.weight,
-                "priority": pw.priority,
-                "status": health["status"],
-                "current_requests": pw.current_requests,
-                "max_rpm": pw.max_requests_per_minute,
-            })
-        
+            provider_statuses.append(
+                {
+                    "name": pw.provider.name,
+                    "weight": pw.weight,
+                    "priority": pw.priority,
+                    "status": health["status"],
+                    "current_requests": pw.current_requests,
+                    "max_rpm": pw.max_requests_per_minute,
+                }
+            )
+
         return {
             "config": {
                 "routing_strategy": self.config.routing_strategy.value,

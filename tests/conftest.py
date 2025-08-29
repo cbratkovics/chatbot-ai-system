@@ -3,8 +3,8 @@
 import asyncio
 import os
 import sys
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
-from typing import AsyncIterator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -15,10 +15,9 @@ from httpx import AsyncClient
 # Add src to path for testing
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from chatbot_ai_system.server.main import create_app
 from chatbot_ai_system.config import Settings, settings
 from chatbot_ai_system.sdk import ChatbotClient
-
+from chatbot_ai_system.server.main import create_app
 
 # Markers
 pytest.mark.unit = pytest.mark.mark(name="unit")
@@ -56,7 +55,7 @@ def app(test_settings, monkeypatch):
     # Override settings
     for key, value in test_settings.model_dump().items():
         monkeypatch.setattr(settings, key, value)
-    
+
     return create_app()
 
 

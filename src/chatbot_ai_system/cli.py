@@ -1,22 +1,21 @@
 """Command-line interface for AI Chatbot System."""
+# ruff: noqa: B008
 
 import asyncio
 import json
 import sys
-from pathlib import Path
-from typing import Optional
 from enum import Enum
+from pathlib import Path
 
 import typer
+import uvicorn
 from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-import uvicorn
+from rich.table import Table
 
-from chatbot_ai_system import __version__, get_version
-from chatbot_ai_system.config import settings
+from chatbot_ai_system import __version__
 from chatbot_ai_system.sdk import ChatbotClient
 
 app = typer.Typer(
@@ -30,6 +29,7 @@ console = Console()
 
 class OutputFormat(str, Enum):
     """Output format options."""
+
     json = "json"
     text = "text"
     table = "table"
@@ -45,7 +45,7 @@ def callback():
 def version(
     format: OutputFormat = typer.Option(
         OutputFormat.text, "--format", "-f", help="Output format"
-    ),
+    ),  # noqa: B008
 ):
     """Display version and system information."""
     if format == OutputFormat.json:
@@ -68,7 +68,8 @@ def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Bind port"),
     workers: int = typer.Option(1, "--workers", "-w", help="Number of workers"),
     reload: bool = typer.Option(False, "--reload", "-r", help="Auto-reload on changes"),
-    env_file: Optional[Path] = typer.Option(None, "--env", "-e", help="Environment file"),
+    env_file: Path
+    | None = typer.Option(None, "--env", "-e", help="Environment file"),  # noqa: B008
 ):
     """Start the API server with production configurations."""
     with Progress(
@@ -77,20 +78,23 @@ def serve(
         transient=True,
     ) as progress:
         progress.add_task(description="Starting server...", total=None)
-        
-        console.print(Panel.fit(
-            f"[bold cyan]Starting AI Chatbot API Server[/bold cyan]\n"
-            f"Host: [yellow]{host}:{port}[/yellow]\n"
-            f"Workers: [yellow]{workers}[/yellow]\n"
-            f"Reload: [yellow]{'enabled' if reload else 'disabled'}[/yellow]\n"
-            f"Environment: [yellow]{env_file or 'default'}[/yellow]",
-            title="🚀 Server Configuration"
-        ))
-        
+
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Starting AI Chatbot API Server[/bold cyan]\n"
+                f"Host: [yellow]{host}:{port}[/yellow]\n"
+                f"Workers: [yellow]{workers}[/yellow]\n"
+                f"Reload: [yellow]{'enabled' if reload else 'disabled'}[/yellow]\n"
+                f"Environment: [yellow]{env_file or 'default'}[/yellow]",
+                title="🚀 Server Configuration",
+            )
+        )
+
         if env_file and env_file.exists():
             import dotenv
+
             dotenv.load_dotenv(env_file)
-        
+
         uvicorn.run(
             "chatbot_ai_system.server.main:app",
             host=host,
@@ -114,30 +118,32 @@ def demo(
 
 async def _run_demo(provider: str, stream: bool):
     """Execute demo sequence."""
-    console.print(Panel.fit(
-        "[bold cyan]AI Chatbot System Demo[/bold cyan]\n"
-        "This demo showcases multi-provider support, streaming, and failover capabilities.",
-        title="🎭 Demo Mode"
-    ))
-    
+    console.print(
+        Panel.fit(
+            "[bold cyan]AI Chatbot System Demo[/bold cyan]\n"
+            "This demo showcases multi-provider support, streaming, and failover capabilities.",
+            title="🎭 Demo Mode",
+        )
+    )
+
     demos = [
         ("Simple greeting", "Hello! How are you today?"),
         ("Technical question", "Explain microservices architecture in 2 sentences."),
         ("Creative task", "Write a haiku about Python programming."),
     ]
-    
+
     async with ChatbotClient() as client:
         # Health check
         with console.status("[bold green]Checking system health..."):
             health = await client.health_check()
             console.print(f"✅ System status: [green]{health['status']}[/green]")
-        
+
         # Run demos
         for title, prompt in demos:
             console.print(f"\n[bold yellow]{title}:[/bold yellow]")
             console.print(f"[dim]User: {prompt}[/dim]")
             console.print("[dim]AI:[/dim] ", end="")
-            
+
             if stream:
                 async for chunk in client.chat_stream(prompt, provider=provider):
                     console.print(chunk, end="")
@@ -151,14 +157,14 @@ async def _run_demo(provider: str, stream: bool):
 def bench(
     scenario: str = typer.Argument("quick", help="Benchmark scenario"),
     duration: int = typer.Option(30, "--duration", "-d", help="Test duration (seconds)"),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file"),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Output file"),  # noqa: B008
 ):
     """Run performance benchmarks."""
     from chatbot_ai_system.benchmarks import run_benchmark
-    
+
     console.print(f"[bold cyan]Running benchmark: {scenario}[/bold cyan]")
     results = run_benchmark(scenario, duration)
-    
+
     if output:
         output.write_text(json.dumps(results, indent=2))
         console.print(f"✅ Results saved to {output}")

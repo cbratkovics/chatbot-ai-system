@@ -1,14 +1,14 @@
 """SDK data models."""
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
 class Provider(str, Enum):
     """Supported AI providers."""
-    
+
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     LLAMA = "llama"
@@ -17,10 +17,10 @@ class Provider(str, Enum):
 
 class ChatMessage(BaseModel):
     """Chat message model."""
-    
+
     role: str = Field(..., description="Message role (user, assistant, system)")
     content: str = Field(..., description="Message content")
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Optional metadata",
     )
@@ -28,12 +28,12 @@ class ChatMessage(BaseModel):
 
 class ChatOptions(BaseModel):
     """Options for chat requests."""
-    
+
     provider: Provider = Field(
         default=Provider.OPENAI,
         description="AI provider to use",
     )
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None,
         description="Specific model to use",
     )
@@ -43,7 +43,7 @@ class ChatOptions(BaseModel):
         le=2.0,
         description="Sampling temperature",
     )
-    max_tokens: Optional[int] = Field(
+    max_tokens: int | None = Field(
         default=None,
         description="Maximum tokens to generate",
     )
@@ -51,33 +51,33 @@ class ChatOptions(BaseModel):
         default=False,
         description="Enable streaming responses",
     )
-    top_p: Optional[float] = Field(
+    top_p: float | None = Field(
         default=None,
         ge=0.0,
         le=1.0,
         description="Top-p sampling",
     )
-    frequency_penalty: Optional[float] = Field(
+    frequency_penalty: float | None = Field(
         default=None,
         ge=-2.0,
         le=2.0,
         description="Frequency penalty",
     )
-    presence_penalty: Optional[float] = Field(
+    presence_penalty: float | None = Field(
         default=None,
         ge=-2.0,
         le=2.0,
         description="Presence penalty",
     )
-    stop: Optional[List[str]] = Field(
+    stop: list[str] | None = Field(
         default=None,
         description="Stop sequences",
     )
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         default=None,
         description="User identifier for tracking",
     )
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         default=None,
         description="Session identifier",
     )
@@ -89,7 +89,7 @@ class ChatOptions(BaseModel):
         default=True,
         description="Enable automatic retry on failure",
     )
-    timeout: Optional[float] = Field(
+    timeout: float | None = Field(
         default=30.0,
         description="Request timeout in seconds",
     )
@@ -97,21 +97,21 @@ class ChatOptions(BaseModel):
 
 class ChatResponse(BaseModel):
     """Chat response model."""
-    
+
     id: str = Field(..., description="Response ID")
     content: str = Field(..., description="Generated content")
     provider: str = Field(..., description="Provider that generated response")
     model: str = Field(..., description="Model used")
-    usage: Optional[Dict[str, int]] = Field(
+    usage: dict[str, int] | None = Field(
         default=None,
         description="Token usage information",
     )
-    finish_reason: Optional[str] = Field(
+    finish_reason: str | None = Field(
         default=None,
         description="Reason for completion",
     )
     created_at: float = Field(..., description="Timestamp of creation")
-    latency: Optional[float] = Field(
+    latency: float | None = Field(
         default=None,
         description="Response latency in seconds",
     )
@@ -119,7 +119,7 @@ class ChatResponse(BaseModel):
         default=False,
         description="Whether response was served from cache",
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Additional metadata",
     )
@@ -127,17 +127,17 @@ class ChatResponse(BaseModel):
 
 class EmbeddingRequest(BaseModel):
     """Embedding request model."""
-    
+
     text: str = Field(..., description="Text to embed")
     provider: Provider = Field(
         default=Provider.OPENAI,
         description="Provider to use for embeddings",
     )
-    model: Optional[str] = Field(
+    model: str | None = Field(
         default=None,
         description="Embedding model to use",
     )
-    dimensions: Optional[int] = Field(
+    dimensions: int | None = Field(
         default=None,
         description="Embedding dimensions",
     )
@@ -145,12 +145,12 @@ class EmbeddingRequest(BaseModel):
 
 class EmbeddingResponse(BaseModel):
     """Embedding response model."""
-    
-    embedding: List[float] = Field(..., description="Embedding vector")
+
+    embedding: list[float] = Field(..., description="Embedding vector")
     provider: str = Field(..., description="Provider used")
     model: str = Field(..., description="Model used")
     dimensions: int = Field(..., description="Embedding dimensions")
-    usage: Optional[Dict[str, int]] = Field(
+    usage: dict[str, int] | None = Field(
         default=None,
         description="Token usage",
     )
@@ -158,23 +158,23 @@ class EmbeddingResponse(BaseModel):
 
 class ModelInfo(BaseModel):
     """Information about an available model."""
-    
+
     provider: Provider = Field(..., description="Model provider")
     model_id: str = Field(..., description="Model identifier")
     display_name: str = Field(..., description="Display name")
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         description="Model description",
     )
-    context_window: Optional[int] = Field(
+    context_window: int | None = Field(
         default=None,
         description="Context window size",
     )
-    max_tokens: Optional[int] = Field(
+    max_tokens: int | None = Field(
         default=None,
         description="Maximum output tokens",
     )
-    cost_per_token: Optional[float] = Field(
+    cost_per_token: float | None = Field(
         default=None,
         description="Cost per token",
     )
@@ -198,7 +198,7 @@ class ModelInfo(BaseModel):
 
 class RAGQuery(BaseModel):
     """RAG query model."""
-    
+
     query: str = Field(..., description="User query")
     top_k: int = Field(
         default=5,
@@ -212,11 +212,11 @@ class RAGQuery(BaseModel):
         le=1.0,
         description="Minimum similarity score",
     )
-    collection: Optional[str] = Field(
+    collection: str | None = Field(
         default=None,
         description="Collection to search in",
     )
-    filters: Optional[Dict[str, Any]] = Field(
+    filters: dict[str, Any] | None = Field(
         default=None,
         description="Metadata filters",
     )
@@ -228,14 +228,14 @@ class RAGQuery(BaseModel):
 
 class RAGDocument(BaseModel):
     """RAG document model."""
-    
+
     id: str = Field(..., description="Document ID")
     content: str = Field(..., description="Document content")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Document metadata",
     )
-    score: Optional[float] = Field(
+    score: float | None = Field(
         default=None,
         description="Relevance score",
     )
@@ -243,18 +243,18 @@ class RAGDocument(BaseModel):
 
 class RAGResponse(BaseModel):
     """RAG response model."""
-    
+
     query: str = Field(..., description="Original query")
-    documents: List[RAGDocument] = Field(..., description="Retrieved documents")
-    answer: Optional[str] = Field(
+    documents: list[RAGDocument] = Field(..., description="Retrieved documents")
+    answer: str | None = Field(
         default=None,
         description="Generated answer",
     )
-    sources: Optional[List[str]] = Field(
+    sources: list[str] | None = Field(
         default=None,
         description="Source references",
     )
-    metadata: Optional[Dict[str, Any]] = Field(
+    metadata: dict[str, Any] | None = Field(
         default=None,
         description="Additional metadata",
     )

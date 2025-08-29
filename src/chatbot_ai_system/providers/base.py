@@ -13,7 +13,6 @@ from uuid import UUID
 
 from tenacity import (
     AsyncRetrying,
-    retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential_jitter,
@@ -300,13 +299,20 @@ class ProviderMetrics:
 class ProviderProtocol(Protocol):
     """Protocol defining the provider interface."""
 
-    async def complete(self, request: CompletionRequest) -> CompletionResponse: ...
-    async def complete_stream(
-        self, request: CompletionRequest
-    ) -> AsyncIterator[StreamChunk]: ...
-    async def health_check(self) -> dict[str, Any]: ...
-    def supports_model(self, model: str) -> bool: ...
-    def is_healthy(self) -> bool: ...
+    async def complete(self, request: CompletionRequest) -> CompletionResponse:
+        ...
+
+    async def complete_stream(self, request: CompletionRequest) -> AsyncIterator[StreamChunk]:
+        ...
+
+    async def health_check(self) -> dict[str, Any]:
+        ...
+
+    def supports_model(self, model: str) -> bool:
+        ...
+
+    def is_healthy(self) -> bool:
+        ...
 
 
 class CircuitBreakerState(Enum):
@@ -347,7 +353,7 @@ class CircuitBreaker:
             result = await func(*args, **kwargs)
             await self._on_success()
             return result
-        except Exception as e:
+        except Exception:
             await self._on_failure()
             raise
 
@@ -563,7 +569,7 @@ class BaseProvider(ABC):
     async def health_check(self, force: bool = False) -> dict[str, Any]:
         """Perform health check with caching."""
         now = datetime.now()
-        
+
         # Return cached result if available and not forced
         if (
             not force
@@ -581,11 +587,11 @@ class BaseProvider(ABC):
                 model=self.config.default_model,
                 max_tokens=1,
             )
-            
+
             # Use shorter timeout for health check
             original_timeout = self.config.timeout
             self.config.timeout = self.config.health_check_timeout
-            
+
             try:
                 await asyncio.wait_for(
                     self._make_request(test_request),
@@ -596,7 +602,7 @@ class BaseProvider(ABC):
                 health_status = self.status  # Use metrics-based status
             finally:
                 self.config.timeout = original_timeout
-                
+
         except Exception as e:
             logger.warning(f"Health check failed for {self.name}: {e}")
             health_status = ProviderStatus.UNHEALTHY
@@ -623,7 +629,7 @@ class BaseProvider(ABC):
             },
             "timestamp": now.isoformat(),
         }
-        
+
         self._last_health_check = now
         return self._health_check_result
 

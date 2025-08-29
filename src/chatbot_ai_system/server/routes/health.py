@@ -1,7 +1,7 @@
 """Health check endpoints."""
 
 import time
-from typing import Dict, Any
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, status
@@ -14,16 +14,18 @@ router = APIRouter()
 
 # Application info metric
 APP_INFO = Info("app", "Application information")
-APP_INFO.info({
-    "version": settings.APP_VERSION,
-    "environment": settings.APP_ENV,
-})
+APP_INFO.info(
+    {
+        "version": settings.APP_VERSION,
+        "environment": settings.APP_ENV,
+    }
+)
 
 START_TIME = time.time()
 
 
 @router.get("/", status_code=status.HTTP_200_OK)
-async def health() -> Dict[str, Any]:
+async def health() -> dict[str, Any]:
     """Basic health check endpoint."""
     return {
         "status": "healthy",
@@ -33,20 +35,20 @@ async def health() -> Dict[str, Any]:
 
 
 @router.get("/ready", status_code=status.HTTP_200_OK)
-async def readiness() -> Dict[str, Any]:
+async def readiness() -> dict[str, Any]:
     """Readiness probe for Kubernetes."""
     # TODO: Check database connection
     # TODO: Check Redis connection
     # TODO: Check external service connections
-    
+
     checks = {
         "database": True,  # Placeholder
         "redis": True,  # Placeholder
         "providers": True,  # Placeholder
     }
-    
+
     all_ready = all(checks.values())
-    
+
     return {
         "ready": all_ready,
         "checks": checks,
@@ -55,7 +57,7 @@ async def readiness() -> Dict[str, Any]:
 
 
 @router.get("/live", status_code=status.HTTP_200_OK)
-async def liveness() -> Dict[str, str]:
+async def liveness() -> dict[str, str]:
     """Liveness probe for Kubernetes."""
     return {
         "status": "alive",
@@ -64,7 +66,7 @@ async def liveness() -> Dict[str, str]:
 
 
 @router.get("/version", status_code=status.HTTP_200_OK)
-async def version() -> Dict[str, str]:
+async def version() -> dict[str, str]:
     """Get application version information."""
     return {
         "name": settings.APP_NAME,

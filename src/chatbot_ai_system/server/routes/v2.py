@@ -1,12 +1,10 @@
 """API v2 routes with enhanced features."""
 
-from typing import Dict, Any, List, Optional
+from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
-
-from ...providers.orchestrator import ProviderOrchestrator
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -14,29 +12,30 @@ router = APIRouter()
 
 class EnhancedChatRequest(BaseModel):
     """Enhanced chat request with advanced features."""
-    messages: List[Dict[str, Any]] = Field(..., description="List of messages")
-    model: Optional[str] = Field(None, description="Model to use")
-    temperature: Optional[float] = Field(0.7, ge=0, le=2)
-    max_tokens: Optional[int] = Field(None, ge=1)
-    stream: Optional[bool] = Field(False)
-    provider: Optional[str] = Field(None)
-    
+
+    messages: list[dict[str, Any]] = Field(..., description="List of messages")
+    model: str | None = Field(None, description="Model to use")
+    temperature: float | None = Field(0.7, ge=0, le=2)
+    max_tokens: int | None = Field(None, ge=1)
+    stream: bool | None = Field(False)
+    provider: str | None = Field(None)
+
     # V2 specific features
-    tools: Optional[List[Dict[str, Any]]] = Field(None, description="Function calling tools")
-    response_format: Optional[Dict[str, Any]] = Field(None, description="Structured output format")
-    seed: Optional[int] = Field(None, description="Random seed for reproducibility")
-    top_p: Optional[float] = Field(1.0, ge=0, le=1, description="Nucleus sampling")
-    frequency_penalty: Optional[float] = Field(0, ge=-2, le=2)
-    presence_penalty: Optional[float] = Field(0, ge=-2, le=2)
-    stop: Optional[List[str]] = Field(None, description="Stop sequences")
-    n: Optional[int] = Field(1, ge=1, le=10, description="Number of completions")
+    tools: list[dict[str, Any]] | None = Field(None, description="Function calling tools")
+    response_format: dict[str, Any] | None = Field(None, description="Structured output format")
+    seed: int | None = Field(None, description="Random seed for reproducibility")
+    top_p: float | None = Field(1.0, ge=0, le=1, description="Nucleus sampling")
+    frequency_penalty: float | None = Field(0, ge=-2, le=2)
+    presence_penalty: float | None = Field(0, ge=-2, le=2)
+    stop: list[str] | None = Field(None, description="Stop sequences")
+    n: int | None = Field(1, ge=1, le=10, description="Number of completions")
 
 
 @router.post("/chat/completions")
 async def enhanced_chat_completion(
     request: EnhancedChatRequest,
     req: Request,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an enhanced chat completion with v2 features."""
     try:
         logger.info(
@@ -46,12 +45,12 @@ async def enhanced_chat_completion(
             has_tools=bool(request.tools),
             response_format=request.response_format,
         )
-        
+
         # TODO: Implement enhanced features
         # - Function calling
         # - Structured outputs
         # - Advanced sampling parameters
-        
+
         return {
             "id": f"chatcmpl-{req.state.request_id}",
             "object": "chat.completion",
@@ -73,7 +72,7 @@ async def enhanced_chat_completion(
                 "total_tokens": 0,
             },
         }
-        
+
     except Exception as e:
         logger.error(
             "V2 chat completion failed",
@@ -83,15 +82,15 @@ async def enhanced_chat_completion(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"V2 chat completion failed: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/embeddings")
 async def create_embeddings(
     req: Request,
-    input: List[str] = Field(..., description="Text to embed"),
+    input: list[str] = Field(..., description="Text to embed"),  # noqa: B008
     model: str = Field("text-embedding-ada-002", description="Embedding model"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create text embeddings."""
     try:
         logger.info(
@@ -100,9 +99,9 @@ async def create_embeddings(
             model=model,
             input_count=len(input),
         )
-        
+
         # TODO: Implement embedding generation
-        
+
         return {
             "object": "list",
             "data": [
@@ -119,7 +118,7 @@ async def create_embeddings(
                 "total_tokens": sum(len(text.split()) for text in input),
             },
         }
-        
+
     except Exception as e:
         logger.error(
             "Embedding creation failed",
@@ -129,7 +128,7 @@ async def create_embeddings(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Embedding creation failed: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/images/generations")
@@ -140,7 +139,7 @@ async def generate_images(
     size: str = Field("1024x1024", description="Image size"),
     quality: str = Field("standard", description="Image quality"),
     style: str = Field("vivid", description="Image style"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Generate images from text prompt."""
     try:
         logger.info(
@@ -150,9 +149,9 @@ async def generate_images(
             n=n,
             size=size,
         )
-        
+
         # TODO: Implement image generation
-        
+
         return {
             "created": 1234567890,
             "data": [
@@ -163,7 +162,7 @@ async def generate_images(
                 for i in range(n)
             ],
         }
-        
+
     except Exception as e:
         logger.error(
             "Image generation failed",
@@ -173,4 +172,4 @@ async def generate_images(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Image generation failed: {str(e)}",
-        )
+        ) from e

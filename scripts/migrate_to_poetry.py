@@ -198,18 +198,18 @@ echo "Restore complete!"
             poetry_config["tool"]["poetry"]["group"]["dev"] = {"dependencies": {}}
             for req in requirements["dev"]:
                 name = self.dependency_mappings.get(req.name, req.name)
-                poetry_config["tool"]["poetry"]["group"]["dev"]["dependencies"][name] = (
-                    self._format_version(req)
-                )
+                poetry_config["tool"]["poetry"]["group"]["dev"]["dependencies"][
+                    name
+                ] = self._format_version(req)
 
         # Process prod dependencies
         if "prod" in requirements:
             poetry_config["tool"]["poetry"]["group"]["prod"] = {"dependencies": {}}
             for req in requirements["prod"]:
                 name = self.dependency_mappings.get(req.name, req.name)
-                poetry_config["tool"]["poetry"]["group"]["prod"]["dependencies"][name] = (
-                    self._format_version(req)
-                )
+                poetry_config["tool"]["poetry"]["group"]["prod"]["dependencies"][
+                    name
+                ] = self._format_version(req)
 
         return poetry_config
 

@@ -435,7 +435,9 @@ class DependencyHealthMonitor:
         score_color = (
             "green"
             if report.health_score > 0.8
-            else "yellow" if report.health_score > 0.6 else "red"
+            else "yellow"
+            if report.health_score > 0.6
+            else "red"
         )
         console.print(
             f"Health Score: [{score_color}]{report.health_score:.2f}[/{score_color}]/1.00"
@@ -473,7 +475,9 @@ class DependencyHealthMonitor:
             maint_color = (
                 "green"
                 if health.maintenance_score > 0.7
-                else "yellow" if health.maintenance_score > 0.5 else "red"
+                else "yellow"
+                if health.maintenance_score > 0.5
+                else "red"
             )
             table.add_row(
                 health.name,

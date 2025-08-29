@@ -13,7 +13,7 @@ def anyio_backend():
 def mock_settings():
     """Provide mock settings for tests."""
     from chatbot_ai_system.config import Settings
-    
+
     return Settings(
         database_url="sqlite:///test.db",
         redis_url="redis://localhost:6379/1",

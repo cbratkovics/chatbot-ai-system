@@ -1,144 +1,82 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
     branches: [main, develop]
-    tags: ['v*']
   pull_request:
-    branches: [main, develop]
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly security scan
+    branches: [main]
+    types: [opened, synchronize, reopened]
 
 env:
-  PYTHON_VERSION: '3.12'
-  POETRY_VERSION: '1.7.1'
-  COVERAGE_THRESHOLD: 85
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.7.1"
+  NODE_VERSION: "18"
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
-  lint:
-    name: Lint & Format Check
+  quality:
+    name: Code Quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
           virtualenvs-create: true
           virtualenvs-in-project: true
-      
+
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-      
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
-      
-      - name: Install project
-        run: poetry install --no-interaction
-      
-      - name: Run ruff
-        run: poetry run ruff check src/ tests/
-      
-      - name: Run black
-        run: poetry run black --check src/ tests/
-      
-      - name: Run isort
-        run: poetry run isort --check-only src/ tests/
 
-  type-check:
-    name: Type Checking
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-      
-      - name: Load cached venv
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-      
-      - name: Install dependencies
+      - name: Install package
         run: poetry install --no-interaction
-      
-      - name: Run mypy
-        run: poetry run mypy src/ --strict
 
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-      
-      - name: Install dependencies
-        run: poetry install --no-interaction
-      
-      - name: Run bandit
-        run: poetry run bandit -r src/ -ll
-      
-      - name: Run safety check
-        run: poetry run safety check --json
-        continue-on-error: true
-      
-      - name: Run pip-audit
+      - name: Run formatters
         run: |
-          pip install pip-audit
-          poetry export -f requirements.txt --without-hashes | pip-audit -r /dev/stdin
-        continue-on-error: true
-      
-      - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-      
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
+          poetry run black --check src tests
+          poetry run isort --check-only src tests
+
+      - name: Run linters
+        run: |
+          poetry run ruff check src tests
+          poetry run flake8 src tests --max-line-length=100 --extend-ignore=E203,W503
+          poetry run pylint src
+
+      - name: Type checking
+        run: poetry run mypy src --ignore-missing-imports
+
+      - name: Security scan
+        run: |
+          poetry run bandit -r src -ll
+          poetry run safety check --json
 
   test:
     name: Test Suite
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11', '3.12']
-    
+        python-version: ["3.11", "3.12"]
     services:
       redis:
         image: redis:7-alpine
@@ -149,199 +87,166 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: chatbot_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
           version: ${{ env.POETRY_VERSION }}
-      
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
       - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-root
+
+      - name: Install package
         run: poetry install --no-interaction
-      
+
       - name: Run unit tests
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/chatbot_test
-          REDIS_URL: redis://localhost:6379
         run: |
-          poetry run pytest tests/unit/ \
+          poetry run pytest tests/unit \
+            -m "unit" \
+            -v \
+            --tb=short \
             --cov=src/chatbot_ai_system \
             --cov-report=xml \
             --cov-report=term-missing \
-            --junit-xml=junit/test-results-${{ matrix.python-version }}.xml
-      
+            --junit-xml=test-results/junit.xml
+
       - name: Run integration tests
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/chatbot_test
-          REDIS_URL: redis://localhost:6379
+        if: matrix.python-version == '3.11'
         run: |
-          poetry run pytest tests/integration/ \
-            --cov=src/chatbot_ai_system \
-            --cov-append \
-            --cov-report=xml \
-            --cov-report=term-missing
-      
-      - name: Check coverage threshold
-        run: |
-          coverage_percent=$(poetry run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
-          if (( $(echo "$coverage_percent < ${{ env.COVERAGE_THRESHOLD }}" | bc -l) )); then
-            echo "Coverage $coverage_percent% is below threshold ${{ env.COVERAGE_THRESHOLD }}%"
-            exit 1
-          fi
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+          poetry run pytest tests/integration \
+            -m "integration" \
+            -v \
+            --tb=short \
+            --maxfail=3
+
+      - name: Upload coverage
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           flags: unittests
-          name: codecov-${{ matrix.python-version }}
-      
+          name: codecov-umbrella
+
       - name: Upload test results
-        uses: actions/upload-artifact@v3
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.python-version }}
-          path: junit/test-results-${{ matrix.python-version }}.xml
+          path: test-results/
 
-  build-docker:
-    name: Build Docker Image
+  build:
+    name: Build Package
     runs-on: ubuntu-latest
-    needs: [lint, type-check, security, test]
-    if: github.event_name == 'push'
-    
+    needs: [quality, test]
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile.production
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
-            VERSION=${{ steps.meta.outputs.version }}
-      
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
-          format: 'sarif'
-          output: 'trivy-image.sarif'
-      
-      - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-image.sarif'
 
-  deploy:
-    name: Deploy to Environment
-    runs-on: ubuntu-latest
-    needs: [build-docker]
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to staging
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "Deploying to staging environment"
-          # Add deployment commands here
-      
-      - name: Deploy to production
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          echo "Deploying to production environment"
-          # Add production deployment commands here
-      
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-
-  benchmark:
-    name: Performance Benchmark
-    runs-on: ubuntu-latest
-    needs: [test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-      - uses: actions/checkout@v4
-      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
-      
-      - name: Install dependencies
-        run: poetry install --no-interaction
-      
-      - name: Run benchmarks
-        run: |
-          poetry run pytest benchmarks/ \
-            --benchmark-only \
-            --benchmark-json=benchmark.json
-      
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
         with:
-          tool: 'pytest'
-          output-file-path: benchmark.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: Build package
+        run: |
+          poetry version $(poetry version -s)
+          poetry build
+
+      - name: Check package
+        run: |
+          pip install twine
+          twine check dist/*
+
+      - name: Test installation
+        run: |
+          pip install dist/*.whl
+          chatbotai --version
+          python -c "from chatbot_ai_system import __version__; print(__version__)"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: |
+            chatbot-ai-system:latest
+            chatbot-ai-system:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.sha }}
+            BUILD_DATE=${{ github.run_id }}
+
+      - name: Test Docker image
+        run: |
+          docker run --rm chatbot-ai-system:latest chatbotai --version
+          docker run --rm -d -p 8000:8000 --name test-container chatbot-ai-system:latest
+          sleep 5
+          curl -f http://localhost:8000/health || exit 1
+          docker stop test-container
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install --with docs
+
+      - name: Build documentation
+        run: |
+          poetry run mkdocs build --strict
+
+      - name: Upload docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: site/

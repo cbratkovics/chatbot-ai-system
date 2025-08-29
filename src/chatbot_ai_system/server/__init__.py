@@ -1,5 +1,5 @@
-"""FastAPI server module for chatbot-ai-system."""
+"""Server module for AI Chatbot System."""
 
-from .main import app, start_server
+from chatbot_ai_system.server.main import app, start_server
 
 __all__ = ["app", "start_server"]

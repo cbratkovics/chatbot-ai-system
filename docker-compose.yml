@@ -2,32 +2,123 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-0.1.0}
+        BUILD_DATE: ${BUILD_DATE:-}
+        VCS_REF: ${VCS_REF:-}
+    image: chatbot-ai-system:${VERSION:-latest}
+    container_name: chatbot-api
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://user:pass@postgres:5432/chatbot
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgresql://chatbot:chatbot@postgres:5432/chatbot
       - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-development-secret-key}
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chatbot-network
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
     restart: unless-stopped
-    
+
   postgres:
     image: postgres:15-alpine
+    container_name: chatbot-postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: chatbot
+      - POSTGRES_USER=chatbot
+      - POSTGRES_PASSWORD=chatbot
+      - POSTGRES_DB=chatbot
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chatbot-network
+
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    container_name: chatbot-redis
+    ports:
+      - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chatbot-network
+
+  # Optional: Monitoring stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: chatbot-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - chatbot-network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: chatbot-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    networks:
+      - chatbot-network
+    profiles:
+      - monitoring
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: chatbot-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    networks:
+      - chatbot-network
+    profiles:
+      - monitoring
 
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  chatbot-network:
+    driver: bridge

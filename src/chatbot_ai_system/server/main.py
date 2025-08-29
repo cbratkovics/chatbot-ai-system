@@ -1,90 +1,108 @@
-"""Main FastAPI application entry point."""
+"""FastAPI application factory and server entry point."""
 
 import asyncio
-import signal
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import AsyncIterator
 
-import structlog
-import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import make_asgi_app
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+import uvicorn
 
-from ..config import Settings
-from ..telemetry import setup_logging, setup_metrics, setup_tracing
-from .middleware import (
-    ErrorHandlerMiddleware,
-    MetricsMiddleware,
-    RateLimitMiddleware,
-    RequestIdMiddleware,
-    TenantMiddleware,
-)
-from .routes import health_router, v1_router, v2_router, websocket_router
-
-logger = structlog.get_logger()
-settings = Settings()
+from chatbot_ai_system import __version__
+from chatbot_ai_system.config import settings
+from chatbot_ai_system.api.routes import api_router
+# Middleware will be added inline since we're using simpler versions
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan manager."""
-    logger.info("Starting chatbot-ai-system server", version=settings.APP_VERSION)
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Manage application lifecycle."""
+    # Startup
+    print(f"🚀 Starting AI Chatbot System v{__version__}")
     
-    # Setup telemetry
-    setup_logging()
-    setup_metrics()
-    if settings.ENABLE_TRACING:
-        setup_tracing()
+    # Initialize database
+    try:
+        from chatbot_ai_system.database import init_db
+        await init_db()
+        print("✅ Database initialized")
+    except Exception as e:
+        print(f"⚠️  Database initialization skipped: {e}")
     
-    # Initialize connection pools and resources
-    logger.info("Initializing connection pools")
-    # TODO: Initialize Redis, database, etc.
+    # Initialize cache
+    try:
+        from chatbot_ai_system.cache import cache
+        await cache.connect()
+        print("✅ Cache connected")
+    except Exception as e:
+        print(f"⚠️  Cache connection skipped: {e}")
     
     yield
     
-    # Cleanup
-    logger.info("Shutting down chatbot-ai-system server")
-    # TODO: Close connections, cleanup resources
+    # Shutdown
+    print("🛑 Shutting down AI Chatbot System")
+    
+    # Close database
+    try:
+        from chatbot_ai_system.database import close_db
+        await close_db()
+    except Exception:
+        pass
+    
+    # Close cache
+    try:
+        from chatbot_ai_system.cache import cache
+        await cache.disconnect()
+    except Exception:
+        pass
 
 
 def create_app() -> FastAPI:
-    """Create and configure FastAPI application."""
+    """Create and configure the FastAPI application."""
     app = FastAPI(
-        title=settings.APP_NAME,
-        version=settings.APP_VERSION,
-        description="Production-ready AI chatbot system with multi-provider support",
-        docs_url="/docs" if settings.ENABLE_DOCS else None,
-        redoc_url="/redoc" if settings.ENABLE_DOCS else None,
-        openapi_url="/openapi.json" if settings.ENABLE_DOCS else None,
+        title="AI Chatbot System",
+        description="Production-ready multi-provider AI chatbot platform",
+        version=__version__,
+        docs_url="/docs" if settings.environment != "production" else None,
+        redoc_url="/redoc" if settings.environment != "production" else None,
         lifespan=lifespan,
     )
     
-    # Add CORS middleware
+    # Add middleware
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
     
-    # Add custom middleware (order matters - reverse order of execution)
-    app.add_middleware(ErrorHandlerMiddleware)
-    app.add_middleware(MetricsMiddleware)
-    app.add_middleware(RateLimitMiddleware)
-    app.add_middleware(TenantMiddleware)
-    app.add_middleware(RequestIdMiddleware)
+    # Add routes
+    app.include_router(api_router, prefix="/api/v1")
     
-    # Mount Prometheus metrics endpoint
-    metrics_app = make_asgi_app()
-    app.mount("/metrics", metrics_app)
+    # Health check
+    @app.get("/health")
+    async def health():
+        """Health check endpoint."""
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "healthy",
+                "version": __version__,
+                "service": "ai-chatbot-system",
+            }
+        )
     
-    # Include routers
-    app.include_router(health_router, prefix="/health", tags=["health"])
-    app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
-    app.include_router(v2_router, prefix="/api/v2", tags=["v2"])
-    app.include_router(websocket_router, prefix="/ws", tags=["websocket"])
+    @app.get("/")
+    async def root():
+        """Root endpoint."""
+        return {
+            "message": "AI Chatbot System API",
+            "version": __version__,
+            "docs": "/docs" if settings.environment != "production" else None,
+        }
     
     return app
 
@@ -92,34 +110,13 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-def handle_shutdown(signum: int, frame: Any) -> None:
-    """Handle graceful shutdown."""
-    logger.info("Received shutdown signal", signal=signum)
-    asyncio.create_task(shutdown())
-
-
-async def shutdown() -> None:
-    """Perform graceful shutdown."""
-    logger.info("Initiating graceful shutdown")
-    # TODO: Complete in-flight requests, close connections
-    await asyncio.sleep(0.5)  # Allow time for cleanup
-
-
-def start_server() -> None:
-    """Start the Uvicorn server."""
-    # Register signal handlers
-    signal.signal(signal.SIGTERM, handle_shutdown)
-    signal.signal(signal.SIGINT, handle_shutdown)
-    
+def start_server():
+    """Start the server programmatically."""
     uvicorn.run(
         "chatbot_ai_system.server.main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=settings.DEBUG,
-        workers=settings.WORKERS if not settings.DEBUG else 1,
-        log_level=settings.LOG_LEVEL.lower(),
-        access_log=settings.ACCESS_LOG,
-        loop="uvloop" if not settings.DEBUG else "asyncio",
+        host=settings.host,
+        port=settings.port,
+        log_level=settings.log_level.lower(),
     )
 
 

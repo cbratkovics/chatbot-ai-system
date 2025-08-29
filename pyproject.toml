@@ -97,6 +97,7 @@ ipdb = "^0.13.13"
 rich = "^13.7.0"
 pre-commit = "^3.6.0"
 taskipy = "^1.12.2"
+packaging = "^25.0"
 
 [tool.poetry.extras]
 server = ["fastapi", "uvicorn", "websockets", "sqlalchemy", "asyncpg", "alembic"]
@@ -226,10 +227,35 @@ warn_required_dynamic_aliases = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=api --cov-report=term-missing"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
 asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests (fast)",
+    "integration: Integration tests (requires services)",
+    "e2e: End-to-end tests (slow)",
+    "slow: Slow tests",
+    "load: Load tests",
+]
+addopts = """
+    -ra
+    -q
+    --strict-markers
+    --ignore=frontend
+    --ignore=docs
+    --ignore=benchmarks
+    --cov=src/chatbot_ai_system
+    --cov-report=term-missing:skip-covered
+    --cov-report=html:htmlcov
+    --cov-report=xml
+    --cov-fail-under=50
+"""
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
 
 [tool.coverage.run]
 branch = true

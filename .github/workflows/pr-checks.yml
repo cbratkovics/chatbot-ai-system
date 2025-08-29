@@ -1,0 +1,93 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  labels:
+    name: Label PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v4
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+
+  size:
+    name: Check PR Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check PR size
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const additions = pr.additions;
+            const deletions = pr.deletions;
+            const total = additions + deletions;
+            
+            let label = 'size/XS';
+            if (total > 1000) label = 'size/XXL';
+            else if (total > 500) label = 'size/XL';
+            else if (total > 250) label = 'size/L';
+            else if (total > 100) label = 'size/M';
+            else if (total > 30) label = 'size/S';
+            
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              labels: [label]
+            });
+
+  conventional-commits:
+    name: Check Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: wagoid/commitlint-github-action@v5
+        with:
+          configFile: .commitlintrc.json
+
+  dependencies:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Check lock file
+        run: |
+          poetry lock --check
+
+      - name: Check for security vulnerabilities
+        run: |
+          poetry export -f requirements.txt | safety check --stdin
+
+  breaking-changes:
+    name: Check Breaking Changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for breaking changes
+        run: |
+          # Check if PR modifies public API
+          if git diff origin/main..HEAD --name-only | grep -E "^src/chatbot_ai_system/(schemas|config|sdk|__init__)\.py$"; then
+            echo "::warning::This PR modifies the public API. Please ensure backward compatibility."
+          fi

@@ -1,32 +1,32 @@
 [tool.poetry]
-name = "enterprise-chatbot-platform"
-version = "1.0.0"
-description = "Production-grade multi-provider chatbot platform with enterprise features"
+name = "chatbot-ai-system"
+version = "0.1.0"
+description = "Production-ready Python package for multi-provider AI chatbots with enterprise features"
 authors = ["Christopher Bratkovics <cbratkovics@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/cbratkovics/ai-chatbot-system"
-repository = "https://github.com/cbratkovics/ai-chatbot-system"
-documentation = "https://github.com/cbratkovics/ai-chatbot-system/docs"
-keywords = ["chatbot", "fastapi", "websocket", "enterprise", "multi-tenant"]
+homepage = "https://github.com/cbratkovics/chatbot-ai-system"
+repository = "https://github.com/cbratkovics/chatbot-ai-system"
+documentation = "https://github.com/cbratkovics/chatbot-ai-system/docs"
+keywords = ["chatbot", "ai", "llm", "fastapi", "websocket", "enterprise", "multi-tenant", "openai", "anthropic"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
-# Tell Poetry what to install as your package (make sure api/__init__.py and scripts/__init__.py exist)
+# Package configuration
 packages = [
-    { include = "api" },
-    { include = "scripts" }
+    { include = "chatbot_ai_system", from = "src" }
 ]
-# Poetry 2.x runs in package mode by default; keep explicit for clarity
 package-mode = true
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.11,<3.13"
 
 # Core Web Framework
 fastapi = "^0.109.0"
@@ -62,6 +62,9 @@ python-dotenv = "^1.0.0"
 tenacity = "^8.2.3"
 structlog = "^24.1.0"
 python-json-logger = "^2.0.7"
+orjson = "^3.9.10"
+typer = {extras = ["all"], version = "^0.9.0"}
+rich = "^13.7.0"
 
 # Async & Concurrency
 aiocache = "^0.12.2"
@@ -94,6 +97,20 @@ ipdb = "^0.13.13"
 rich = "^13.7.0"
 pre-commit = "^3.6.0"
 taskipy = "^1.12.2"
+
+[tool.poetry.extras]
+server = ["fastapi", "uvicorn", "websockets", "sqlalchemy", "asyncpg", "alembic"]
+providers = ["openai", "anthropic", "tiktoken"]
+rag = ["sentence-transformers", "chromadb", "qdrant-client"]
+dev = ["pytest", "pytest-asyncio", "pytest-cov", "ruff", "black", "mypy"]
+docs = ["mkdocs", "mkdocs-material", "mkdocstrings"]
+
+[tool.poetry.group.providers]
+optional = true
+[tool.poetry.group.providers.dependencies]
+openai = "^1.6.1"
+anthropic = "^0.8.1"
+tiktoken = "^0.5.2"
 
 [tool.poetry.group.ml]
 optional = true
@@ -141,9 +158,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-start = "api.main:start_server"
-migrate = "scripts.utils.manage:migrate"
-test = "pytest:main"
+chatbotai = "chatbot_ai_system.cli:app"
+chatbotai-api = "chatbot_ai_system.server.main:start_server"
 
 # ---------------------------
 # Tool Configurations

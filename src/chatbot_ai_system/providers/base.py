@@ -5,12 +5,19 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 from uuid import UUID
 
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    AsyncRetrying,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential_jitter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -183,17 +190,26 @@ class ProviderConfig:
     max_retries: int = 3
     max_concurrent_requests: int = 10
 
+    # Circuit breaker configuration
+    circuit_breaker_threshold: int = 5  # Failures before opening
+    circuit_breaker_timeout: int = 60  # Seconds before half-open
+    circuit_breaker_half_open_requests: int = 3  # Requests to test in half-open
+
     # Cost configuration (per 1K tokens)
     prompt_cost_per_1k: float = 0.0015  # Default GPT-3.5 pricing
     completion_cost_per_1k: float = 0.002
 
     # Model configuration
-    supported_models: list[str] = None
+    supported_models: list[str] = field(default_factory=list)
     default_model: str = "default"
     max_context_length: int = 4000
 
+    # Health check configuration
+    health_check_interval: int = 30  # Seconds between health checks
+    health_check_timeout: int = 5  # Health check timeout
+
     def __post_init__(self):
-        if self.supported_models is None:
+        if not self.supported_models:
             self.supported_models = [self.default_model]
 
 
@@ -280,6 +296,118 @@ class ProviderMetrics:
         return ProviderStatus.HEALTHY
 
 
+@runtime_checkable
+class ProviderProtocol(Protocol):
+    """Protocol defining the provider interface."""
+
+    async def complete(self, request: CompletionRequest) -> CompletionResponse: ...
+    async def complete_stream(
+        self, request: CompletionRequest
+    ) -> AsyncIterator[StreamChunk]: ...
+    async def health_check(self) -> dict[str, Any]: ...
+    def supports_model(self, model: str) -> bool: ...
+    def is_healthy(self) -> bool: ...
+
+
+class CircuitBreakerState(Enum):
+    """Circuit breaker states."""
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, rejecting requests
+    HALF_OPEN = "half_open"  # Testing if service recovered
+
+
+class CircuitBreaker:
+    """Circuit breaker implementation for provider resilience."""
+
+    def __init__(self, config: ProviderConfig):
+        self.config = config
+        self.state = CircuitBreakerState.CLOSED
+        self.failure_count = 0
+        self.last_failure_time: datetime | None = None
+        self.success_count = 0
+        self._lock = asyncio.Lock()
+
+    async def call(self, func, *args, **kwargs):
+        """Execute function with circuit breaker protection."""
+        async with self._lock:
+            if self.state == CircuitBreakerState.OPEN:
+                if self._should_attempt_reset():
+                    self.state = CircuitBreakerState.HALF_OPEN
+                    self.success_count = 0
+                else:
+                    raise ProviderError(
+                        f"Circuit breaker is OPEN for {self.config.name}",
+                        error_code="circuit_open",
+                        retryable=True,
+                        provider_name=self.config.name,
+                    )
+
+        try:
+            result = await func(*args, **kwargs)
+            await self._on_success()
+            return result
+        except Exception as e:
+            await self._on_failure()
+            raise
+
+    async def _on_success(self):
+        """Handle successful call."""
+        async with self._lock:
+            if self.state == CircuitBreakerState.HALF_OPEN:
+                self.success_count += 1
+                if self.success_count >= self.config.circuit_breaker_half_open_requests:
+                    self.state = CircuitBreakerState.CLOSED
+                    self.failure_count = 0
+                    logger.info(f"Circuit breaker for {self.config.name} is now CLOSED")
+            elif self.state == CircuitBreakerState.CLOSED:
+                self.failure_count = 0
+
+    async def _on_failure(self):
+        """Handle failed call."""
+        async with self._lock:
+            self.failure_count += 1
+            self.last_failure_time = datetime.now()
+
+            if self.state == CircuitBreakerState.HALF_OPEN:
+                self.state = CircuitBreakerState.OPEN
+                logger.warning(
+                    f"Circuit breaker for {self.config.name} is OPEN (half-open test failed)"
+                )
+            elif (
+                self.state == CircuitBreakerState.CLOSED
+                and self.failure_count >= self.config.circuit_breaker_threshold
+            ):
+                self.state = CircuitBreakerState.OPEN
+                logger.warning(
+                    f"Circuit breaker for {self.config.name} is OPEN "
+                    f"(threshold {self.config.circuit_breaker_threshold} reached)"
+                )
+
+    def _should_attempt_reset(self) -> bool:
+        """Check if enough time has passed to attempt reset."""
+        if not self.last_failure_time:
+            return True
+        time_since_failure = datetime.now() - self.last_failure_time
+        return time_since_failure > timedelta(seconds=self.config.circuit_breaker_timeout)
+
+    @property
+    def is_open(self) -> bool:
+        """Check if circuit breaker is open."""
+        return self.state == CircuitBreakerState.OPEN
+
+    def get_status(self) -> dict[str, Any]:
+        """Get circuit breaker status."""
+        return {
+            "state": self.state.value,
+            "failure_count": self.failure_count,
+            "success_count": self.success_count,
+            "last_failure_time": (
+                self.last_failure_time.isoformat() if self.last_failure_time else None
+            ),
+        }
+
+
 class BaseProvider(ABC):
     """Base class for all providers."""
 
@@ -287,6 +415,9 @@ class BaseProvider(ABC):
         self.config = config
         self.metrics = ProviderMetrics(config.name)
         self._semaphore = asyncio.Semaphore(config.max_concurrent_requests)
+        self.circuit_breaker = CircuitBreaker(config)
+        self._last_health_check: datetime | None = None
+        self._health_check_result: dict[str, Any] | None = None
 
     @property
     def name(self) -> str:
@@ -313,17 +444,11 @@ class BaseProvider(ABC):
         pass
 
     async def complete(self, request: CompletionRequest) -> CompletionResponse:
-        """Complete a chat request with retry logic."""
+        """Complete a chat request with retry logic and circuit breaker."""
         if request.stream:
             raise ValueError("Use complete_stream() for streaming requests")
 
-        @retry(
-            retry=retry_if_exception_type((ProviderError, asyncio.TimeoutError)),
-            stop=stop_after_attempt(self.config.max_retries),
-            wait=wait_exponential(multiplier=1, min=1, max=10),
-            reraise=True,
-        )
-        async def _complete_with_retry():
+        async def _make_request_with_circuit_breaker():
             async with self._semaphore:  # Rate limit concurrent requests
                 start_time = time.time()
 
@@ -374,7 +499,16 @@ class BaseProvider(ABC):
 
                     raise
 
-        return await _complete_with_retry()
+        # Apply retry logic with exponential backoff and jitter
+        async for attempt in AsyncRetrying(
+            retry=retry_if_exception_type((ProviderError, asyncio.TimeoutError)),
+            stop=stop_after_attempt(self.config.max_retries),
+            wait=wait_exponential_jitter(initial=1, max=60, jitter=5),
+            reraise=True,
+        ):
+            with attempt:
+                # Apply circuit breaker
+                return await self.circuit_breaker.call(_make_request_with_circuit_breaker)
 
     async def complete_stream(self, request: CompletionRequest) -> AsyncIterator[StreamChunk]:
         """Complete a streaming chat request."""
@@ -426,11 +560,51 @@ class BaseProvider(ABC):
         ) * self.config.completion_cost_per_1k
         return usage
 
-    async def health_check(self) -> dict[str, Any]:
-        """Perform health check."""
-        return {
+    async def health_check(self, force: bool = False) -> dict[str, Any]:
+        """Perform health check with caching."""
+        now = datetime.now()
+        
+        # Return cached result if available and not forced
+        if (
+            not force
+            and self._last_health_check
+            and self._health_check_result
+            and (now - self._last_health_check).seconds < self.config.health_check_interval
+        ):
+            return self._health_check_result
+
+        # Perform actual health check
+        try:
+            # Try a minimal request to verify connectivity
+            test_request = CompletionRequest(
+                messages=[Message(role="user", content="test")],
+                model=self.config.default_model,
+                max_tokens=1,
+            )
+            
+            # Use shorter timeout for health check
+            original_timeout = self.config.timeout
+            self.config.timeout = self.config.health_check_timeout
+            
+            try:
+                await asyncio.wait_for(
+                    self._make_request(test_request),
+                    timeout=self.config.health_check_timeout,
+                )
+                health_status = ProviderStatus.HEALTHY
+            except Exception:
+                health_status = self.status  # Use metrics-based status
+            finally:
+                self.config.timeout = original_timeout
+                
+        except Exception as e:
+            logger.warning(f"Health check failed for {self.name}: {e}")
+            health_status = ProviderStatus.UNHEALTHY
+
+        self._health_check_result = {
             "provider": self.name,
-            "status": self.status.value,
+            "status": health_status.value,
+            "circuit_breaker": self.circuit_breaker.get_status(),
             "metrics": {
                 "success_rate": round(self.metrics.success_rate, 3),
                 "average_latency_ms": round(self.metrics.average_latency, 2),
@@ -441,7 +615,22 @@ class BaseProvider(ABC):
                 "last_request_time": self.metrics.last_request_time,
                 "last_error": self.metrics.last_error,
             },
-            "supported_models": self.config.supported_models,
-            "concurrent_limit": self.config.max_concurrent_requests,
-            "timeout": self.config.timeout,
+            "config": {
+                "supported_models": self.config.supported_models,
+                "concurrent_limit": self.config.max_concurrent_requests,
+                "timeout": self.config.timeout,
+                "max_retries": self.config.max_retries,
+            },
+            "timestamp": now.isoformat(),
         }
+        
+        self._last_health_check = now
+        return self._health_check_result
+
+    async def reset_circuit_breaker(self):
+        """Manually reset the circuit breaker."""
+        async with self.circuit_breaker._lock:
+            self.circuit_breaker.state = CircuitBreakerState.CLOSED
+            self.circuit_breaker.failure_count = 0
+            self.circuit_breaker.success_count = 0
+            logger.info(f"Circuit breaker for {self.name} manually reset")

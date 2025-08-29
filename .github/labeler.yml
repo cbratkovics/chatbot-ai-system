@@ -1,0 +1,51 @@
+# Configuration for GitHub labeler action
+# https://github.com/actions/labeler
+
+# Add 'documentation' label to any change in docs folder
+documentation:
+  - docs/**/*
+  - '*.md'
+
+# Add 'tests' label to any change in tests folder
+tests:
+  - tests/**/*
+  - '**/test_*.py'
+  - '**/*_test.py'
+
+# Add 'ci' label to any change in .github folder
+ci:
+  - .github/**/*
+
+# Add 'dependencies' label to dependency files
+dependencies:
+  - pyproject.toml
+  - poetry.lock
+  - requirements*.txt
+
+# Add 'docker' label to Docker-related files
+docker:
+  - Dockerfile*
+  - docker-compose*.yml
+  - .dockerignore
+
+# Add 'api' label to API-related changes
+api:
+  - src/chatbot_ai_system/api/**/*
+  - src/chatbot_ai_system/server/**/*
+  - src/chatbot_ai_system/schemas/**/*
+
+# Add 'infrastructure' label to infrastructure changes
+infrastructure:
+  - src/chatbot_ai_system/infrastructure/**/*
+  - config/**/*
+  - monitoring/**/*
+
+# Add 'providers' label to provider changes
+providers:
+  - src/chatbot_ai_system/providers/**/*
+
+# Add 'database' label to database changes
+database:
+  - src/chatbot_ai_system/database/**/*
+  - src/chatbot_ai_system/models/**/*
+  - migrations/**/*

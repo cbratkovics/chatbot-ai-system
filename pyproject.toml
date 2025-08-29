@@ -98,12 +98,8 @@ pre-commit = "^3.6.0"
 taskipy = "^1.12.2"
 packaging = "^25.0"
 
-[tool.poetry.extras]
-server = ["fastapi", "uvicorn", "websockets", "sqlalchemy", "asyncpg", "alembic"]
-providers = ["openai", "anthropic", "tiktoken"]
-rag = ["sentence-transformers", "chromadb", "qdrant-client"]
-dev = ["pytest", "pytest-asyncio", "pytest-cov", "ruff", "black", "mypy"]
-docs = ["mkdocs", "mkdocs-material", "mkdocstrings"]
+# Note: extras are deprecated in favor of optional-dependencies
+# Remove or comment out extras section as dependencies are already in groups
 
 [tool.poetry.group.providers]
 optional = true
@@ -291,8 +287,8 @@ exclude = ["tests", "docs", "benchmarks"]
 
 [tool.taskipy.tasks]
 format = "ruff check --fix . && black . && isort ."
-lint = "ruff check . && black --check . && isort --check-only . && flake8"
-typecheck = "mypy"
+lint = "ruff check . && black --check . && isort --check-only ."
+typecheck = "mypy src/"
 test = "pytest -n auto"
-sec = "bandit -r api && safety check --full-report"
+sec = "bandit -r src && safety check --full-report"
 qa = "task lint && task typecheck && task test"

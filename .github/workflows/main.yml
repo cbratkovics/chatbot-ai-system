@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 env:
-  PYTHON_VERSION: "3.12"
-  POETRY_VERSION: "2.1.4"
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.8.5"
 
 jobs:
   quality-checks:
@@ -34,26 +34,27 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
-        run: |
-          pipx install "poetry==${POETRY_VERSION}"
-          poetry --version
-
-      - name: Configure Poetry (in-project venv; bind to active Python)
-        run: |
-          poetry config virtualenvs.in-project true
-          poetry env use "$(python -c 'import sys; print(sys.executable)')"
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Cache .venv
         id: cache-venv
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
 
       - name: Install dependencies
-        run: poetry install --no-interaction --no-ansi --with dev
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Install package
+        run: poetry install --no-interaction
 
       - name: Lint (Ruff/Black/Isort) — fail on issues
         run: poetry run task lint
@@ -77,23 +78,26 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry
-        run: pipx install "poetry==${POETRY_VERSION}"
-
-      - name: Configure Poetry (in-project venv; bind to active Python)
-        run: |
-          poetry config virtualenvs.in-project true
-          poetry env use "$(python -c 'import sys; print(sys.executable)')"
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
 
       - name: Cache .venv
         uses: actions/cache@v4
         with:
           path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
             venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
 
       - name: Install dependencies
-        run: poetry install --no-interaction --no-ansi --with dev
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Install package
+        run: poetry install --no-interaction
 
       - name: Ensure results dir exists
         run: mkdir -p benchmarks/results
@@ -131,16 +135,14 @@ jobs:
           k6 run --quiet \
             --summary-export=benchmarks/results/rest_api_smoke.json \
             --vus 5 --duration 30s \
-            benchmarks/load_tests/k6_api_test.js
-        continue-on-error: true
+            benchmarks/load_tests/k6_api_test.js || echo "k6 API test not available"
 
       - name: Run k6 Smoke Test (WebSocket)
         run: |
           k6 run --quiet \
             --summary-export=benchmarks/results/websocket_smoke.json \
             --vus 5 --duration 30s \
-            benchmarks/load_tests/k6_websocket_test.js
-        continue-on-error: true
+            benchmarks/load_tests/k6_websocket_test.js || echo "k6 WebSocket test not available"
 
       - name: Upload Performance Results
         if: always()

@@ -414,3 +414,4 @@ MIT License - see [LICENSE](LICENSE) file
 - FastAPI for high-performance async framework
 - OpenAI and Anthropic for AI models
 - Contributors and maintainers
+

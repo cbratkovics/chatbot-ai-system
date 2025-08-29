@@ -12,9 +12,7 @@ logger = logging.getLogger(__name__)
 class OpenAIProvider:
     """OpenAI model provider."""
 
-    def __init__(
-        self, client: Any | None = None, api_key: str | None = None, max_retries: int = 3
-    ):
+    def __init__(self, client: Any | None = None, api_key: str | None = None, max_retries: int = 3):
         """Initialize OpenAI provider.
 
         Args:

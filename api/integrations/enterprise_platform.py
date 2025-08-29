@@ -972,7 +972,9 @@ class EnterpriseIntegrationPlatform:
         try:
             db = self.SessionLocal()
             try:
-                webhooks = db.query(WebhookEndpoint).filter(WebhookEndpoint.is_active.is_(True)).all()
+                webhooks = (
+                    db.query(WebhookEndpoint).filter(WebhookEndpoint.is_active.is_(True)).all()
+                )
 
                 for webhook in webhooks:
                     self.webhook_endpoints[webhook.id] = WebhookConfig(

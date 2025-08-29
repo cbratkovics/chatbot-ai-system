@@ -1,4 +1,5 @@
 """API v1 module."""
+
 from fastapi import APIRouter
 
 from api.v1.routes import health, websocket

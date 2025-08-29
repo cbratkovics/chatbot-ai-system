@@ -1,4 +1,5 @@
 """API test suite."""
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 

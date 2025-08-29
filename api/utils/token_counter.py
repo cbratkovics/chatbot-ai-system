@@ -1,4 +1,3 @@
-
 import tiktoken
 
 from api.models.chat import Message

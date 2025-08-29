@@ -88,9 +88,7 @@ class HystrixCircuitBreaker:
         self.on_close_callback = None
         self.on_half_open_callback = None
 
-    async def call(
-        self, func: Callable, *args, fallback: Callable | None = None, **kwargs
-    ) -> Any:
+    async def call(self, func: Callable, *args, fallback: Callable | None = None, **kwargs) -> Any:
         """Execute function with circuit breaker protection.
 
         Args:
@@ -129,7 +127,9 @@ class HystrixCircuitBreaker:
             if fallback:
                 return await self._execute_fallback(fallback, *args, **kwargs)
             else:
-                raise CircuitTimeoutException(f"Request timed out after {self.timeout_ms}ms") from None
+                raise CircuitTimeoutException(
+                    f"Request timed out after {self.timeout_ms}ms"
+                ) from None
 
         except Exception:
             # Record failure

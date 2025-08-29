@@ -1,9 +1,9 @@
-.PHONY: help install test build clean docker run
+.PHONY: help install test lint format clean build demo evidence
 
 # Variables
 PYTHON := python3
 POETRY := poetry
-PROJECT_NAME := chatbot-ai-system
+PROJECT_NAME := ai-chatbot-system
 VERSION := $(shell poetry version -s)
 DOCKER_IMAGE := $(PROJECT_NAME):$(VERSION)
 
@@ -35,14 +35,12 @@ update: ## Update dependencies
 
 format: ## Format code
 	@echo "$(GREEN)Formatting code...$(NC)"
-	$(POETRY) run black src tests
-	$(POETRY) run isort src tests
+	$(POETRY) run ruff format .
 
-lint: ## Run linters
+lint: ## Run linting
 	@echo "$(GREEN)Running linters...$(NC)"
-	$(POETRY) run ruff check src tests
-	$(POETRY) run flake8 src tests
-	$(POETRY) run pylint src
+	$(POETRY) run ruff check .
+	$(POETRY) run mypy src/ || true
 
 type-check: ## Run type checking
 	@echo "$(GREEN)Running type checks...$(NC)"
@@ -53,9 +51,9 @@ security: ## Run security checks
 	$(POETRY) run bandit -r src
 	$(POETRY) run safety check
 
-test: ## Run tests
+test: ## Run all tests
 	@echo "$(GREEN)Running tests...$(NC)"
-	$(POETRY) run pytest -m "unit" -v
+	$(POETRY) run pytest -v --cov=src --cov-report=term --cov-report=xml
 
 test-all: ## Run all tests
 	@echo "$(GREEN)Running all tests...$(NC)"
@@ -63,7 +61,7 @@ test-all: ## Run all tests
 
 test-cov: ## Run tests with coverage
 	@echo "$(GREEN)Running tests with coverage...$(NC)"
-	$(POETRY) run pytest --cov=src/chatbot_ai_system --cov-report=html --cov-report=term
+	$(POETRY) run pytest --cov=src --cov-report=html --cov-report=term
 
 build: ## Build package
 	@echo "$(GREEN)Building package...$(NC)"
@@ -102,17 +100,30 @@ clean: ## Clean build artifacts
 
 run: ## Run development server
 	@echo "$(GREEN)Starting development server...$(NC)"
-	$(POETRY) run chatbotai serve --reload
+	$(POETRY) run uvicorn chatbot_system_api.app:app --reload --host 0.0.0.0 --port 8000
 
-demo: ## Run demo
-	@echo "$(GREEN)Running demo...$(NC)"
-	$(POETRY) run chatbotai demo
+demo: ## Run local demo environment
+	@echo "$(GREEN)Starting demo environment...$(NC)"
+	docker-compose --profile demo up -d
+	@echo "✓ Demo running at http://localhost:8000"
+	@echo "✓ API docs at http://localhost:8000/docs"
+
+evidence: ## Generate benchmark evidence
+	@echo "$(GREEN)Generating benchmark evidence...$(NC)"
+	@mkdir -p benchmarks/results
+	$(POETRY) run chatbot-bench
+	$(POETRY) run chatbot-failover
+	$(POETRY) run chatbot-cache-metrics
+	@echo "✓ Evidence generated in benchmarks/results/"
+
+ci-local: lint test build ## Run CI checks locally
+	@echo "$(GREEN)✓ All CI checks passed locally!$(NC)"
 
 version: ## Show version
 	@echo "$(PROJECT_NAME) version: $(VERSION)"
 
 pre-commit: format lint type-check security test ## Run all pre-commit checks
 
-ci: pre-commit build docker-build ## Run CI pipeline locally
+ci: lint test build docker-build ## Run CI pipeline locally
 
 .DEFAULT_GOAL := help

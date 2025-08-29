@@ -1,4 +1,3 @@
-
 import pytest
 
 from api.models.chat import ImageContent, Message, TextContent

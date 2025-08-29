@@ -621,7 +621,9 @@ class WebSocketManager:
         }
 
         await self.redis.setex(
-            f"ws_node:{self.node_id}", 120, json.dumps(node_data)  # 2 minute TTL
+            f"ws_node:{self.node_id}",
+            120,
+            json.dumps(node_data),  # 2 minute TTL
         )
 
     async def _unregister_node(self):

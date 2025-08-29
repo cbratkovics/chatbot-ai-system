@@ -10,7 +10,7 @@ def test_settings():
     """Test that all critical settings load correctly."""
     print("Testing Settings Configuration...")
     print("=" * 50)
-    
+
     # Test core settings
     critical_settings = [
         "SECRET_KEY",
@@ -20,24 +20,24 @@ def test_settings():
         "APP_NAME",
         "VERSION",
     ]
-    
+
     for setting in critical_settings:
         value = getattr(settings, setting, None)
         if value:
             print(f"✓ {setting}: {'*' * 8 if 'KEY' in setting else str(value)[:50]}")
         else:
             print(f"✗ {setting}: Not set")
-            
+
     # Test that extra env vars are ignored
     print("\n" + "=" * 50)
     print("Extra environment variables handling:")
     print("✓ Settings loaded without validation errors")
     print("✓ Extra fields from .env are being ignored (extra='ignore')")
-    
+
     # Count total loaded settings
-    settings_count = len([k for k in dir(settings) if not k.startswith('_')])
+    settings_count = len([k for k in dir(settings) if not k.startswith("_")])
     print(f"\nTotal settings loaded: {settings_count}")
-    
+
     print("\n" + "=" * 50)
     print("✅ Configuration test passed!")
     return True

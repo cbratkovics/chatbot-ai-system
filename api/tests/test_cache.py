@@ -30,9 +30,10 @@ async def test_semantic_cache_similarity():
 
 @pytest.mark.asyncio
 async def test_cache_operations():
-    with patch("app.services.cache.semantic_cache.SentenceTransformer") as mock_transformer, patch(
-        "app.services.cache.semantic_cache.redis.asyncio.from_url"
-    ) as mock_redis:
+    with (
+        patch("app.services.cache.semantic_cache.SentenceTransformer") as mock_transformer,
+        patch("app.services.cache.semantic_cache.redis.asyncio.from_url") as mock_redis,
+    ):
         # Mock the sentence transformer
         mock_model = Mock()
         mock_model.encode.return_value = np.array([[1.0, 0.0, 0.0]])

@@ -1,13 +1,13 @@
 [tool.poetry]
-name = "chatbot-ai-system"
+name = "chatbot-system-core"
 version = "0.1.0"
-description = "Production-ready Python package for multi-provider AI chatbots with enterprise features"
+description = "Production-grade multi-tenant AI chatbot orchestration platform"
 authors = ["Christopher Bratkovics <cbratkovics@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/cbratkovics/chatbot-ai-system"
-repository = "https://github.com/cbratkovics/chatbot-ai-system"
-documentation = "https://github.com/cbratkovics/chatbot-ai-system/docs"
+homepage = "https://github.com/cbratkovics/ai-chatbot-system"
+repository = "https://github.com/cbratkovics/ai-chatbot-system"
+documentation = "https://github.com/cbratkovics/ai-chatbot-system/docs"
 keywords = ["chatbot", "ai", "llm", "fastapi", "websocket", "enterprise", "multi-tenant", "openai", "anthropic"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -21,7 +21,8 @@ classifiers = [
 
 # Package configuration
 packages = [
-    { include = "chatbot_ai_system", from = "src" }
+    { include = "chatbot_system_core", from = "src" },
+    { include = "chatbot_system_api", from = "src" }
 ]
 package-mode = true
 
@@ -159,8 +160,9 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-chatbotai = "chatbot_ai_system.cli:app"
-chatbotai-api = "chatbot_ai_system.server.main:start_server"
+chatbot-bench = "chatbot_system_core.cli:bench"
+chatbot-failover = "chatbot_system_core.cli:failover_test"
+chatbot-cache-metrics = "chatbot_system_core.cli:cache_report"
 
 # ---------------------------
 # Tool Configurations
@@ -168,7 +170,7 @@ chatbotai-api = "chatbot_ai_system.server.main:start_server"
 
 [tool.black]
 line-length = 100
-target-version = ['py312']
+target-version = ['py311']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -194,7 +196,7 @@ ensure_newline_before_comments = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py311"
 exclude = [
   ".venv", "build", "dist", "migrations", "benchmarks", "docs", "examples", "frontend"
 ]
@@ -209,7 +211,7 @@ ignore = ["E203", "E501"]
 "api/integrations/enterprise_platform.py" = ["B008"]  # FastAPI Depends pattern
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 plugins = ["pydantic.mypy"]
 warn_return_any = true
 warn_unused_configs = true

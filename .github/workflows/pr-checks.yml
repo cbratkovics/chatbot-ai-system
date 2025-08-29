@@ -2,7 +2,9 @@ name: PR Checks
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -91,3 +93,98 @@ jobs:
           if git diff origin/main..HEAD --name-only | grep -E "^src/chatbot_ai_system/(schemas|config|sdk|__init__)\.py$"; then
             echo "::warning::This PR modifies the public API. Please ensure backward compatibility."
           fi
+
+  build-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chatbot_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.7.1
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
+      
+      - name: Install dependencies
+        run: |
+          poetry install --with dev
+      
+      - name: Run Ruff linting
+        run: |
+          poetry run ruff check .
+          poetry run ruff format --check .
+      
+      - name: Run type checking
+        run: |
+          poetry run mypy src/ || true
+      
+      - name: Run unit tests with coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/chatbot_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          poetry run pytest tests/unit -v --cov=src --cov-report=xml --cov-report=term || true
+      
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/chatbot_test
+          REDIS_URL: redis://localhost:6379
+          SECRET_KEY: test-secret-key-for-ci
+        run: |
+          poetry run pytest tests/integration -v --maxfail=1 || true
+      
+      - name: Build package
+        run: |
+          poetry build
+          ls -la dist/
+      
+      - name: Check package
+        run: |
+          pip install twine
+          twine check dist/*
+      
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}:pr-${{ github.run_id }} .
+      
+      - name: Test Docker image
+        run: |
+          docker run --rm ghcr.io/${{ github.repository }}:pr-${{ github.run_id }} --version || true

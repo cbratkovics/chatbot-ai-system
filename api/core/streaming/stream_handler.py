@@ -82,7 +82,7 @@ class StreamHandler:
             async with asyncio.timeout(timeout):
                 async for data in data_generator:
                     yield data
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"Stream timeout after {timeout} seconds")
             raise
 
@@ -249,7 +249,7 @@ class StreamHandler:
             try:
                 data = await asyncio.wait_for(queue.get(), timeout=1.0)
                 yield data
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
 
         while not queue.empty():

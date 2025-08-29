@@ -37,6 +37,7 @@ RUN poetry install --only main --no-root
 
 # Copy source code
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 COPY README.md ./
 
 # Build wheel
@@ -94,11 +95,11 @@ ENV HOST=0.0.0.0
 ENV PORT=8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import httpx; httpx.get('http://localhost:8000/healthz')" || exit 1
 
 # Expose port
-EXPOSE ${PORT}
+EXPOSE 8000
 
 # Run application
-CMD ["chatbotai", "serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "chatbot_system_api.app:app", "--host", "0.0.0.0", "--port", "8000"]

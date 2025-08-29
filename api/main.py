@@ -1,4 +1,5 @@
 """Enterprise Chatbot Platform - Main Application."""
+
 import logging
 from contextlib import asynccontextmanager
 

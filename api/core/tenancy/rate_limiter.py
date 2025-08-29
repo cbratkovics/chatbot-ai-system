@@ -100,7 +100,7 @@ class RateLimiter:
             if isinstance(count, bytes):
                 count = count.decode()
             # Try to parse as int first
-            if '.' not in str(count):
+            if "." not in str(count):
                 return int(count)
             # If it's a float timestamp, that means no count
             return 0
@@ -198,7 +198,8 @@ class TokenBucketRateLimiter(RateLimiter):
             except (ValueError, TypeError):
                 # Handle ISO format timestamps
                 from datetime import datetime
-                if last_refill_str and 'T' in str(last_refill_str):
+
+                if last_refill_str and "T" in str(last_refill_str):
                     dt = datetime.fromisoformat(str(last_refill_str))
                     last_refill = dt.timestamp()
                 else:
@@ -257,7 +258,8 @@ class TokenBucketRateLimiter(RateLimiter):
         except (ValueError, TypeError):
             # Handle ISO format timestamps
             from datetime import datetime
-            if last_refill_str and 'T' in str(last_refill_str):
+
+            if last_refill_str and "T" in str(last_refill_str):
                 dt = datetime.fromisoformat(str(last_refill_str))
                 last_refill = dt.timestamp()
             else:
@@ -427,10 +429,12 @@ class AdaptiveRateLimiter(TokenBucketRateLimiter):
         self.capacity = await self.get_adjusted_limit(self.capacity)
         return await super().allow_request(key, tokens)
 
+
 def get_system_load() -> float:
     """Get current system load for adaptive rate limiting."""
     import psutil
+
     try:
         return psutil.cpu_percent(interval=0.1) / 100.0
-    except:
+    except Exception:
         return 0.5  # Default to 50% if unable to determine

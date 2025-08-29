@@ -119,7 +119,9 @@ class TimeoutManager:
 
             logger.error(f"Operation '{operation}' timed out after {effective_timeout}ms")
 
-            raise TimeoutException(f"Operation '{operation}' timed out after {effective_timeout}ms") from None
+            raise TimeoutException(
+                f"Operation '{operation}' timed out after {effective_timeout}ms"
+            ) from None
 
         finally:
             # Clear deadline context
@@ -418,7 +420,7 @@ def timeout(
         async def wrapper(*args, **kwargs):
             manager = TimeoutManager()
             # Remove propagate_deadline from kwargs if present to avoid duplicate
-            propagate = kwargs.pop('propagate_deadline', propagate_deadline)
+            propagate = kwargs.pop("propagate_deadline", propagate_deadline)
             return await manager.execute_with_timeout(
                 func,
                 *args,

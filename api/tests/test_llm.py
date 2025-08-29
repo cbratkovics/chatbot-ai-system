@@ -7,8 +7,9 @@ from api.services.llm.orchestrator import LLMOrchestrator
 
 @pytest.mark.asyncio
 async def test_llm_orchestrator_model_selection():
-    with patch("app.services.llm.orchestrator.OpenAIProvider"), patch(
-        "app.services.llm.orchestrator.AnthropicProvider"
+    with (
+        patch("app.services.llm.orchestrator.OpenAIProvider"),
+        patch("app.services.llm.orchestrator.AnthropicProvider"),
     ):
         orchestrator = LLMOrchestrator()
 
@@ -23,8 +24,9 @@ async def test_llm_orchestrator_model_selection():
 
 
 def test_query_complexity_classification():
-    with patch("app.services.llm.orchestrator.OpenAIProvider"), patch(
-        "app.services.llm.orchestrator.AnthropicProvider"
+    with (
+        patch("app.services.llm.orchestrator.OpenAIProvider"),
+        patch("app.services.llm.orchestrator.AnthropicProvider"),
     ):
         orchestrator = LLMOrchestrator()
 

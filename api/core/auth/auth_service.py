@@ -12,9 +12,9 @@ import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 try:
-    from api.models.tenant import TenantConfig
-    from api.models.provider import ProviderConfig
     from api.models.cost import CostReport
+    from api.models.provider import ProviderConfig
+    from api.models.tenant import TenantConfig
 except ImportError:
     # Fallback for testing
     TenantConfig = dict
@@ -395,9 +395,7 @@ class AuthService:
             "user_info": user_info,
         }
 
-    async def _get_oauth_user_info(
-        self, provider: str, oauth_token: str
-    ) -> dict[str, Any] | None:
+    async def _get_oauth_user_info(self, provider: str, oauth_token: str) -> dict[str, Any] | None:
         """Get user info from OAuth provider.
 
         Args:

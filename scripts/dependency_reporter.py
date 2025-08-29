@@ -21,7 +21,7 @@ from jinja2 import Template
 from rich.console import Console
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 console = Console()
 
@@ -29,8 +29,9 @@ console = Console()
 @dataclass
 class ReportConfig:
     """Configuration for dependency reporting."""
+
     schedule_time: str = "09:00"  # Daily at 9 AM
-    weekly_day: str = "monday"    # Weekly report day
+    weekly_day: str = "monday"  # Weekly report day
     email_enabled: bool = False
     email_recipients: list[str] = None
     slack_enabled: bool = False
@@ -41,7 +42,7 @@ class ReportConfig:
 
 class DependencyReporter:
     """Automated dependency reporting system."""
-    
+
     def __init__(self, project_root: Path | None = None):
         if project_root is None:
             project_root = Path.cwd()
@@ -49,38 +50,36 @@ class DependencyReporter:
         self.config_file = project_root / "config" / "dependency_reporter.toml"
         self.report_dir = project_root / "dependency_reports"
         self.report_dir.mkdir(exist_ok=True)
-        
+
         self.config = self.load_config()
-        
+
         # Report templates
         self.templates = {
             "email": self.get_email_template(),
             "slack": self.get_slack_template(),
             "markdown": self.get_markdown_template(),
         }
-    
+
     def load_config(self) -> ReportConfig:
         """Load reporter configuration."""
         if self.config_file.exists():
             with open(self.config_file) as f:
                 config_data = toml.load(f)
                 return ReportConfig(**config_data.get("reporter", {}))
-        
+
         # Create default config
-        default_config = ReportConfig(
-            report_types=["security", "updates", "health", "metrics"]
-        )
+        default_config = ReportConfig(report_types=["security", "updates", "health", "metrics"])
         self.save_config(default_config)
         return default_config
-    
+
     def save_config(self, config: ReportConfig):
         """Save reporter configuration."""
         self.config_file.parent.mkdir(exist_ok=True)
-        
+
         config_dict = {"reporter": asdict(config)}
-        with open(self.config_file, 'w') as f:
+        with open(self.config_file, "w") as f:
             toml.dump(config_dict, f)
-    
+
     def get_email_template(self) -> Template:
         """Get email report template."""
         return Template("""
@@ -193,7 +192,7 @@ class DependencyReporter:
 </body>
 </html>
         """)
-    
+
     def get_slack_template(self) -> Template:
         """Get Slack report template."""
         return Template("""
@@ -249,7 +248,7 @@ class DependencyReporter:
     ]
 }
         """)
-    
+
     def get_markdown_template(self) -> Template:
         """Get Markdown report template."""
         return Template("""
@@ -304,7 +303,7 @@ class DependencyReporter:
 ---
 *Report generated automatically by dependency-reporter*
         """)
-    
+
     def collect_report_data(self) -> dict:
         """Collect data for report generation."""
         data = {
@@ -317,72 +316,76 @@ class DependencyReporter:
             "critical_alerts": [],
             "vulnerabilities": [],
             "updates_available": [],
-            "recommendations": []
+            "recommendations": [],
         }
-        
+
         # Load latest health report
         latest_report = self.report_dir / "latest_report.json"
         if latest_report.exists():
             with open(latest_report) as f:
                 health_data = json.load(f)
-                
+
                 data["total_packages"] = health_data.get("total_packages", 0)
                 data["health_score"] = health_data.get("health_score", 0.0)
                 data["vulnerable_count"] = health_data.get("vulnerable_packages", 0)
                 data["outdated_count"] = health_data.get("outdated_packages", 0)
                 data["recommendations"] = health_data.get("recommendations", [])
-                
+
                 # Process package health
                 for pkg_health in health_data.get("package_health", []):
                     if pkg_health.get("vulnerabilities"):
                         for vuln in pkg_health["vulnerabilities"]:
-                            data["vulnerabilities"].append({
-                                "package": pkg_health["name"],
-                                "current_version": pkg_health["current_version"],
-                                "cve": vuln.get("id", "Unknown"),
-                                "fix_version": vuln.get("fix_version", "Unknown")
-                            })
+                            data["vulnerabilities"].append(
+                                {
+                                    "package": pkg_health["name"],
+                                    "current_version": pkg_health["current_version"],
+                                    "cve": vuln.get("id", "Unknown"),
+                                    "fix_version": vuln.get("fix_version", "Unknown"),
+                                }
+                            )
                         data["critical_alerts"].append(
                             f"{pkg_health['name']} has security vulnerabilities"
                         )
-                    
+
                     if pkg_health.get("days_behind", 0) > 0:
-                        data["updates_available"].append({
-                            "package": pkg_health["name"],
-                            "current": pkg_health["current_version"],
-                            "latest": pkg_health["latest_version"],
-                            "days_behind": pkg_health["days_behind"]
-                        })
-        
+                        data["updates_available"].append(
+                            {
+                                "package": pkg_health["name"],
+                                "current": pkg_health["current_version"],
+                                "latest": pkg_health["latest_version"],
+                                "days_behind": pkg_health["days_behind"],
+                            }
+                        )
+
         # Sort updates by days behind
         data["updates_available"].sort(key=lambda x: x["days_behind"], reverse=True)
-        
+
         return data
-    
+
     def generate_report(self, format: str = "markdown") -> str:
         """Generate report in specified format."""
         data = self.collect_report_data()
-        
+
         if format in self.templates:
             template = self.templates[format]
             return template.render(**data)
         else:
             raise ValueError(f"Unknown format: {format}")
-    
+
     def send_email_report(self, report_html: str):
         """Send email report."""
         if not self.config.email_enabled or not self.config.email_recipients:
             logger.info("Email reporting not configured")
             return
-        
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"Dependency Report - {self.project_root.name}"
-        msg['From'] = "dependency-reporter@system"
-        msg['To'] = ", ".join(self.config.email_recipients)
-        
-        html_part = MIMEText(report_html, 'html')
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Dependency Report - {self.project_root.name}"
+        msg["From"] = "dependency-reporter@system"
+        msg["To"] = ", ".join(self.config.email_recipients)
+
+        html_part = MIMEText(report_html, "html")
         msg.attach(html_part)
-        
+
         # Send email (configure SMTP settings as needed)
         try:
             # This is a placeholder - configure with actual SMTP settings
@@ -391,19 +394,20 @@ class DependencyReporter:
             #     s.send_message(msg)
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
-    
+
     def send_slack_report(self, report_json: str):
         """Send Slack report."""
         if not self.config.slack_enabled or not self.config.slack_webhook:
             logger.info("Slack reporting not configured")
             return
-        
+
         try:
             import requests
+
             response = requests.post(
                 self.config.slack_webhook,
                 json=json.loads(report_json),
-                headers={'Content-Type': 'application/json'}
+                headers={"Content-Type": "application/json"},
             )
             if response.status_code == 200:
                 logger.info("Slack notification sent successfully")
@@ -411,119 +415,126 @@ class DependencyReporter:
                 logger.error(f"Slack notification failed: {response.text}")
         except Exception as e:
             logger.error(f"Failed to send Slack notification: {e}")
-    
+
     def create_github_issue(self, report_md: str):
         """Create GitHub issue for critical updates."""
         if not self.config.github_enabled:
             logger.info("GitHub reporting not configured")
             return
-        
+
         data = self.collect_report_data()
-        
+
         if data["vulnerable_count"] > 0 or len(data["critical_alerts"]) > 0:
             try:
                 # Create issue using gh CLI
                 title = f"Dependency Alert: {data['vulnerable_count']} vulnerabilities found"
-                
+
                 result = subprocess.run(
-                    ["gh", "issue", "create", 
-                     "--title", title,
-                     "--body", report_md,
-                     "--label", "dependencies,security"],
+                    [
+                        "gh",
+                        "issue",
+                        "create",
+                        "--title",
+                        title,
+                        "--body",
+                        report_md,
+                        "--label",
+                        "dependencies,security",
+                    ],
                     capture_output=True,
-                    text=True
+                    text=True,
                 )
-                
+
                 if result.returncode == 0:
                     logger.info(f"GitHub issue created: {result.stdout.strip()}")
                 else:
                     logger.error(f"Failed to create GitHub issue: {result.stderr}")
-            
+
             except Exception as e:
                 logger.error(f"Failed to create GitHub issue: {e}")
-    
+
     def save_report(self, report_content: str, format: str):
         """Save report to file."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         if format == "markdown":
             ext = "md"
         elif format == "email":
             ext = "html"
         else:
             ext = "txt"
-        
+
         report_file = self.report_dir / f"report_{timestamp}.{ext}"
-        
-        with open(report_file, 'w') as f:
+
+        with open(report_file, "w") as f:
             f.write(report_content)
-        
+
         logger.info(f"Report saved to {report_file}")
         return report_file
-    
+
     def run_daily_report(self):
         """Run daily dependency report."""
         console.print("[bold blue]Running daily dependency report...[/bold blue]")
-        
+
         # Generate health report first
         try:
             subprocess.run(
                 ["python", "scripts/dependency_health_monitor.py", "analyze", "--save"],
                 cwd=self.project_root,
-                check=True
+                check=True,
             )
         except Exception as e:
             logger.error(f"Failed to generate health report: {e}")
-        
+
         # Generate reports in different formats
         if "security" in self.config.report_types or "health" in self.config.report_types:
             # Markdown report
             md_report = self.generate_report("markdown")
             self.save_report(md_report, "markdown")
-            
+
             # Email report
             if self.config.email_enabled:
                 email_report = self.generate_report("email")
                 self.send_email_report(email_report)
-            
+
             # Slack report
             if self.config.slack_enabled:
                 slack_report = self.generate_report("slack")
                 self.send_slack_report(slack_report)
-            
+
             # GitHub issue for critical items
             if self.config.github_enabled:
                 self.create_github_issue(md_report)
-        
+
         console.print("[bold green]✅ Daily report completed[/bold green]")
-    
+
     def run_weekly_report(self):
         """Run weekly comprehensive report."""
         console.print("[bold blue]Running weekly comprehensive report...[/bold blue]")
-        
+
         # Generate dependency graph
         try:
             subprocess.run(
                 ["python", "scripts/dependency_visualizer.py", "visualize"],
                 cwd=self.project_root,
-                check=True
+                check=True,
             )
         except Exception as e:
             logger.error(f"Failed to generate dependency graph: {e}")
-        
+
         # Run security audit
         try:
             subprocess.run(
                 ["python", "scripts/dependency_manager.py", "check-security"],
                 cwd=self.project_root,
-                check=True
+                check=True,
             )
         except Exception as e:
             logger.error(f"Failed to run security audit: {e}")
-        
+
         # Generate comprehensive report
         report_data = self.collect_report_data()
-        
+
         # Add weekly-specific sections
         weekly_report = f"""
 # Weekly Dependency Report
@@ -555,25 +566,29 @@ class DependencyReporter:
 ---
 *Full report available in dependency_reports/latest_report.json*
         """
-        
+
         self.save_report(weekly_report, "markdown")
-        
+
         console.print("[bold green]✅ Weekly report completed[/bold green]")
-    
+
     def schedule_reports(self):
         """Schedule automated reports."""
         # Daily report
         schedule.every().day.at(self.config.schedule_time).do(self.run_daily_report)
-        
+
         # Weekly report
         if self.config.weekly_day.lower() == "monday":
             schedule.every().monday.at(self.config.schedule_time).do(self.run_weekly_report)
         elif self.config.weekly_day.lower() == "friday":
             schedule.every().friday.at(self.config.schedule_time).do(self.run_weekly_report)
-        
-        console.print(f"[bold green]Scheduled daily reports at {self.config.schedule_time}[/bold green]")
-        console.print(f"[bold green]Scheduled weekly reports on {self.config.weekly_day}s[/bold green]")
-        
+
+        console.print(
+            f"[bold green]Scheduled daily reports at {self.config.schedule_time}[/bold green]"
+        )
+        console.print(
+            f"[bold green]Scheduled weekly reports on {self.config.weekly_day}s[/bold green]"
+        )
+
         # Keep running
         while True:
             schedule.run_pending()
@@ -587,16 +602,20 @@ def cli():
 
 
 @cli.command()
-@click.option('--format', type=click.Choice(['markdown', 'email', 'slack']), 
-              default='markdown', help='Report format')
+@click.option(
+    "--format",
+    type=click.Choice(["markdown", "email", "slack"]),
+    default="markdown",
+    help="Report format",
+)
 def generate(format: str):
     """Generate a dependency report."""
     reporter = DependencyReporter()
     report = reporter.generate_report(format)
-    
+
     if format == "markdown":
         print(report)
-    
+
     report_file = reporter.save_report(report, format)
     console.print(f"[green]Report saved to {report_file}[/green]")
 
@@ -620,7 +639,7 @@ def run_schedule():
     """Start scheduled reporting."""
     reporter = DependencyReporter()
     console.print("[bold blue]Starting scheduled reporting service...[/bold blue]")
-    
+
     try:
         reporter.schedule_reports()
     except KeyboardInterrupt:
@@ -628,31 +647,31 @@ def run_schedule():
 
 
 @cli.command()
-@click.option('--email', multiple=True, help='Email recipients')
-@click.option('--slack-webhook', help='Slack webhook URL')
-@click.option('--github/--no-github', default=True, help='Enable GitHub issues')
-@click.option('--schedule-time', default='09:00', help='Daily report time')
-@click.option('--weekly-day', default='monday', help='Weekly report day')
+@click.option("--email", multiple=True, help="Email recipients")
+@click.option("--slack-webhook", help="Slack webhook URL")
+@click.option("--github/--no-github", default=True, help="Enable GitHub issues")
+@click.option("--schedule-time", default="09:00", help="Daily report time")
+@click.option("--weekly-day", default="monday", help="Weekly report day")
 def configure(email, slack_webhook, github, schedule_time, weekly_day):
     """Configure reporting settings."""
     reporter = DependencyReporter()
-    
+
     config = reporter.config
-    
+
     if email:
         config.email_enabled = True
         config.email_recipients = list(email)
-    
+
     if slack_webhook:
         config.slack_enabled = True
         config.slack_webhook = slack_webhook
-    
+
     config.github_enabled = github
     config.schedule_time = schedule_time
     config.weekly_day = weekly_day
-    
+
     reporter.save_config(config)
-    
+
     console.print("[green]✅ Configuration saved[/green]")
     console.print(f"Email: {'Enabled' if config.email_enabled else 'Disabled'}")
     console.print(f"Slack: {'Enabled' if config.slack_enabled else 'Disabled'}")

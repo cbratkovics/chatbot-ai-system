@@ -1,4 +1,5 @@
 """Application middleware components."""
+
 from collections.abc import Callable
 
 from fastapi import Request, Response

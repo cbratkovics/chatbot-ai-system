@@ -33,14 +33,14 @@ jobs:
             const additions = pr.additions;
             const deletions = pr.deletions;
             const total = additions + deletions;
-            
+
             let label = 'size/XS';
             if (total > 1000) label = 'size/XXL';
             else if (total > 500) label = 'size/XL';
             else if (total > 250) label = 'size/L';
             else if (total > 100) label = 'size/M';
             else if (total > 30) label = 'size/S';
-            
+
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,

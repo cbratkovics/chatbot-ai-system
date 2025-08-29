@@ -286,8 +286,8 @@ skips = ["B101"]
 exclude = ["tests", "docs", "benchmarks"]
 
 [tool.taskipy.tasks]
-format = "ruff check --fix . && black . && isort ."
-lint = "ruff check . && black --check . && isort --check-only ."
+format = "ruff check --fix . && ruff format ."
+lint = "ruff check . && ruff format --check ."
 typecheck = "mypy src/"
 test = "pytest -n auto"
 sec = "bandit -r src && safety check --full-report"

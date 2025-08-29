@@ -102,7 +102,8 @@ lib/
 lib64/
 share/
 bin/
-Scripts/
+/Scripts/
+!scripts/**
 Include/
 pyvenv.cfg
 

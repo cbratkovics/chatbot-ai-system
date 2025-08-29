@@ -1,0 +1,15 @@
+documentation:
+  - docs/**
+  - "*.md"
+
+tests:
+  - tests/**
+  - "**/test_*.py"
+
+dependencies:
+  - poetry.lock
+  - pyproject.toml
+  - requirements*.txt
+
+ci:
+  - .github/**

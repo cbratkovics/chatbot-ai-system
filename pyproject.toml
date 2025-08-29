@@ -92,7 +92,7 @@ bandit = "^1.7.5"
 safety = "^3.0.1"
 
 # Dev tools & task runner
-ipython = "^8.18.0"
+ipython = "^9.5.0"
 ipdb = "^0.13.13"
 rich = "^13.7.0"
 pre-commit = "^3.6.0"

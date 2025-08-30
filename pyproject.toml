@@ -294,7 +294,7 @@ exclude = ["tests", "docs", "benchmarks"]
 [tool.taskipy.tasks]
 format = "ruff check --fix . && ruff format ."
 lint = "ruff check . && ruff format --check ."
-typecheck = "echo 'Type checking temporarily disabled' && exit 0"  # This will always pass
+typecheck = "echo 'Type checking temporarily disabled' && exit 0"  # Always passes
 test = "pytest -n auto"
 sec = "bandit -r src && safety check --full-report"
-qa = "task lint && task test"  # Removed typecheck from qa
+qa = "task lint && task test"  # Removed typecheck

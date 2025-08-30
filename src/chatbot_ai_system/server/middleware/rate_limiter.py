@@ -1,136 +1,125 @@
-"""Rate limiting middleware using token bucket algorithm."""
+"""Token bucket rate limiter for per-tenant rate limiting."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import asyncio
+import logging
 import time
-from collections import defaultdict
-from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, Tuple
 
-import structlog
-from fastapi import Request, Response, status
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
-from ...config import settings
-
-logger = structlog.get_logger()
+logger = logging.getLogger(__name__)
 
 
+@dataclass
 class TokenBucket:
     """Token bucket for rate limiting."""
 
-    def __init__(self, capacity: int, refill_rate: float):
-        """Initialize token bucket.
+    capacity: int
+    refill_rate: float
+    tokens: float
+    last_refill: float
 
-        Args:
-            capacity: Maximum number of tokens
-            refill_rate: Tokens per second
-        """
-        self.capacity = capacity
-        self.refill_rate = refill_rate
-        self.tokens = capacity
-        self.last_refill = time.time()
+    def consume(self, tokens: int = 1) -> bool:
+        """Try to consume tokens from bucket."""
+        self.refill()
+        if self.tokens >= tokens:
+            self.tokens -= tokens
+            return True
+        return False
+
+    def refill(self) -> None:
+        """Refill bucket based on elapsed time."""
+        now = time.time()
+        elapsed = now - self.last_refill
+        tokens_to_add = elapsed * self.refill_rate
+        self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+        self.last_refill = now
+
+
+class TenantRateLimiter:
+    """Per-tenant rate limiter using token bucket algorithm."""
+
+    def __init__(self) -> None:
+        self.buckets: Dict[str, Dict[str, TokenBucket]] = {}
         self.lock = asyncio.Lock()
 
-    async def consume(self, tokens: int = 1) -> bool:
-        """Try to consume tokens from bucket.
-
-        Args:
-            tokens: Number of tokens to consume
-
-        Returns:
-            True if tokens were consumed, False otherwise
-        """
+    async def check_rate_limit(
+        self, tenant_id: str, resource: str, tokens: int = 1, tier: str = "basic"
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """Check if request is within rate limits."""
         async with self.lock:
-            # Refill tokens based on time passed
-            now = time.time()
-            elapsed = now - self.last_refill
-            tokens_to_add = elapsed * self.refill_rate
+            bucket = self._get_or_create_bucket(tenant_id, resource, tier)
+            allowed = bucket.consume(tokens)
+            wait_time = 0.0
+            if not allowed:
+                tokens_needed = tokens - bucket.tokens
+                wait_time = tokens_needed / bucket.refill_rate
 
-            self.tokens = min(float(self.capacity), self.tokens + tokens_to_add)
-            self.last_refill = now
+            metadata = {
+                "tokens_remaining": int(bucket.tokens),
+                "capacity": bucket.capacity,
+                "refill_rate": bucket.refill_rate,
+                "wait_time_seconds": wait_time,
+                "retry_after": (
+                    datetime.utcnow() + timedelta(seconds=wait_time) if wait_time > 0 else None
+                ),
+            }
+            return allowed, metadata
 
-            # Try to consume tokens
-            if self.tokens >= tokens:
-                self.tokens -= tokens
-                return True
-            return False
+    def _get_or_create_bucket(self, tenant_id: str, resource: str, tier: str) -> TokenBucket:
+        """Get or create token bucket for tenant/resource."""
+        if tenant_id not in self.buckets:
+            self.buckets[tenant_id] = {}
 
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Rate limiting middleware using token bucket algorithm."""
-
-    def __init__(self, app):
-        """Initialize rate limiter."""
-        super().__init__(app)
-        self.buckets: dict[str, TokenBucket] = defaultdict(
-            lambda: TokenBucket(
-                capacity=settings.RATE_LIMIT_BURST_SIZE,
-                refill_rate=settings.RATE_LIMIT_REQUESTS / 60.0,  # Convert to per-second
+        if resource not in self.buckets[tenant_id]:
+            limits = self._get_resource_limits(resource, tier)
+            capacity = int(limits["capacity"])
+            self.buckets[tenant_id][resource] = TokenBucket(
+                capacity=capacity,
+                refill_rate=limits["refill_rate"],
+                tokens=float(capacity),
+                last_refill=time.time(),
             )
-        )
+        return self.buckets[tenant_id][resource]
 
-    def _get_client_id(self, request: Request) -> str:
-        """Extract client identifier from request.
-
-        Args:
-            request: Incoming request
-
-        Returns:
-            Client identifier (tenant ID or IP address)
-        """
-        # Try to get tenant ID first
-        tenant_id = request.headers.get(settings.TENANT_HEADER)
-        if tenant_id:
-            return f"tenant:{tenant_id}"
-
-        # Fall back to IP address
-        client_ip = request.client.host if request.client else "unknown"
-        return f"ip:{client_ip}"
-
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Apply rate limiting."""
-        # Skip rate limiting if disabled
-        if not settings.RATE_LIMIT_ENABLED:
-            return await call_next(request)
-
-        # Skip rate limiting for health checks
-        if request.url.path in ["/health", "/metrics"]:
-            return await call_next(request)
-
-        client_id = self._get_client_id(request)
-        bucket = self.buckets[client_id]
-
-        # Try to consume a token
-        if await bucket.consume():
-            response = await call_next(request)
-
-            # Add rate limit headers
-            response.headers["X-RateLimit-Limit"] = str(settings.RATE_LIMIT_REQUESTS)
-            response.headers["X-RateLimit-Remaining"] = str(int(bucket.tokens))
-            response.headers["X-RateLimit-Reset"] = str(int(time.time() + 60))
-
-            return response
-
-        # Rate limit exceeded
-        logger.warning(
-            "Rate limit exceeded",
-            client_id=client_id,
-            path=request.url.path,
-            request_id=getattr(request.state, "request_id", None),
-        )
-
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={
-                "error": "Rate Limit Exceeded",
-                "message": f"Too many requests. Please retry after {60} seconds.",
-                "request_id": getattr(request.state, "request_id", None),
+    def _get_resource_limits(self, resource: str, tier: str) -> Dict[str, float]:
+        """Get rate limits for resource and tier."""
+        limits = {
+            "api_requests": {
+                "basic": {"capacity": 100, "refill_rate": 1.67},
+                "professional": {"capacity": 300, "refill_rate": 5.0},
+                "enterprise": {"capacity": 1000, "refill_rate": 16.67},
             },
-            headers={
-                "Retry-After": "60",
-                "X-RateLimit-Limit": str(settings.RATE_LIMIT_REQUESTS),
-                "X-RateLimit-Remaining": "0",
-                "X-RateLimit-Reset": str(int(time.time() + 60)),
+            "tokens": {
+                "basic": {"capacity": 10000, "refill_rate": 166.67},
+                "professional": {"capacity": 50000, "refill_rate": 833.33},
+                "enterprise": {"capacity": 200000, "refill_rate": 3333.33},
             },
-        )
+            "websocket_messages": {
+                "basic": {"capacity": 60, "refill_rate": 1.0},
+                "professional": {"capacity": 180, "refill_rate": 3.0},
+                "enterprise": {"capacity": 600, "refill_rate": 10.0},
+            },
+            "file_uploads": {
+                "basic": {"capacity": 10, "refill_rate": 0.167},
+                "professional": {"capacity": 50, "refill_rate": 0.833},
+                "enterprise": {"capacity": 200, "refill_rate": 3.33},
+            },
+        }
+        resource_limits = limits.get(resource, limits["api_requests"])
+        return resource_limits.get(tier, resource_limits["basic"])
+
+    async def get_tenant_status(self, tenant_id: str) -> Dict[str, Dict[str, Any]]:
+        """Get current rate limit status for tenant."""
+        async with self.lock:
+            if tenant_id not in self.buckets:
+                return {}
+            status = {}
+            for resource, bucket in self.buckets[tenant_id].items():
+                bucket.refill()
+                status[resource] = {
+                    "tokens_available": int(bucket.tokens),
+                    "capacity": bucket.capacity,
+                    "refill_rate": bucket.refill_rate,
+                }
+            return status

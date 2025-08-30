@@ -1,85 +1,105 @@
 """Application configuration management."""
 
-from typing import Any, Dict, List, Tuple, Optional
 from functools import lru_cache
+from typing import List, Optional
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     # API Configuration
-    app_name: str = "Chatbot System"
-    app_version: str = "1.0.0"
-    debug: bool = Field(default=False)
-    api_prefix: str = "/api/v1"
+    APP_NAME: str = Field(default="Chatbot System", alias="app_name")
+    APP_VERSION: str = Field(default="1.0.0", alias="app_version")
+    APP_ENV: str = Field(default="development", alias="app_env")
+    DEBUG: bool = Field(default=False)
+    API_PREFIX: str = Field(default="/api/v1", alias="api_prefix")
+    ENVIRONMENT: str = Field(default="development")
+    LOG_LEVEL: str = Field(default="INFO")
 
     # Server Configuration
-    host: str = Field(default="0.0.0.0")
-    port: int = Field(default=8000)
-    workers: int = Field(default=4)
+    HOST: str = Field(default="0.0.0.0")
+    PORT: int = Field(default=8000)
+    WORKERS: int = Field(default=4)
 
     # CORS Configuration
-    allowed_origins: list[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8000"]
-    )
-    allowed_methods: list[str] = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allowed_headers: list[str] = ["*"]
+    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost:8000")
+    cors_origins: str = Field(default="http://localhost:3000,http://localhost:8000")
+    ALLOWED_METHODS: List[str] = Field(default=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    ALLOWED_HEADERS: List[str] = Field(default=["*"])
 
     # Database Configuration
-    database_url: str = Field(
-        default="postgresql://user:password@localhost/chatbot_db"
-    )
-    database_echo: bool = Field(default=False)
+    DATABASE_URL: str = Field(default="postgresql://user:password@localhost/chatbot_db")
+    database_url: str = Field(default="postgresql://user:password@localhost/chatbot_db")
+    DATABASE_ECHO: bool = Field(default=False)
 
     # Redis Configuration
+    REDIS_URL: str = Field(default="redis://localhost:6379/0")
     redis_url: str = Field(default="redis://localhost:6379/0")
-    redis_max_connections: int = Field(default=100)
+    REDIS_MAX_CONNECTIONS: int = Field(default=100)
 
     # Provider Configuration
-    provider_a_api_key: str | None = Field(default=None)
-    provider_b_api_key: str | None = Field(default=None)
-    provider_timeout: int = Field(default=30)
-    max_retries: int = Field(default=3)
+    provider_a_api_key: Optional[str] = Field(default=None)
+    provider_b_api_key: Optional[str] = Field(default=None)
+    PROVIDER_TIMEOUT: int = Field(default=30)
+    MAX_RETRIES: int = Field(default=3)
 
     # Authentication
-    jwt_secret_key: str = Field(
-        default="your-secret-key-change-in-production"
-    )
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = Field(default=30)
-    jwt_refresh_token_expire_days: int = Field(default=7)
+    JWT_SECRET_KEY: str = Field(default="your-secret-key-change-in-production")
+    JWT_ALGORITHM: str = Field(default="HS256")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
 
     # Rate Limiting
+    RATE_LIMIT_ENABLED: bool = Field(default=True)
+    RATE_LIMIT_REQUESTS: int = Field(default=100)
     rate_limit_requests: int = Field(default=100)
+    RATE_LIMIT_WINDOW: int = Field(default=60)
     rate_limit_window: int = Field(default=60)
+    rate_limit_period: int = Field(default=60)
+    RATE_LIMIT_BURST_SIZE: int = Field(default=20)
 
     # WebSocket Configuration
-    websocket_heartbeat_interval: int = Field(default=30)
-    websocket_max_connections: int = Field(default=1000)
+    WS_ENABLED: bool = Field(default=True)
+    WS_MAX_CONNECTIONS: int = Field(default=1000)
+    WS_MAX_CONNECTIONS_PER_USER: int = Field(default=5)
+    WS_HEARTBEAT_INTERVAL: int = Field(default=30)
+    WEBSOCKET_HEARTBEAT_INTERVAL: int = Field(default=30)
+    WEBSOCKET_MAX_CONNECTIONS: int = Field(default=1000)
 
     # Caching Configuration
-    cache_ttl: int = Field(default=3600)  # 1 hour
-    semantic_cache_threshold: float = Field(default=0.85)
+    CACHE_TTL: int = Field(default=3600)
+    SEMANTIC_CACHE_THRESHOLD: float = Field(default=0.85)
 
     # Monitoring Configuration
-    enable_metrics: bool = Field(default=True)
-    enable_tracing: bool = Field(default=True)
-    jaeger_endpoint: str | None = Field(default=None)
+    ENABLE_METRICS: bool = Field(default=True)
+    ENABLE_TRACING: bool = Field(default=True)
+    JAEGER_ENDPOINT: Optional[str] = Field(default=None)
 
     # Performance Configuration
-    max_concurrent_requests: int = Field(default=1000)
-    request_timeout: int = Field(default=60)
+    MAX_CONCURRENT_REQUESTS: int = Field(default=1000)
+    REQUEST_TIMEOUT: int = Field(default=60)
 
     # Cost Tracking
-    enable_cost_tracking: bool = Field(default=True)
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"  # Ignore extra fields from .env
+    ENABLE_COST_TRACKING: bool = Field(default=True)
+    
+    # Tenant Configuration
+    TENANT_HEADER: str = Field(default="X-Tenant-ID")
+    REQUIRE_TENANT_ID: bool = Field(default=False)
+    DEFAULT_TENANT_ID: str = Field(default="default")
+    
+    # API Base URL and Keys
+    api_base_url: str = Field(default="http://localhost:8000")
+    api_key: Optional[str] = Field(default=None)
 
 
 @lru_cache
@@ -88,5 +108,4 @@ def get_settings() -> Settings:
     return Settings()
 
 
-# Global settings instance
 settings = get_settings()

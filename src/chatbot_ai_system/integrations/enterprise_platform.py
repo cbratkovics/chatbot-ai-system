@@ -225,7 +225,7 @@ class EnterpriseIntegrationPlatform:
 
         # Webhook management
         self.webhook_endpoints: dict[str, WebhookConfig] = {}
-        self.webhook_queue = asyncio.Queue()
+        self.webhook_queue: asyncio.Queue[Any] = asyncio.Queue()
 
         # API key management
         self.api_keys: dict[str, APIKey] = {}

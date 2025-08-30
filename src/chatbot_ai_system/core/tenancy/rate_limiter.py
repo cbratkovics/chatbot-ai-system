@@ -207,7 +207,7 @@ class TokenBucketRateLimiter(RateLimiter):
 
             time_passed = current_time - last_refill
             tokens_to_add = time_passed * self.refill_rate
-            tokens_available = min(self.capacity, tokens_available + tokens_to_add)
+            tokens_available = min(float(self.capacity), tokens_available + tokens_to_add)
 
         if tokens_available >= tokens:
             tokens_available -= tokens
@@ -268,7 +268,7 @@ class TokenBucketRateLimiter(RateLimiter):
         time_passed = current_time - last_refill
         tokens_to_add = time_passed * self.refill_rate
 
-        return min(self.capacity, tokens_available + tokens_to_add)
+        return min(float(self.capacity), tokens_available + tokens_to_add)
 
 
 class SlidingWindowRateLimiter(RateLimiter):

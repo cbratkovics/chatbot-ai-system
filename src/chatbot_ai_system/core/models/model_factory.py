@@ -19,7 +19,7 @@ class ModelFactory:
         """
         self.load_balancing = load_balancing
         self.cost_optimization = cost_optimization
-        self.providers = {}
+        self.providers: Dict[str, Any] = {}
         self.default_provider = "openai"
         self._current_provider_index = 0
 

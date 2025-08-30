@@ -1,5 +1,6 @@
 """Multi-tenant middleware for tenant isolation."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from collections.abc import Callable
 
 import structlog

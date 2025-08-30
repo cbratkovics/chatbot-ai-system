@@ -294,7 +294,7 @@ class FallbackManager:
         successful = sum(1 for e in self.fallback_history if e.success)
 
         # Count reasons
-        reasons = {}
+        reasons: Dict[str, Any] = {}
         for event in self.fallback_history:
             reason = event.reason.value
             reasons[reason] = reasons.get(reason, 0) + 1

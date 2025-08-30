@@ -1,3 +1,4 @@
+from typing import Any, Dict, List, Tuple, Optional
 import pytest
 from api.models.chat import ImageContent, Message, TextContent
 from api.services.image_processor import ImageProcessor

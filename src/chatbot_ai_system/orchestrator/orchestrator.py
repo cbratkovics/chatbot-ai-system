@@ -239,8 +239,8 @@ class ProviderOrchestrator:
 
         # Routing state
         self.round_robin_index = 0
-        self.request_counts = defaultdict(int)
-        self.request_timestamps = defaultdict(list)
+        self.request_counts: Dict[str, int] = defaultdict(int)
+        self.request_timestamps: Dict[str, List[float]] = defaultdict(list)
 
         # Health check task
         self._health_check_task: asyncio.Task | None = None

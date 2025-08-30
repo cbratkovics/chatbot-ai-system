@@ -32,7 +32,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     """Request model for chat completions."""
 
-    messages: list[Message] = Field(..., min_items=1, max_items=100)
+    messages: list[Message] = Field(..., min_length=1, max_length=100)
     model: str = Field(default="gpt-3.5-turbo", description="Model to use for completion")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int | None = Field(default=1000, ge=1, le=8000)
@@ -42,7 +42,7 @@ class ChatRequest(BaseModel):
     top_p: float | None = Field(default=1.0, ge=0.0, le=1.0)
     frequency_penalty: float | None = Field(default=0.0, ge=-2.0, le=2.0)
     presence_penalty: float | None = Field(default=0.0, ge=-2.0, le=2.0)
-    stop: list[str] | None = Field(default=None, max_items=4)
+    stop: list[str] | None = Field(default=None, max_length=4)
 
     # System context
     conversation_id: UUID | None = None

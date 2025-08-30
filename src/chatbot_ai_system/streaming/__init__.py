@@ -1,5 +1,6 @@
 """Streaming components for WebSocket communication."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from .backpressure import BackpressureController, FlowControlStrategy, FlowMetrics
 from .reconnection import (
     ReconnectionConfig,

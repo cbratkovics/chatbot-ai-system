@@ -1,5 +1,6 @@
 """Rate limiting middleware for API protection."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import logging
 import time
@@ -30,7 +31,7 @@ class TokenBucket:
             # Refill tokens based on elapsed time
             elapsed = now - self.last_refill
             tokens_to_add = elapsed * self.refill_rate
-            self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+            self.tokens = min(float(self.capacity), self.tokens + tokens_to_add)
             self.last_refill = now
 
             # Check if we have enough tokens
@@ -294,7 +295,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             except Exception as e:
                 logger.error(f"Rate limiter cleanup error: {str(e)}")
 
-    def get_rate_limit_status(self, key: str) -> dict[str, any]:
+    def get_rate_limit_status(self, key: str) -> Dict[str, Any]:
         """Get current rate limit status for a key (for monitoring)."""
         bucket_key = f"bucket:{key}"
         window_key = f"window:{key}"

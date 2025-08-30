@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Callable
 from typing import TypeVar
 
-from tenacity import (
+from te, Anynacity import (
     AsyncRetrying,
     RetryError,
     stop_after_attempt,

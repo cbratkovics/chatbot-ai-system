@@ -1,5 +1,6 @@
 """Rate limiting functionality."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import time
 
@@ -49,7 +50,7 @@ class TokenBucket:
         elapsed = now - self.last_refill
         tokens_to_add = elapsed * self.refill_rate
 
-        self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+        self.tokens = min(float(self.capacity), self.tokens + tokens_to_add)
         self.last_refill = now
 
     async def wait_for_tokens(self, tokens: int = 1, timeout: float | None = None) -> bool:

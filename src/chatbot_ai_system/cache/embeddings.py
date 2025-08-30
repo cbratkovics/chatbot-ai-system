@@ -1,5 +1,6 @@
 """Embedding generation and similarity calculation for semantic caching."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import hashlib
 import logging
 from dataclasses import dataclass
@@ -44,7 +45,7 @@ class EmbeddingGenerator:
     def __init__(self, model: str = "mock-embedding-model", dimensions: int = 384):
         self.model = model
         self.dimensions = dimensions
-        self._cache = {}  # Simple in-memory cache
+        self._cache: Dict[str, Any] = {}  # Simple in-memory cache
         logger.info(f"Embedding generator initialized with model {model}")
 
     async def generate(self, text: str) -> Embedding:

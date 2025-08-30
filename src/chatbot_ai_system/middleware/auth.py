@@ -1,5 +1,6 @@
 """Authentication middleware."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 

@@ -1,5 +1,6 @@
 """Metrics middleware for Prometheus."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import time
 from collections.abc import Callable
 

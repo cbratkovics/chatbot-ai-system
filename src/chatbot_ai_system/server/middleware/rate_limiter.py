@@ -1,5 +1,6 @@
 """Rate limiting middleware using token bucket algorithm."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import time
 from collections import defaultdict
@@ -46,7 +47,7 @@ class TokenBucket:
             elapsed = now - self.last_refill
             tokens_to_add = elapsed * self.refill_rate
 
-            self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+            self.tokens = min(float(self.capacity), self.tokens + tokens_to_add)
             self.last_refill = now
 
             # Try to consume tokens

@@ -870,8 +870,8 @@ class ModelRouter:
         total_requests = len(self.routing_history)
 
         # Model usage
-        model_usage = {}
-        strategy_usage = {}
+        model_usage: Dict[str, Any] = {}
+        strategy_usage: Dict[str, Any] = {}
         total_cost = 0
         total_latency = 0
 

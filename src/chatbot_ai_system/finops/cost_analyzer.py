@@ -1,5 +1,6 @@
 """Cost analysis and optimization recommendations."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta

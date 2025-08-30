@@ -1,5 +1,6 @@
 """API v1 module."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from api.v1.routes import health, websocket
 from fastapi import APIRouter
 

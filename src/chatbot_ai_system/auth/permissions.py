@@ -1,5 +1,6 @@
 """Permission and role management for authorization."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from enum import Enum
 
 
@@ -138,7 +139,7 @@ def check_all_permissions(
 
 def expand_roles_to_permissions(roles: list[str]) -> set[str]:
     """Expand roles to their associated permissions."""
-    permissions = set()
+    permissions: set[str] = set()
 
     for role_str in roles:
         try:

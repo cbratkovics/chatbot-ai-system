@@ -1,5 +1,6 @@
 """CLI commands for benchmarking and reporting."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import json
 from datetime import datetime
 from pathlib import Path

@@ -22,7 +22,7 @@ class TenantManager:
         """
         self.db = db
         self.cache_client = cache_client
-        self.tenants_cache = {}
+        self.tenants_cache: Dict[str, Any] = {}
 
     async def create_tenant(self, tenant_config: dict[str, Any]) -> dict[str, Any]:
         """Create new tenant.

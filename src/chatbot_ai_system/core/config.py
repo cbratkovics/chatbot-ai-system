@@ -1,5 +1,6 @@
 """Application configuration management."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

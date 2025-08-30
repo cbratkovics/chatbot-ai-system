@@ -6,7 +6,7 @@ from collections.abc import Callable
 from enum import Enum
 from typing import TypeVar
 
-from pydantic import BaseModel
+from pyda, Anyntic import BaseModel
 
 T = TypeVar("T")
 

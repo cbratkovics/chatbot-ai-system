@@ -1,5 +1,6 @@
 """Application middleware components."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from collections.abc import Callable
 
 from fastapi import Request, Response

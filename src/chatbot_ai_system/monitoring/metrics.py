@@ -1,5 +1,6 @@
 """Prometheus metrics collection."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from fastapi import Response
 from prometheus_client import (
     CONTENT_TYPE_LATEST,

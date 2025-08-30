@@ -1,5 +1,6 @@
 """WebSocket routes for real-time chat functionality."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import logging
 
 from api.core.config import settings

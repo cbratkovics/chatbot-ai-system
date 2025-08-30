@@ -1,5 +1,6 @@
 """FastAPI application."""
 
+from typing import Any, Dict, List, Tuple, Optional
 from chatbot_system_core.config import Settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

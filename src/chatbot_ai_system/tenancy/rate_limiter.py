@@ -1,5 +1,6 @@
 """Token bucket rate limiter for per-tenant rate limiting."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import logging
 import time
@@ -41,7 +42,7 @@ class TokenBucket:
 
         # Calculate tokens to add
         tokens_to_add = elapsed * self.refill_rate
-        self.tokens = min(self.capacity, self.tokens + tokens_to_add)
+        self.tokens = min(float(self.capacity), self.tokens + tokens_to_add)
         self.last_refill = now
 
 
@@ -54,7 +55,7 @@ class TenantRateLimiter:
 
     async def check_rate_limit(
         self, tenant_id: str, resource: str, tokens: int = 1, tier: str = "basic"
-    ) -> tuple[bool, dict[str, any]]:
+    ) -> Tuple[bool, Dict[str, Any]]:
         """Check if request is within rate limits.
 
         Args:
@@ -74,7 +75,7 @@ class TenantRateLimiter:
             allowed = bucket.consume(tokens)
 
             # Calculate wait time if rate limited
-            wait_time = 0
+            wait_time = 0.0
             if not allowed:
                 tokens_needed = tokens - bucket.tokens
                 wait_time = tokens_needed / bucket.refill_rate
@@ -164,7 +165,7 @@ class TenantRateLimiter:
                 del self.buckets[tenant_id]
                 logger.info(f"Reset rate limits for tenant: {tenant_id}")
 
-    async def get_tenant_status(self, tenant_id: str) -> dict[str, dict[str, any]]:
+    async def get_tenant_status(self, tenant_id: str) -> Dict[str, Dict[str, Any]]:
         """Get current rate limit status for tenant.
 
         Args:
@@ -202,7 +203,7 @@ class DistributedRateLimiter:
         tokens: int = 1,
         window_seconds: int = 60,
         max_tokens: int = 100,
-    ) -> tuple[bool, dict[str, any]]:
+    ) -> Tuple[bool, Dict[str, Any]]:
         """Check rate limit using sliding window in Redis.
 
         Args:
@@ -269,7 +270,7 @@ class DistributedRateLimiter:
 
     async def get_usage_stats(
         self, tenant_id: str, resource: str, window_seconds: int = 60
-    ) -> dict[str, any]:
+    ) -> Dict[str, Any]:
         """Get current usage statistics.
 
         Args:
@@ -375,7 +376,7 @@ class UsageTracker:
         except Exception as e:
             logger.error(f"Failed to store usage record: {e}")
 
-    async def get_usage_summary(self, tenant_id: str, period: str = "day") -> dict[str, any]:
+    async def get_usage_summary(self, tenant_id: str, period: str = "day") -> Dict[str, Any]:
         """Get usage summary for period.
 
         Args:

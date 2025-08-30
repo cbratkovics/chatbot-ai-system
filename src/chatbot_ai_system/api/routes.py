@@ -1,5 +1,6 @@
 """API routes for chatbot system."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import time
 import uuid
 from collections.abc import AsyncIterator

@@ -242,7 +242,7 @@ class StreamHandler:
         Yields:
             Merged data from all streams
         """
-        queue = asyncio.Queue()
+        queue: asyncio.Queue[Any] = asyncio.Queue()
         tasks = [asyncio.create_task(self._consume_to_queue(gen, queue)) for gen in generators]
 
         while any(not task.done() for task in tasks):

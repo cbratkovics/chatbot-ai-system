@@ -1,5 +1,6 @@
 """Health check routes for system monitoring."""
 
+from typing import Any, Dict, List, Tuple, Optional
 import time
 
 from api.core.config import settings

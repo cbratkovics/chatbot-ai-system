@@ -3,11 +3,11 @@ Streaming mixin for AI providers to support real-time response streaming.
 """
 
 import asyncio
-import time
-from typing import AsyncIterator, List, Optional, Dict, Any
-from dataclasses import dataclass
-from abc import abstractmethod
 import logging
+import time
+from abc import abstractmethod
+from dataclasses import dataclass
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from .base import ChatMessage
 

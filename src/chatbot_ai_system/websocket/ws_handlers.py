@@ -3,17 +3,18 @@ WebSocket message handlers with validation and error handling.
 """
 
 import asyncio
-import uuid
-import time
 import logging
-from typing import Dict, Any, Optional, Callable, List
+import time
+import uuid
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator
-from fastapi import WebSocket
+from typing import Any, Callable, Dict, List, Optional
 
-from ..providers.base import ChatMessage, ProviderError
+from fastapi import WebSocket
+from pydantic import BaseModel, Field, field_validator
+
 from ..config import Settings
+from ..providers.base import ChatMessage, ProviderError
 
 logger = logging.getLogger(__name__)
 

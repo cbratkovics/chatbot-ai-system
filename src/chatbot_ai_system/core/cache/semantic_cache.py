@@ -7,8 +7,9 @@ from datetime import datetime
 from typing import Any
 
 import numpy as np
-from redis import asyncio as aioredis
 from sklearn.metrics.pairwise import cosine_similarity
+
+from redis import asyncio as aioredis
 
 logger = logging.getLogger(__name__)
 

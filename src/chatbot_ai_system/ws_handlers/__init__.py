@@ -2,7 +2,8 @@
 
 # Handler import temporarily disabled due to circular import issue
 # from .handlers import WebSocketHandler
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from .events import ConnectionEvent, ErrorEvent, HeartbeatEvent, MessageEvent, WebSocketEvent
 from .manager import ConnectionManager, WebSocketConnection
 

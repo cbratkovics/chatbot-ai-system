@@ -1,8 +1,9 @@
 """FastAPI application."""
 
-from chatbot_system_core.config import Settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from chatbot_system_core.config import Settings
 
 settings = Settings()
 

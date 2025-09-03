@@ -1,6 +1,7 @@
 """Monitoring and observability module."""
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from .logging import setup_structured_logging
 from .metrics import MetricsCollector, metrics_collector
 from .tracing import TracingManager, tracing_manager

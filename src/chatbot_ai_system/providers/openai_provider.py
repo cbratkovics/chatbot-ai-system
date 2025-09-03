@@ -2,29 +2,24 @@
 OpenAI provider implementation with retry logic, error handling, and streaming support.
 """
 
-from typing import List, Optional
 import asyncio
-import time
 import logging
-from openai import AsyncOpenAI
-from openai import (
-    APIError,
-    APIConnectionError,
-    APITimeoutError,
-    RateLimitError as OpenAIRateLimitError,
-    AuthenticationError as OpenAIAuthError,
-    NotFoundError
-)
+import time
+from typing import List, Optional
+
+from openai import APIConnectionError, APIError, APITimeoutError, AsyncOpenAI, NotFoundError
+from openai import AuthenticationError as OpenAIAuthError
+from openai import RateLimitError as OpenAIRateLimitError
 
 from .base import (
+    AuthenticationError,
     BaseProvider,
     ChatMessage,
     ChatResponse,
+    ModelNotFoundError,
     ProviderError,
     RateLimitError,
-    AuthenticationError,
-    ModelNotFoundError,
-    TimeoutError
+    TimeoutError,
 )
 from .streaming_mixin import StreamingOpenAIMixin
 

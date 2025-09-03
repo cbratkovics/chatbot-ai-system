@@ -4,8 +4,8 @@ import asyncio
 import time
 from collections.abc import Callable
 from enum import Enum
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 
 T = TypeVar("T")
 

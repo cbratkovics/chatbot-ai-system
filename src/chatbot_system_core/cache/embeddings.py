@@ -1,9 +1,9 @@
 """Embedding generation and similarity calculation for semantic caching."""
 
-from typing import Any, Dict
 import hashlib
 import logging
 from dataclasses import dataclass
+from typing import Any, Dict
 
 import numpy as np
 

@@ -3,16 +3,17 @@ Redis cache implementation with connection pooling, compression, and circuit bre
 """
 
 import gzip
-import time
-from typing import Optional, Dict, Any, List
-from datetime import datetime
-from dataclasses import dataclass, field, asdict
 import logging
+import time
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import orjson
+from prometheus_client import Counter, Gauge, Histogram
 
 import redis.asyncio as redis
 from redis.asyncio.connection import ConnectionPool
-from prometheus_client import Counter, Histogram, Gauge
-import orjson
 
 logger = logging.getLogger(__name__)
 

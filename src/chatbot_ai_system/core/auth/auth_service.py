@@ -8,8 +8,9 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import jwt
-import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
+
+import redis.asyncio as aioredis
 
 try:
     from api.models.cost import CostReport

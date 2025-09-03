@@ -1,6 +1,7 @@
 """Pydantic models for the AI Chatbot System."""
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from .chat import ChatRequest, ChatResponse, Message, StreamChunk
 
 # Conditional imports to avoid test failures

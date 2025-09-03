@@ -25,6 +25,7 @@ api_router.include_router(chat_router, tags=["Chat"])
 async def status():
     """API status endpoint with connectivity checks."""
     from datetime import datetime
+
     from chatbot_ai_system.config import get_settings
     
     settings = get_settings()
@@ -59,6 +60,7 @@ async def status():
     # Check database connectivity if available
     try:
         from sqlalchemy import text
+
         from chatbot_ai_system.database import engine
 
         async with engine.connect() as conn:

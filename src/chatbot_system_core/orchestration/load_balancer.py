@@ -1,6 +1,4 @@
-from typing import Dict
 """Load balancer for distributing requests across provider instances."""
-
 import asyncio
 import hashlib
 import logging
@@ -10,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 

@@ -2,23 +2,24 @@
 Prometheus metrics collection for monitoring system performance and usage.
 """
 
-from typing import Optional, Callable
-from functools import wraps
-import time
 import asyncio
-from prometheus_client import (
-    Counter,
-    Histogram,
-    Gauge,
-    Summary,
-    Info,
-    generate_latest,
-    CONTENT_TYPE_LATEST,
-    REGISTRY
-)
+import logging
+import time
+from functools import wraps
+from typing import Callable, Optional
+
 from fastapi import Request, Response
 from fastapi.responses import PlainTextResponse
-import logging
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    Summary,
+    generate_latest,
+)
 
 logger = logging.getLogger(__name__)
 

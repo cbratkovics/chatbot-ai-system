@@ -2,15 +2,16 @@
 WebSocket API endpoint for real-time chat streaming.
 """
 
+import json
 import logging
 from typing import Optional
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
-from fastapi.responses import HTMLResponse
-import json
 
-from ..config import get_settings, Settings
-from ..websocket.ws_manager import WebSocketManager
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+
+from ..config import Settings, get_settings
 from ..websocket.ws_handlers import MessageHandler
+from ..websocket.ws_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 """Tenancy service package."""
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from .rate_limiter import (
     AdaptiveRateLimiter,
     DistributedRateLimiter,

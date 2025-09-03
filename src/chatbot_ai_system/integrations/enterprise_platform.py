@@ -17,7 +17,6 @@ from typing import Any
 
 import httpx
 import jwt
-import redis.asyncio as redis
 from ariadne import QueryType, make_executable_schema
 from celery import Celery
 from fastapi import Depends, FastAPI, HTTPException
@@ -27,6 +26,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 

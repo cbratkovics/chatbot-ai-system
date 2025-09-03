@@ -3,10 +3,11 @@ Configuration module for the AI Chatbot System.
 Handles environment variables and application settings.
 """
 
+from functools import lru_cache
 from typing import List, Optional
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
 
 
 class Settings(BaseSettings):

@@ -3,15 +3,16 @@ WebSocket connection manager with connection pooling and heartbeat.
 """
 
 import asyncio
-import uuid
-import logging
-from typing import Dict, List, Optional, Any, Set
-from datetime import datetime
-from dataclasses import dataclass, field
-from collections import defaultdict
-from fastapi import WebSocket, WebSocketDisconnect
-from prometheus_client import Gauge, Counter, Histogram
 import json
+import logging
+import uuid
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Set
+
+from fastapi import WebSocket, WebSocketDisconnect
+from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
 

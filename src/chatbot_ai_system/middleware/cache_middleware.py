@@ -2,16 +2,17 @@
 Cache middleware for FastAPI to check cache before processing requests.
 """
 
-import time
 import json
-from typing import Callable, Optional, Dict, Any
+import logging
+import time
+from typing import Any, Callable, Dict, Optional
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-import logging
 
-from ..cache.redis_cache import RedisCache
 from ..cache.cache_key_generator import CacheKeyGenerator
+from ..cache.redis_cache import RedisCache
 
 logger = logging.getLogger(__name__)
 

@@ -2,27 +2,28 @@
 Chat API endpoint with provider factory pattern and Redis caching.
 """
 
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status, Header
-from pydantic import BaseModel, Field, field_validator
-import uuid
 import logging
+import uuid
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from pydantic import BaseModel, Field, field_validator
+
+from ..cache.cache_key_generator import CacheKeyGenerator
+from ..cache.redis_cache import RedisCache
+from ..config import Settings, get_settings
+from ..providers.anthropic_provider import AnthropicProvider
 from ..providers.base import (
+    AuthenticationError,
+    BaseProvider,
     ChatMessage,
+    ModelNotFoundError,
     ProviderError,
     RateLimitError,
-    AuthenticationError,
-    ModelNotFoundError,
     TimeoutError,
-    BaseProvider
 )
 from ..providers.openai_provider import OpenAIProvider
-from ..providers.anthropic_provider import AnthropicProvider
-from ..config import get_settings, Settings
-from ..cache.redis_cache import RedisCache
-from ..cache.cache_key_generator import CacheKeyGenerator
 
 logger = logging.getLogger(__name__)
 

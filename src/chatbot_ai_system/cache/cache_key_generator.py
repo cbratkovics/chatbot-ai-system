@@ -4,10 +4,11 @@ Cache key generation with deterministic hashing and semantic similarity.
 
 import hashlib
 import json
-from typing import List, Dict, Any, Optional, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Tuple
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import logging
 
 logger = logging.getLogger(__name__)
 

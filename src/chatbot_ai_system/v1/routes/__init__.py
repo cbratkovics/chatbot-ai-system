@@ -1,6 +1,7 @@
 """API routes package."""
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from .health import router as health_router
 from .websocket import router as websocket_router
 

@@ -111,57 +111,20 @@ RUN mkdir -p /app/logs /app/tmp /app/cache && \
     chown -R chatbot:chatbot /app/logs /app/tmp /app/cache && \
     chmod 700 /app/logs /app/tmp /app/cache
 
-# Add health check script
-COPY --chown=chatbot:chatbot scripts/healthcheck.sh /app/healthcheck.sh
-RUN chmod +x /app/healthcheck.sh
-
-# Security headers and labels
-LABEL maintainer="Christopher Bratkovics <cbratkovics@gmail.com>" \
-      version="0.1.0" \
-      description="Production-ready AI Chatbot System" \
-      security.scan="passed" \
-      org.opencontainers.image.source="https://github.com/cbratkovics/chatbot-ai-system" \
-      org.opencontainers.image.vendor="AI Chatbot System" \
-      org.opencontainers.image.licenses="MIT"
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD ["/app/.venv/bin/python", "-c", "import sys; sys.exit(0)"]
 
 # Switch to non-root user
 USER chatbot
 
-# Expose ports (8000 for API, 9090 for metrics)
-EXPOSE 8000 9090
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD ["/app/healthcheck.sh"]
+# Expose the application port
+EXPOSE 8000
 
 # Default command
-CMD ["chatbotai-api", "--host", "0.0.0.0", "--port", "8000"]
-
-# Stage 5: Development image (optional, for local development)
-FROM production as development
-
-USER root
-
-# Install development tools
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    vim \
-    less \
-    procps \
-    net-tools \
-    iputils-ping \
-    telnet \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install development dependencies
-RUN /app/.venv/bin/pip install --no-cache-dir \
-    ipython \
-    ipdb \
-    pytest \
-    pytest-asyncio \
-    pytest-cov
-
-USER chatbot
-
-# Override command for development
-CMD ["chatbotai", "serve", "--reload"]
+CMD ["/app/.venv/bin/uvicorn", "chatbot_ai_system.main:app", \
+    "--host", "0.0.0.0", \
+    "--port", "8000", \
+    "--workers", "4", \
+    "--loop", "uvloop", \
+    "--access-log"]

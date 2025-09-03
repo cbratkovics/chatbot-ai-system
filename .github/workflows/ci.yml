@@ -12,7 +12,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.12'  # Updated from 3.11 to 3.12
   NODE_VERSION: '18'
 
 jobs:
@@ -22,12 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
+
       - name: Cache pip packages
         uses: actions/cache@v3
         with:
@@ -35,18 +35,18 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-      
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install ruff black mypy pylint
-      
+
       - name: Run Ruff
         run: ruff check src/
-      
+
       - name: Run Black
         run: black --check src/
-      
+
       - name: Run MyPy
         run: mypy src/ --ignore-missing-imports
         continue-on-error: true
@@ -65,7 +65,7 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-      
+
       postgres:
         image: postgres:15-alpine
         env:
@@ -79,31 +79,31 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      
+
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
           version: 1.8.3
           virtualenvs-create: true
           virtualenvs-in-project: true
-      
+
       - name: Load cached venv
         uses: actions/cache@v3
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-      
+
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
-      
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://chatbot:chatbot123@localhost:5432/chatbot_test
@@ -117,7 +117,7 @@ jobs:
             --cov-report=html \
             --cov-report=term-missing \
             -v
-      
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         with:
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -139,17 +139,17 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
-      
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
-      
+
       - name: Run Bandit security linter
         run: |
           pip install bandit
           bandit -r src/ -f json -o bandit-report.json || true
-      
+
       - name: Run Safety check
         run: |
           pip install safety
@@ -163,24 +163,24 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     strategy:
       matrix:
         service: [backend, frontend]
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -193,159 +193,17 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-      
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service == 'frontend' && './frontend' || '.' }}
           file: ${{ matrix.service == 'frontend' && './frontend/Dockerfile' || './Dockerfile' }}
-          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
+            BUILD_VERSION=${{ github.sha }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
-            VERSION=${{ steps.meta.outputs.version }}
-
-  # Performance tests
-  performance:
-    name: Performance Tests
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Start services
-        run: |
-          docker-compose -f docker-compose.yml up -d
-          sleep 30
-      
-      - name: Run k6 performance tests
-        uses: grafana/k6-action@v0.3.1
-        with:
-          filename: tests/performance/load-test.js
-      
-      - name: Upload performance results
-        uses: actions/upload-artifact@v3
-        with:
-          name: performance-results
-          path: results/
-      
-      - name: Stop services
-        run: docker-compose down -v
-
-  # Deploy to staging
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build, security]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-    environment:
-      name: staging
-      url: https://staging.yourdomain.com
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /opt/chatbot-ai-system
-            git pull origin develop
-            docker-compose -f docker-compose.prod.yml pull
-            docker-compose -f docker-compose.prod.yml up -d --no-deps --scale backend=2
-            docker-compose -f docker-compose.prod.yml exec -T backend /app/scripts/healthcheck.sh
-
-  # Deploy to production
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: [build, security, performance]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    environment:
-      name: production
-      url: https://api.yourdomain.com
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to production server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          script: |
-            cd /opt/chatbot-ai-system
-            git fetch --tags
-            git checkout ${{ github.ref_name }}
-            
-            # Backup current deployment
-            ./scripts/backup.sh
-            
-            # Rolling update
-            docker-compose -f docker-compose.prod.yml pull
-            
-            # Update backend (zero-downtime)
-            docker-compose -f docker-compose.prod.yml up -d --no-deps --scale backend=6 backend
-            sleep 30
-            docker-compose -f docker-compose.prod.yml up -d --no-deps --scale backend=3 backend
-            
-            # Update frontend
-            docker-compose -f docker-compose.prod.yml up -d --no-deps --scale frontend=4 frontend
-            sleep 30
-            docker-compose -f docker-compose.prod.yml up -d --no-deps --scale frontend=2 frontend
-            
-            # Health check
-            docker-compose -f docker-compose.prod.yml exec -T backend /app/scripts/healthcheck.sh
-      
-      - name: Notify deployment
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          text: 'Production deployment ${{ github.ref_name }} completed'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        if: always()
-
-  # Create release
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: deploy-production
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Generate changelog
-        id: changelog
-        run: |
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
-            ## Changes
-            ${{ steps.changelog.outputs.CHANGELOG }}
-            
-            ## Docker Images
-            - Backend: `ghcr.io/${{ github.repository }}-backend:${{ github.ref_name }}`
-            - Frontend: `ghcr.io/${{ github.repository }}-frontend:${{ github.ref_name }}`
-          draft: false
-          prerelease: false

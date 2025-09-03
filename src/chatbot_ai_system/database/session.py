@@ -1,6 +1,5 @@
 """Database session management."""
 
-from typing import Any, Dict, List, Tuple, Optional
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 

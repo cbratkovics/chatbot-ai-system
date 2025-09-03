@@ -1,6 +1,5 @@
 """WebSocket connection management with multi-tenancy support."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import json
 import logging

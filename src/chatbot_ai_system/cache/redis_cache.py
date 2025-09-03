@@ -2,12 +2,10 @@
 Redis cache implementation with connection pooling, compression, and circuit breaker.
 """
 
-import asyncio
 import gzip
-import json
 import time
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass, field, asdict
 import logging
 

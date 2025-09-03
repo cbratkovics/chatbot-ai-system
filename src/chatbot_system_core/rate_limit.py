@@ -1,6 +1,5 @@
 """Rate limiting functionality."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import asyncio
 import time
 

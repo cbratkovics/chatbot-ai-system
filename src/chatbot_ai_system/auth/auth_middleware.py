@@ -1,6 +1,5 @@
 """Authentication middleware and decorators."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import logging
 from functools import wraps
 

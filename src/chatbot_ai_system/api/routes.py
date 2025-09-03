@@ -1,13 +1,7 @@
 """API routes for chatbot system with versioning."""
 
-from typing import Any, Dict, List, Tuple, Optional
-import time
-import uuid
-from collections.abc import AsyncIterator
 
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import StreamingResponse
-from fastapi.security import HTTPBearer
+from fastapi import APIRouter
 
 # Import our new chat router
 from chatbot_ai_system.api.chat import router as chat_router

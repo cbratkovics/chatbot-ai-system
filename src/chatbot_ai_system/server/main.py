@@ -1,16 +1,14 @@
 """FastAPI application factory and server entry point."""
 
-from typing import Any, Dict, List, Tuple, Optional
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import logging
-import json
 import uuid
 import time
 from datetime import datetime
 
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -24,7 +22,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from chatbot_ai_system import __version__
 from chatbot_ai_system.api.routes import api_router
-from chatbot_ai_system.config import settings, get_settings
+from chatbot_ai_system.config import settings
 
 # Configure structured logging
 logging.basicConfig(
@@ -62,7 +60,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         
         # Log request
         logger.info(
-            f"Request processed",
+            "Request processed",
             extra={
                 "request_id": request_id,
                 "method": request.method,

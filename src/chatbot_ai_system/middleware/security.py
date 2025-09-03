@@ -2,7 +2,7 @@
 Security middleware for request validation, sanitization, and protection.
 """
 
-from typing import Optional, Dict, Any, List, Set
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import re
 import hashlib
@@ -12,12 +12,10 @@ import uuid
 from collections import defaultdict
 import logging
 
-from fastapi import Request, Response, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 import bleach
-from pydantic import BaseModel, Field, validator
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ Base provider abstract class and common models for AI providers.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
 import uuid

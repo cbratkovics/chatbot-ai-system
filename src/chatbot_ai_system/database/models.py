@@ -1,6 +1,5 @@
 """Database models for multi-tenant chatbot system."""
 
-from typing import Any, Dict, List, Tuple, Optional
 from datetime import datetime
 from uuid import uuid4
 

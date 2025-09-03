@@ -2,7 +2,7 @@
 Anthropic provider implementation with retry logic, error handling, and streaming support.
 """
 
-from typing import List, Optional, Dict, Any, AsyncIterator
+from typing import List, Optional
 import asyncio
 import time
 import logging
@@ -26,7 +26,7 @@ from .base import (
     ModelNotFoundError,
     TimeoutError
 )
-from .streaming_mixin import StreamingAnthropicMixin, StreamChunk
+from .streaming_mixin import StreamingAnthropicMixin
 
 logger = logging.getLogger(__name__)
 

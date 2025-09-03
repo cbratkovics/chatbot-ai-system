@@ -4,10 +4,9 @@ WebSocket connection manager with connection pooling and heartbeat.
 
 import asyncio
 import uuid
-import time
 import logging
 from typing import Dict, List, Optional, Any, Set
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass, field
 from collections import defaultdict
 from fastapi import WebSocket, WebSocketDisconnect
@@ -140,7 +139,7 @@ class WebSocketManager:
                 self._cleanup_task = asyncio.create_task(self._cleanup_loop())
             
             logger.info(
-                f"WebSocket connection established",
+                "WebSocket connection established",
                 extra={
                     "connection_id": connection_id,
                     "user_id": user_id,
@@ -201,7 +200,7 @@ class WebSocketManager:
             ws_connections_active.set(len(self.active_connections))
             
             logger.info(
-                f"WebSocket connection closed",
+                "WebSocket connection closed",
                 extra={
                     "connection_id": connection_id,
                     "user_id": connection_info.user_id,

@@ -2,7 +2,7 @@
 OpenAI provider implementation with retry logic, error handling, and streaming support.
 """
 
-from typing import List, Optional, Dict, Any, AsyncIterator
+from typing import List, Optional
 import asyncio
 import time
 import logging
@@ -26,7 +26,7 @@ from .base import (
     ModelNotFoundError,
     TimeoutError
 )
-from .streaming_mixin import StreamingOpenAIMixin, StreamChunk
+from .streaming_mixin import StreamingOpenAIMixin
 
 logger = logging.getLogger(__name__)
 

@@ -10,8 +10,7 @@ from typing import Dict, Any, Optional, Callable, List
 from datetime import datetime
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
-from fastapi import WebSocket, WebSocketDisconnect
-import json
+from fastapi import WebSocket
 
 from ..providers.base import ChatMessage, ProviderError
 from ..config import Settings
@@ -142,7 +141,7 @@ class MessageHandler:
             
             # Log message
             logger.debug(
-                f"Handling WebSocket message",
+                "Handling WebSocket message",
                 extra={
                     "connection_id": connection_id,
                     "message_type": ws_message.type,

@@ -2,20 +2,15 @@
 WebSocket API endpoint for real-time chat streaming.
 """
 
-import asyncio
 import logging
-from typing import Optional, Dict, Any
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, Header
+from typing import Optional
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.responses import HTMLResponse
 import json
 
 from ..config import get_settings, Settings
 from ..websocket.ws_manager import WebSocketManager
-from ..websocket.ws_handlers import MessageHandler, WebSocketMessage
-from ..providers.openai_provider import OpenAIProvider
-from ..providers.anthropic_provider import AnthropicProvider
-from ..cache.redis_cache import RedisCache
-from ..cache.cache_key_generator import CacheKeyGenerator
+from ..websocket.ws_handlers import MessageHandler
 
 logger = logging.getLogger(__name__)
 

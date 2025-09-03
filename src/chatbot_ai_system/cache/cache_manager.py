@@ -1,6 +1,5 @@
 """Cache manager for coordinating semantic caching with providers."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import logging
 import time
 from uuid import UUID

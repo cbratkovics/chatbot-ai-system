@@ -6,7 +6,6 @@ Handles environment variables and application settings.
 from typing import List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import os
 from functools import lru_cache
 
 

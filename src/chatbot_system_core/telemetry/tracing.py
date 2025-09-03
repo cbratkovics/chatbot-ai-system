@@ -1,6 +1,5 @@
 """Distributed tracing with OpenTelemetry."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import logging
 
 from opentelemetry import trace

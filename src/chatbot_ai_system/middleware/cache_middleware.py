@@ -12,7 +12,6 @@ import logging
 
 from ..cache.redis_cache import RedisCache
 from ..cache.cache_key_generator import CacheKeyGenerator
-from ..utils.hash_utils import HashUtils
 
 logger = logging.getLogger(__name__)
 

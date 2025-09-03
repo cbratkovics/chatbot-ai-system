@@ -1,4 +1,3 @@
-from typing import Any, Dict, List, Tuple, Optional
 from locust import HttpUser, between, task
 
 

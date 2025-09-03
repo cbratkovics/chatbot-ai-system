@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from abc import abstractmethod
 import logging
 
-from .base import ChatMessage, ChatResponse
+from .base import ChatMessage
 
 logger = logging.getLogger(__name__)
 

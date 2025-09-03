@@ -1,6 +1,5 @@
 """Error handling middleware."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import time
 import traceback
 from collections.abc import Callable

@@ -2,7 +2,7 @@
 Prometheus metrics collection for monitoring system performance and usage.
 """
 
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Callable
 from functools import wraps
 import time
 import asyncio
@@ -202,7 +202,7 @@ class MetricsMiddleware:
             
             return response
             
-        except Exception as e:
+        except Exception:
             # Track exceptions
             ERROR_RATE.labels(
                 type='exception',

@@ -1,6 +1,5 @@
 """Structured logging configuration."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import logging
 import sys
 

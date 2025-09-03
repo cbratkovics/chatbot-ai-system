@@ -1,4 +1,3 @@
-from typing import Any, Dict, List, Tuple, Optional
 from fastapi import APIRouter, status
 
 router = APIRouter(tags=["health"])

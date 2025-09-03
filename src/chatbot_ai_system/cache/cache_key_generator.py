@@ -5,7 +5,6 @@ Cache key generation with deterministic hashing and semantic similarity.
 import hashlib
 import json
 from typing import List, Dict, Any, Optional, Tuple
-import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging

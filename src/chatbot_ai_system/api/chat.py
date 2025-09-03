@@ -3,17 +3,14 @@ Chat API endpoint with provider factory pattern and Redis caching.
 """
 
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends, status, Request, Header
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Depends, status, Header
 from pydantic import BaseModel, Field, field_validator
 import uuid
 import logging
 from datetime import datetime
-import asyncio
 
 from ..providers.base import (
     ChatMessage,
-    ChatResponse,
     ProviderError,
     RateLimitError,
     AuthenticationError,
@@ -24,9 +21,8 @@ from ..providers.base import (
 from ..providers.openai_provider import OpenAIProvider
 from ..providers.anthropic_provider import AnthropicProvider
 from ..config import get_settings, Settings
-from ..cache.redis_cache import RedisCache, CacheStats
+from ..cache.redis_cache import RedisCache
 from ..cache.cache_key_generator import CacheKeyGenerator
-from ..utils.hash_utils import HashUtils
 
 logger = logging.getLogger(__name__)
 
@@ -234,7 +230,7 @@ async def chat_completion(
     request_id = str(uuid.uuid4())
     
     logger.info(
-        f"Chat completion request",
+        "Chat completion request",
         extra={
             "request_id": request_id,
             "model": request.model,
@@ -293,7 +289,7 @@ async def chat_completion(
         )
         
         logger.info(
-            f"Chat completion successful",
+            "Chat completion successful",
             extra={
                 "request_id": request_id,
                 "model": response.model,
@@ -342,7 +338,7 @@ async def chat_completion(
         
     except Exception as e:
         logger.error(
-            f"Unexpected error in chat completion",
+            "Unexpected error in chat completion",
             extra={"request_id": request_id},
             exc_info=True
         )

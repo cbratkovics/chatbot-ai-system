@@ -1,6 +1,5 @@
 """WebSocket message handlers for chat functionality."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import logging
 import time
 from uuid import UUID, uuid4

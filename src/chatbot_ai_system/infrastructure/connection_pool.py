@@ -10,7 +10,7 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
-from typing import Ge, Anyneric, TypeVar
+from typing import TypeVar
 
 import aiohttp
 import aioredis

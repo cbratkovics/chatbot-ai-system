@@ -1,6 +1,5 @@
 """Request ID middleware for correlation tracking."""
 
-from typing import Any, Dict, List, Tuple, Optional
 import uuid
 from collections.abc import Callable
 

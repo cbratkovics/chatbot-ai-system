@@ -1,6 +1,6 @@
 """Embedding generation and similarity calculation for semantic caching."""
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict
 import hashlib
 import logging
 from dataclasses import dataclass

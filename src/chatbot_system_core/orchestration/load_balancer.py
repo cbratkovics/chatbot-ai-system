@@ -1,3 +1,4 @@
+from typing import Dict
 """Load balancer for distributing requests across provider instances."""
 
 import asyncio

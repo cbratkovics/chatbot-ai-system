@@ -1,3 +1,4 @@
+from typing import Dict
 """Advanced model router with intelligent selection using Strategy pattern."""
 
 import logging

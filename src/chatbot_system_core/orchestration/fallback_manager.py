@@ -1,3 +1,4 @@
+from typing import Dict
 """Fallback manager for automatic failover between models and providers."""
 
 import asyncio

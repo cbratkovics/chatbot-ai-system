@@ -1,3 +1,57 @@
+[tool.poetry]
+name = "chatbot-ai-system"
+version = "1.0.0"
+description = "Production-ready AI chatbot orchestration platform with multi-provider support"
+authors = ["Christopher Bratkovics <cbratkovics@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/cbratkovics/chatbot-ai-system"
+repository = "https://github.com/cbratkovics/chatbot-ai-system"
+keywords = ["chatbot", "ai", "llm", "gpt", "claude", "streaming", "websocket"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+packages = [{include = "chatbot_ai_system", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.1"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+openai = "^1.0.0"
+anthropic = "^0.8.0"
+redis = "^5.0.1"
+httpx = "^0.25.2"
+websockets = "^12.0"
+python-dotenv = "^1.0.0"
+aiofiles = "^23.2.1"
+python-multipart = "^0.0.6"
+pyjwt = "^2.8.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+pytest-cov = "^4.1.0"
+black = "^23.11.0"
+ruff = "^0.1.7"
+mypy = "^1.7.1"
+httpx = "^0.25.2"
+
+[tool.poetry.scripts]
+chatbotai = "chatbot_ai_system.cli:main"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.black]
 line-length = 100
 

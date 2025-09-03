@@ -1,6 +1,60 @@
-.git
-.github
-*.pyc
-__pycache__
-.pytest_cache
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
 .env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml
+
+# Documentation
+docs/
+*.md
+
+# CI/CD
+.github/
+
+# Node (if any frontend)
+node_modules/
+
+# Large files
+*.log
+*.db
+*.sqlite
+dist/
+build/
+*.egg-info/
+
+# Mac
+.DS_Store
+
+# Project specific
+benchmarks/
+tests/
+monitoring/
+deploy/
+scripts/
+nginx/
+redis/

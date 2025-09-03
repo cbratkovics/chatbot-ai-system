@@ -416,7 +416,7 @@ class WebSocketManager:
                     try:
                         connection_info = self.active_connections[connection_id]
                         await connection_info.websocket.send_json(ping_message)
-                    except:
+                    except Exception:
                         failed_connections.append(connection_id)
                 
                 # Disconnect failed connections

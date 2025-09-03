@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class FallbackReason(Enum):
     """Reasons for fallback."""
+from typing import Any
 
     PROVIDER_ERROR = "provider_error"
     TIMEOUT = "timeout"

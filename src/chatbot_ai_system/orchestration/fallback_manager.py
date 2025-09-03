@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__, Dict)
 
 
 class FallbackReason(Enum):

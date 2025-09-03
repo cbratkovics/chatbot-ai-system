@@ -20,7 +20,7 @@ from chatbot_ai_system.providers.base import (
     CompletionResponse,
     ProviderError,
     RateLimitError,
-)
+, Dict, List)
 from chatbot_ai_system.telemetry.metrics import metrics_collector
 
 logger = structlog.get_logger()

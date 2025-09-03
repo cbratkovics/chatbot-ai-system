@@ -12,6 +12,7 @@ T = TypeVar("T")
 
 class CircuitState(str, Enum):
     """Circuit breaker states."""
+from typing import TypeVar
 
     CLOSED = "closed"
     OPEN = "open"

@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TaskType(Enum):
     """Types of tasks for model selection."""
+from typing import Any
 
     CHAT = "chat"
     CODE_GENERATION = "code_generation"

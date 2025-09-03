@@ -1,125 +1,155 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+// WebSocket React hook for managing WebSocket connections
 
-export interface WebSocketMessage {
-  type: 'message' | 'token' | 'error' | 'complete' | 'function_call' | 'function_result';
-  content?: string;
-  error?: string;
-  function_name?: string;
-  function_args?: any;
-  result?: any;
-}
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { WebSocketClient, WebSocketOptions } from '@/lib/websocket';
+import { WebSocketMessage, ConnectionStatus } from '@/types';
 
-interface UseWebSocketOptions {
+interface UseWebSocketOptions extends Partial<WebSocketOptions> {
+  autoConnect?: boolean;
+  token?: string;
   onMessage?: (message: WebSocketMessage) => void;
-  onOpen?: () => void;
-  onClose?: () => void;
-  onError?: (error: Event) => void;
-  autoReconnect?: boolean;
-  reconnectInterval?: number;
+  onStatusChange?: (status: ConnectionStatus) => void;
+  onError?: (error: Error) => void;
 }
 
-export const useWebSocket = (
-  sessionId: string | null,
-  options: UseWebSocketOptions = {}
-) => {
+export function useWebSocket(options: UseWebSocketOptions = {}) {
   const {
+    autoConnect = true,
+    token,
     onMessage,
-    onOpen,
-    onClose,
+    onStatusChange,
     onError,
-    autoReconnect = true,
-    reconnectInterval = 3000,
+    ...wsOptions
   } = options;
 
-  const ws = useRef<WebSocket | null>(null);
-  const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const clientRef = useRef<WebSocketClient | null>(null);
 
-  const connect = useCallback(() => {
-    if (!sessionId || ws.current?.readyState === WebSocket.OPEN) return;
-
-    setIsConnecting(true);
-    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/api/v1/chat/stream/${sessionId}`;
-    
-    try {
-      ws.current = new WebSocket(wsUrl);
-
-      ws.current.onopen = () => {
-        setIsConnected(true);
-        setIsConnecting(false);
-        onOpen?.();
-      };
-
-      ws.current.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          onMessage?.(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      ws.current.onclose = () => {
-        setIsConnected(false);
-        setIsConnecting(false);
-        onClose?.();
-
-        if (autoReconnect && sessionId) {
-          reconnectTimeout.current = setTimeout(() => {
-            connect();
-          }, reconnectInterval);
-        }
-      };
-
-      ws.current.onerror = (error) => {
-        setIsConnecting(false);
-        onError?.(error);
-      };
-    } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setIsConnecting(false);
-    }
-  }, [sessionId, onMessage, onOpen, onClose, onError, autoReconnect, reconnectInterval]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeout.current) {
-      clearTimeout(reconnectTimeout.current);
-      reconnectTimeout.current = null;
-    }
-
-    if (ws.current) {
-      ws.current.close();
-      ws.current = null;
-    }
-
-    setIsConnected(false);
-    setIsConnecting(false);
-  }, []);
-
-  const sendMessage = useCallback((data: any) => {
-    if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(data));
-    } else {
-      console.error('WebSocket is not connected');
-    }
-  }, []);
-
+  // Initialize WebSocket client
   useEffect(() => {
-    if (sessionId) {
-      connect();
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/chat';
+    
+    const client = new WebSocketClient({
+      url: wsUrl,
+      reconnectInterval: Number(process.env.NEXT_PUBLIC_WS_RECONNECT_INTERVAL) || 5000,
+      maxReconnectAttempts: Number(process.env.NEXT_PUBLIC_WS_MAX_RECONNECT_ATTEMPTS) || 5,
+      heartbeatInterval: Number(process.env.NEXT_PUBLIC_WS_HEARTBEAT_INTERVAL) || 30000,
+      enableLogging: process.env.NODE_ENV === 'development',
+      ...wsOptions,
+    });
+
+    // Set up event listeners
+    client.on('connected', () => {
+      setIsConnected(true);
+      setStatus('connected');
+    });
+
+    client.on('disconnected', () => {
+      setIsConnected(false);
+      setStatus('disconnected');
+    });
+
+    client.on('statusChange', (newStatus: ConnectionStatus) => {
+      setStatus(newStatus);
+      onStatusChange?.(newStatus);
+    });
+
+    client.on('message', (message: WebSocketMessage) => {
+      onMessage?.(message);
+    });
+
+    client.on('stream', (message: WebSocketMessage) => {
+      onMessage?.(message);
+    });
+
+    client.on('complete', (message: WebSocketMessage) => {
+      onMessage?.(message);
+    });
+
+    client.on('error', (error: Error) => {
+      console.error('WebSocket error:', error);
+      onError?.(error);
+    });
+
+    client.on('messageError', (message: WebSocketMessage) => {
+      console.error('Message error:', message);
+      if (message.data?.error) {
+        onError?.(new Error(message.data.error));
+      }
+    });
+
+    clientRef.current = client;
+
+    // Auto-connect if enabled
+    if (autoConnect) {
+      client.connect(token);
     }
 
+    // Cleanup
     return () => {
-      disconnect();
+      client.disconnect();
+      client.removeAllListeners();
     };
-  }, [sessionId, connect, disconnect]);
+  }, []);
+
+  // Connect function
+  const connect = useCallback((authToken?: string) => {
+    if (clientRef.current) {
+      clientRef.current.connect(authToken || token);
+    }
+  }, [token]);
+
+  // Disconnect function
+  const disconnect = useCallback(() => {
+    if (clientRef.current) {
+      clientRef.current.disconnect();
+    }
+  }, []);
+
+  // Send message function
+  const sendMessage = useCallback((message: WebSocketMessage) => {
+    if (clientRef.current) {
+      clientRef.current.send(message);
+    }
+  }, []);
+
+  // Send chat message function
+  const sendChat = useCallback(
+    (
+      id: string,
+      message: string,
+      model: string,
+      options?: {
+        stream?: boolean;
+        temperature?: number;
+        maxTokens?: number;
+        systemPrompt?: string;
+        conversationHistory?: Array<{ role: string; content: string }>;
+      }
+    ) => {
+      if (clientRef.current) {
+        clientRef.current.sendChat(id, message, model, options);
+      }
+    },
+    []
+  );
+
+  // Cancel stream function
+  const cancelStream = useCallback((messageId: string) => {
+    if (clientRef.current) {
+      clientRef.current.cancelStream(messageId);
+    }
+  }, []);
 
   return {
+    status,
     isConnected,
-    isConnecting,
-    sendMessage,
+    connect,
     disconnect,
-    reconnect: connect,
+    sendMessage,
+    sendChat,
+    cancelStream,
+    client: clientRef.current,
   };
-};
+}

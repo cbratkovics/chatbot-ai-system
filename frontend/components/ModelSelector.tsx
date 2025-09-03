@@ -1,90 +1,79 @@
-'use client';
+// Model selector component with dropdown
 
-import { Check, ChevronDown, Sparkles, Eye, Function } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { Model } from '@/lib/api';
+import React from 'react';
+import { Model } from '@/types';
 
 interface ModelSelectorProps {
   models: Model[];
-  selectedModel: string;
-  onSelectModel: (modelId: string) => void;
+  currentModel: string;
+  onModelChange: (modelId: string) => void;
+  disabled?: boolean;
 }
 
 export function ModelSelector({
   models,
-  selectedModel,
-  onSelectModel,
+  currentModel,
+  onModelChange,
+  disabled = false,
 }: ModelSelectorProps) {
-  const currentModel = models.find((m) => m.id === selectedModel);
+  const groupedModels = React.useMemo(() => {
+    const groups: Record<string, Model[]> = {};
+    
+    models.forEach((model) => {
+      if (!groups[model.provider]) {
+        groups[model.provider] = [];
+      }
+      groups[model.provider].push(model);
+    });
+    
+    return groups;
+  }, [models]);
 
-  const getProviderColor = (provider: string) => {
-    switch (provider.toLowerCase()) {
-      case 'openai':
-        return 'text-green-600 dark:text-green-400';
-      case 'anthropic':
-        return 'text-orange-600 dark:text-orange-400';
-      default:
-        return 'text-blue-600 dark:text-blue-400';
-    }
-  };
+  const currentModelData = models.find(m => m.id === currentModel);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          <Sparkles className="h-4 w-4" />
-          <span className="font-medium">
-            {currentModel?.name || 'Select Model'}
-          </span>
-          <ChevronDown className="h-4 w-4 opacity-50" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[300px]">
-        {models.map((model) => (
-          <DropdownMenuItem
-            key={model.id}
-            onClick={() => onSelectModel(model.id)}
-            className="flex items-center justify-between p-3"
-          >
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{model.name}</span>
-                {selectedModel === model.id && (
-                  <Check className="h-4 w-4 text-primary" />
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className={cn('font-medium', getProviderColor(model.provider))}>
-                  {model.provider}
-                </span>
-                <span>•</span>
-                <span>{model.max_tokens.toLocaleString()} tokens</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                {model.supports_vision && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Eye className="h-3 w-3" />
-                    <span>Vision</span>
-                  </div>
-                )}
-                {model.supports_functions && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Function className="h-3 w-3" />
-                    <span>Functions</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </DropdownMenuItem>
+    <div className="model-selector">
+      <label htmlFor="model-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        AI Model
+      </label>
+      <select
+        id="model-select"
+        value={currentModel}
+        onChange={(e) => onModelChange(e.target.value)}
+        disabled={disabled}
+        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {Object.entries(groupedModels).map(([provider, providerModels]) => (
+          <optgroup key={provider} label={provider.charAt(0).toUpperCase() + provider.slice(1)}>
+            {providerModels.map((model) => (
+              <option key={model.id} value={model.id} disabled={!model.available}>
+                {model.name} {!model.available && '(Unavailable)'}
+              </option>
+            ))}
+          </optgroup>
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </select>
+      
+      {currentModelData && (
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+          <div>Context: {currentModelData.contextLength.toLocaleString()} tokens</div>
+          {currentModelData.description && (
+            <div className="mt-1">{currentModelData.description}</div>
+          )}
+          {currentModelData.capabilities && currentModelData.capabilities.length > 0 && (
+            <div className="mt-1 flex gap-1 flex-wrap">
+              {currentModelData.capabilities.map((cap) => (
+                <span
+                  key={cap}
+                  className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
+                >
+                  {cap}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

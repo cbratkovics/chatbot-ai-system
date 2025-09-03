@@ -152,3 +152,7 @@ claude-*.md
 .cursor/
 .codeium/
 
+coverage.xml
+*.pyc
+__pycache__/
+.python-version

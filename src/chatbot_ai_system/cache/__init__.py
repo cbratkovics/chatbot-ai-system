@@ -1,15 +1,6 @@
-"""Semantic caching system for improved performance."""
+"""Cache module for the AI Chatbot System."""
 
-from typing import Any, Dict, List, Tuple, Optional
-from .cache_manager import CacheManager
-from .embeddings import EmbeddingGenerator, SimilarityCalculator
-from .semantic_cache import CacheEntry, CacheStats, SemanticCache
+from .redis_cache import RedisCache, CacheStats
+from .cache_key_generator import CacheKeyGenerator
 
-__all__ = [
-    "SemanticCache",
-    "CacheEntry",
-    "CacheStats",
-    "EmbeddingGenerator",
-    "SimilarityCalculator",
-    "CacheManager",
-]
+__all__ = ["RedisCache", "CacheStats", "CacheKeyGenerator"]

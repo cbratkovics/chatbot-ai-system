@@ -3,48 +3,106 @@
 from typing import Any, Dict, List, Tuple, Optional
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+import logging
+import json
+import uuid
+import time
+from datetime import datetime
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from chatbot_ai_system import __version__
 from chatbot_ai_system.api.routes import api_router
-from chatbot_ai_system.config import settings
+from chatbot_ai_system.config import settings, get_settings
 
-# Middleware will be added inline since we're using simpler versions
+# Configure structured logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper()),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# Create rate limiter
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[f"{settings.rate_limit_requests}/minute"]
+)
+
+
+class RequestIDMiddleware(BaseHTTPMiddleware):
+    """Middleware to add request ID to all requests."""
+    
+    async def dispatch(self, request: Request, call_next):
+        # Generate or extract request ID
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request.state.request_id = request_id
+        
+        # Process request
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Add headers to response
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Process-Time"] = str(process_time)
+        
+        # Log request
+        logger.info(
+            f"Request processed",
+            extra={
+                "request_id": request_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "process_time": process_time
+            }
+        )
+        
+        return response
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Manage application lifecycle."""
     # Startup
-    print(f"🚀 Starting AI Chatbot System v{__version__}")
+    logger.info(f"Starting AI Chatbot System v{__version__}")
 
     # Initialize database
     try:
         from chatbot_ai_system.database import init_db
 
         await init_db()
-        print("✅ Database initialized")
+        logger.info("Database initialized")
     except Exception as e:
-        print(f"⚠️  Database initialization skipped: {e}")
+        logger.warning(f"Database initialization skipped: {e}")
 
-    # Initialize cache
+    # Initialize Redis cache for chat API
     try:
-        from chatbot_ai_system.cache import cache
-
-        await cache.connect()
-        print("✅ Cache connected")
+        from chatbot_ai_system.api.chat import initialize_cache
+        
+        await initialize_cache(settings)
+        logger.info("Redis cache system initialized")
     except Exception as e:
-        print(f"⚠️  Cache connection skipped: {e}")
+        logger.warning(f"Redis cache initialization skipped: {e}")
 
     yield
 
     # Shutdown
-    print("🛑 Shutting down AI Chatbot System")
+    logger.info("Shutting down AI Chatbot System")
 
     # Close database
     try:
@@ -54,40 +112,128 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         pass
 
-    # Close cache
+    # Close Redis cache
     try:
-        from chatbot_ai_system.cache import cache
-
-        await cache.disconnect()
-    except Exception:
-        pass
+        from chatbot_ai_system.api.chat import redis_cache
+        
+        if redis_cache:
+            await redis_cache.disconnect()
+            logger.info("Redis cache disconnected")
+    except Exception as e:
+        logger.warning(f"Error disconnecting Redis cache: {e}")
+    
+    # Shutdown WebSocket manager
+    try:
+        from chatbot_ai_system.websocket.ws_manager import WebSocketManager
+        
+        ws_manager = WebSocketManager()
+        await ws_manager.shutdown()
+        logger.info("WebSocket manager shut down")
+    except Exception as e:
+        logger.warning(f"Error shutting down WebSocket manager: {e}")
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
         title="AI Chatbot System",
-        description="Production-ready multi-provider AI chatbot platform",
+        description="Production-ready multi-provider AI chatbot platform with OpenAI and Anthropic support",
         version=__version__,
-        docs_url="/docs" if settings.environment != "production" else None,
+        docs_url="/docs" if settings.environment != "production" else "/docs",
         redoc_url="/redoc" if settings.environment != "production" else None,
+        openapi_url="/openapi.json" if settings.environment != "production" else "/openapi.json",
         lifespan=lifespan,
     )
 
-    # Add middleware
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    # Add rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    
+    # Add middleware (order matters - reverse order of execution)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_credentials=settings.cors_allow_credentials,
+        allow_methods=settings.cors_allow_methods,
+        allow_headers=settings.cors_allow_headers,
     )
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(SlowAPIMiddleware)
 
+    # Add exception handlers
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        """Handle HTTP exceptions."""
+        request_id = getattr(request.state, "request_id", "unknown")
+        logger.error(
+            f"HTTP exception: {exc.detail}",
+            extra={
+                "request_id": request_id,
+                "status_code": exc.status_code,
+                "path": request.url.path
+            }
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": exc.detail,
+                "status_code": exc.status_code,
+                "request_id": request_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+    
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        """Handle validation errors."""
+        request_id = getattr(request.state, "request_id", "unknown")
+        logger.error(
+            f"Validation error: {exc.errors()}",
+            extra={
+                "request_id": request_id,
+                "path": request.url.path
+            }
+        )
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "error": "Validation error",
+                "details": exc.errors(),
+                "request_id": request_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+    
+    @app.exception_handler(Exception)
+    async def general_exception_handler(request: Request, exc: Exception):
+        """Handle unexpected exceptions."""
+        request_id = getattr(request.state, "request_id", "unknown")
+        logger.error(
+            f"Unexpected error: {str(exc)}",
+            extra={
+                "request_id": request_id,
+                "path": request.url.path
+            },
+            exc_info=True
+        )
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={
+                "error": "Internal server error",
+                "request_id": request_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+    
     # Add routes
     app.include_router(api_router, prefix="/api/v1")
-
-    # Health check
+    
+    # Add WebSocket routes
+    from chatbot_ai_system.api.websocket import ws_router
+    app.include_router(ws_router)
+    
+    # Health check endpoint
     @app.get("/health")
     async def health():
         """Health check endpoint."""
@@ -97,18 +243,26 @@ def create_app() -> FastAPI:
                 "status": "healthy",
                 "version": __version__,
                 "service": "ai-chatbot-system",
+                "timestamp": datetime.utcnow().isoformat(),
+                "environment": settings.environment,
+                "providers_configured": {
+                    "openai": settings.has_openai_key,
+                    "anthropic": settings.has_anthropic_key
+                }
             },
         )
-
+    
     @app.get("/")
     async def root():
         """Root endpoint."""
         return {
             "message": "AI Chatbot System API",
             "version": __version__,
-            "docs": "/docs" if settings.environment != "production" else None,
+            "docs": "/docs",
+            "health": "/health",
+            "api": "/api/v1"
         }
-
+    
     return app
 
 
@@ -122,6 +276,9 @@ def start_server():
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level.lower(),
+        reload=settings.reload if settings.is_development else False,
+        workers=settings.workers if not settings.reload else 1,
+        access_log=settings.is_development,
     )
 
 

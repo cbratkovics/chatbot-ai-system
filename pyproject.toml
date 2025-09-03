@@ -108,7 +108,7 @@ optional = true
 [tool.poetry.group.providers.dependencies]
 openai = "^1.6.1"
 anthropic = "^0.8.1"
-tiktoken = "^0.5.2"
+tiktoken = "^0.11.0"
 
 [tool.poetry.group.ml]
 optional = true

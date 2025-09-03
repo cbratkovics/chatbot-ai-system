@@ -135,3 +135,20 @@ wheels/
 *.egg
 MANIFEST
 pip-wheel-metadata/
+
+# AI/Claude artifacts
+.claude/
+claude-*.md
+*-claude.*
+*.claude
+
+# AI conversation logs
+.ai-conversations/
+.copilot/
+*.ai-generated
+*.ai-prompt
+
+# Other AI tools
+.cursor/
+.codeium/
+

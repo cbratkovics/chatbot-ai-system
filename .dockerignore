@@ -1,0 +1,138 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+eggs
+.eggs
+wheels
+*.wheel-info
+share/python-wheels
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+.pytest_cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis
+.mypy_cache
+.ruff_cache
+.pytype
+*.log
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Project specific
+logs/
+*.log
+.env
+.env.*
+!.env.example
+secrets/
+data/
+tmp/
+temp/
+cache/
+
+# Docker
+docker-compose.override.yml
+Dockerfile.dev
+.dockerignore
+
+# Node (frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+.next/
+out/
+dist/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Testing
+tests/
+test/
+*.test.py
+*.test.ts
+*.spec.ts
+cypress/
+e2e/
+
+# CI/CD
+.github/
+.gitlab/
+.circleci/
+.travis.yml
+azure-pipelines.yml
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres-data/
+redis-data/
+
+# Monitoring
+prometheus-data/
+grafana-data/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.cer
+ssl/
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z

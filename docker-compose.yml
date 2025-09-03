@@ -1,124 +1,174 @@
 version: '3.8'
 
 services:
-  api:
+  # Backend API service
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        VERSION: ${VERSION:-0.1.0}
-        BUILD_DATE: ${BUILD_DATE:-}
-        VCS_REF: ${VCS_REF:-}
-    image: chatbot-ai-system:${VERSION:-latest}
-    container_name: chatbot-api
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+        VCS_REF: ${VCS_REF:-$(git rev-parse --short HEAD)}
+    container_name: chatbot-backend
     ports:
       - "8000:8000"
     environment:
       - ENVIRONMENT=development
-      - DATABASE_URL=postgresql://chatbot:chatbot@postgres:5432/chatbot
-      - REDIS_URL=redis://redis:6379
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=debug
+      - RELOAD=true
+      - WORKERS=1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-development-secret-key}
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://chatbot:chatbot123@postgres:5432/chatbot
+      - CORS_ORIGINS=["http://localhost:3000","http://frontend:3000"]
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_REQUESTS=100
+      - CACHE_ENABLED=true
+      - CACHE_TTL_SECONDS=3600
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - chatbot-network
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
     restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: chatbot-postgres
-    environment:
-      - POSTGRES_USER=chatbot
-      - POSTGRES_PASSWORD=chatbot
-      - POSTGRES_DB=chatbot
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chatbot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend Next.js service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+        NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws/chat
+    container_name: chatbot-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/chat
+      - NEXT_PUBLIC_ENABLE_CACHE=true
+      - NEXT_PUBLIC_ENABLE_STREAMING=true
+    volumes:
+      - ./frontend/app:/app/app:ro
+      - ./frontend/components:/app/components:ro
+      - ./frontend/lib:/app/lib:ro
+      - ./frontend/hooks:/app/hooks:ro
+      - ./frontend/types:/app/types:ro
+      - ./frontend/public:/app/public:ro
+    depends_on:
+      - backend
     networks:
       - chatbot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+  # Redis cache service
   redis:
     image: redis:7-alpine
     container_name: chatbot-redis
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis-data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - chatbot-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # PostgreSQL database service
+  postgres:
+    image: postgres:15-alpine
+    container_name: chatbot-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=chatbot
+      - POSTGRES_PASSWORD=chatbot123
+      - POSTGRES_DB=chatbot
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - chatbot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbot -d chatbot"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-    networks:
-      - chatbot-network
+      start_period: 10s
 
-  # Optional: Monitoring stack
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: chatbot-prometheus
+  # Adminer for database management (development only)
+  adminer:
+    image: adminer:latest
+    container_name: chatbot-adminer
     ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    networks:
-      - chatbot-network
-    profiles:
-      - monitoring
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: chatbot-grafana
-    ports:
-      - "3001:3000"
+      - "8080:8080"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-      - grafana_data:/var/lib/grafana
+      - ADMINER_DEFAULT_SERVER=postgres
+      - ADMINER_DESIGN=pepa-linha
+    depends_on:
+      - postgres
     networks:
       - chatbot-network
+    restart: unless-stopped
     profiles:
-      - monitoring
+      - debug
 
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    container_name: chatbot-jaeger
+  # Redis Commander for Redis management (development only)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: chatbot-redis-commander
     ports:
-      - "16686:16686"
-      - "14268:14268"
+      - "8081:8081"
     environment:
-      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
     networks:
       - chatbot-network
+    restart: unless-stopped
     profiles:
-      - monitoring
-
-volumes:
-  postgres_data:
-  redis_data:
-  prometheus_data:
-  grafana_data:
+      - debug
 
 networks:
   chatbot-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local

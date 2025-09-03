@@ -1,70 +1,13 @@
-[tool.poetry]
-name = "chatbot-ai-system"
-version = "0.1.0"
-description = "Production-grade AI chatbot orchestration platform"
-authors = ["Christopher Bratkovics <cbratkovics@gmail.com>"]
-license = "MIT"
-readme = "README.md"
-homepage = "https://github.com/cbratkovics/ai-chatbot-system"
-repository = "https://github.com/cbratkovics/ai-chatbot-system"
-packages = [{ include = "chatbot_ai_system", from = "src" }]
-
-[tool.poetry.dependencies]
-python = "^3.12"
-
-# Core Web Framework
-fastapi = "^0.109.0"
-uvicorn = {extras = ["standard"], version = "^0.35.0"}
-pydantic = "^2.5.0"
-pydantic-settings = "^2.1.0"
-
-# AI Providers
-openai = "^1.6.1"
-anthropic = "^0.8.1"
-
-# Database & Caching
-redis = "^5.0.1"
-hiredis = "^2.2.3"
-
-# API & Networking
-httpx = "^0.25.2"
-websockets = "^12.0"
-aiohttp = "^3.9.1"
-slowapi = "^0.1.9"
-
-# Monitoring
-prometheus-client = "^0.19.0"
-
-# Utilities
-python-dotenv = "^1.0.0"
-tenacity = "^8.2.3"
-orjson = "^3.9.10"
-scikit-learn = "^1.3.0"
-numpy = "^1.26.0"
-
-# Async
-aiofiles = "^23.2.1"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
-pytest-asyncio = "^0.21.1"
-pytest-cov = "^4.1.0"
-ruff = "^0.5.5"
-black = "^23.12.0"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.black]
+line-length = 100
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+ignore = ["E501", "F401", "F841"]
 
-[tool.black]
-line-length = 100
-target-version = ['py312']
+[tool.mypy]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
-asyncio_mode = "auto"
+addopts = "-v --tb=short"

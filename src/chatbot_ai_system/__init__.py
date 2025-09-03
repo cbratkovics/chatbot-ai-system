@@ -1,15 +1,2 @@
-"""Chatbot AI System - Production-grade multi-tenant AI chatbot orchestration platform."""
-
-__version__ = "0.1.0"
-
-# Core exports
-
-from .config import Settings, settings
-from .sdk.client import ChatbotClient
-
-__all__ = [
-    "__version__",
-    "Settings",
-    "settings",
-    "ChatbotClient",
-]
+"""Chatbot AI System."""
+__version__ = "1.0.0"

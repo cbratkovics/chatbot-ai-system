@@ -46,7 +46,7 @@ router = APIRouter(
 class ChatCompletionRequest(BaseModel):
     """Chat completion request model."""
 
-    message: str = Field(..., description="The user message", min_length=1, max_length=10000)
+    messages: List[Dict[str, str]] = Field(..., description="List of messages in the conversation")
     model: str = Field(..., description="Model identifier")
     temperature: Optional[float] = Field(0.7, ge=0.0, le=2.0, description="Sampling temperature")
     max_tokens: Optional[int] = Field(None, gt=0, le=8192, description="Maximum tokens in response")
@@ -55,24 +55,28 @@ class ChatCompletionRequest(BaseModel):
         None, description="Previous messages in the conversation"
     )
 
-    @field_validator("message")
+    @field_validator("messages")
     @classmethod
-    def validate_message(cls, v):
-        """Validate and sanitize message."""
-        if not v or not v.strip():
-            raise ValueError("Message cannot be empty")
-        # Basic sanitization
-        v = v.strip()
+    def validate_messages(cls, v):
+        """Validate and sanitize messages."""
+        if not v or len(v) == 0:
+            raise ValueError("Messages cannot be empty")
+        # Validate each message has required fields
+        for msg in v:
+            if not msg.get("role") or not msg.get("content"):
+                raise ValueError("Each message must have 'role' and 'content' fields")
         return v
 
     class Config:
         json_schema_extra = {
             "example": {
-                "message": "What is the capital of France?",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "What is the capital of France?"}
+                ],
                 "model": "gpt-3.5-turbo",
                 "temperature": 0.7,
                 "max_tokens": 150,
-                "system_prompt": "You are a helpful assistant.",
                 "conversation_history": [
                     {"role": "user", "content": "Hello"},
                     {"role": "assistant", "content": "Hi there!"},
@@ -84,28 +88,37 @@ class ChatCompletionRequest(BaseModel):
 class ChatCompletionResponse(BaseModel):
     """Chat completion response model."""
 
-    response: str = Field(..., description="The AI response")
+    id: str = Field(..., description="Unique request identifier")
+    object: str = Field(default="chat.completion", description="Object type")
+    created: int = Field(..., description="Creation timestamp")
     model: str = Field(..., description="Model used")
-    request_id: str = Field(..., description="Unique request identifier")
-    timestamp: str = Field(..., description="Response timestamp")
+    choices: List[Dict[str, Any]] = Field(..., description="Response choices")
+    usage: Optional[Dict[str, int]] = Field(None, description="Token usage statistics")
     cached: bool = Field(False, description="Whether response was cached")
     cache_key: Optional[str] = Field(None, description="Cache key used")
     similarity_score: Optional[float] = Field(
         None, description="Similarity score for semantic cache hit"
     )
-    usage: Optional[Dict[str, int]] = Field(None, description="Token usage statistics")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "response": "The capital of France is Paris.",
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "object": "chat.completion",
+                "created": 1711018800,
                 "model": "gpt-3.5-turbo",
-                "request_id": "550e8400-e29b-41d4-a716-446655440000",
-                "timestamp": "2024-01-15T10:00:00Z",
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": "The capital of France is Paris."
+                    },
+                    "finish_reason": "stop"
+                }],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 15, "total_tokens": 25},
                 "cached": False,
                 "cache_key": "chat:v1:gpt-3.5-turbo:abc123...",
-                "similarity_score": None,
-                "usage": {"prompt_tokens": 10, "completion_tokens": 15, "total_tokens": 25},
+                "similarity_score": None
             }
         }
 
@@ -148,6 +161,10 @@ class ProviderFactory:
             ModelNotFoundError: If model is not supported
             AuthenticationError: If API key is not configured
         """
+        # Handle "default" model
+        if model == "default":
+            model = settings.default_model
+        
         # Determine provider from model
         provider_name = cls.MODEL_PROVIDER_MAP.get(model)
 
@@ -227,14 +244,19 @@ async def chat_completion(
         extra={
             "request_id": request_id,
             "model": request.model,
-            "message_length": len(request.message),
+            "message_count": len(request.messages),
             "temperature": request.temperature,
         },
     )
 
     try:
+        # Resolve model name
+        model_name = request.model
+        if model_name == "default":
+            model_name = settings.default_model
+        
         # Create provider
-        provider = ProviderFactory.create_provider(request.model, settings)
+        provider = ProviderFactory.create_provider(model_name, settings)
 
         # Prepare messages
         messages = []
@@ -248,13 +270,14 @@ async def chat_completion(
             for msg in request.conversation_history:
                 messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
 
-        # Add current message
-        messages.append(ChatMessage(role="user", content=request.message))
+        # Convert request messages to ChatMessage objects
+        for msg in request.messages:
+            messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
 
         # Generate completion
         response = await provider.chat(
             messages=messages,
-            model=request.model,
+            model=model_name,
             temperature=request.temperature,
             max_tokens=request.max_tokens,
         )
@@ -262,14 +285,21 @@ async def chat_completion(
         # Update response with our request ID
         response.request_id = request_id
 
-        # Create API response
+        # Create API response in OpenAI format
         api_response = ChatCompletionResponse(
-            response=response.content,
+            id=response.request_id,
+            created=int(datetime.utcnow().timestamp()),
             model=response.model,
-            request_id=response.request_id,
-            timestamp=response.timestamp.isoformat(),
-            cached=response.cached,
+            choices=[{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": response.content
+                },
+                "finish_reason": "stop"
+            }],
             usage=response.usage,
+            cached=response.cached,
         )
 
         logger.info(

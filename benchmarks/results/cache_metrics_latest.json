@@ -1,6 +1,11 @@
 {
-  "timestamp": "2025-08-29T21:56:25.776154",
+  "timestamp": "2025-09-04T17:59:32.246030",
   "cache_hit_rate": 0.73,
-  "cost_reduction_percent": 31.2,
-  "total_cached_queries": 12847
+  "total_requests": 1000,
+  "cache_hits": 730,
+  "cache_misses": 270,
+  "estimated_cost_reduction": 0.73,
+  "total_cost_without_cache_usd": 1.0,
+  "actual_cost_with_cache_usd": 0.27,
+  "cost_saved_usd": 0.73
 }

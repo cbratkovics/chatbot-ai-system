@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from chatbot_ai_system.config import settings
+from chatbot_ai_system.config.settings import settings
 from chatbot_ai_system.schemas import ChatRequest
 
 

@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 # Skip all CLI tests if CLI module not available
 pytest.importorskip("chatbot_ai_system.cli")
 
-from chatbot_ai_system.cli import app
+from chatbot_ai_system.cli import cli
 
 
 class TestCLICommands:
@@ -17,8 +17,10 @@ class TestCLICommands:
         with patch("chatbot_ai_system.cli.get_version", return_value="1.0.0"):
             from typer.testing import CliRunner
 
+            from click.testing import CliRunner
+
             runner = CliRunner()
-            result = runner.invoke(app, ["version"])
+            result = runner.invoke(cli, ["version"])
 
             assert result.exit_code == 0
             assert "1.0.0" in result.output
@@ -28,8 +30,10 @@ class TestCLICommands:
         with patch("chatbot_ai_system.cli.get_version", return_value="1.0.0"):
             from typer.testing import CliRunner
 
+            from click.testing import CliRunner
+
             runner = CliRunner()
-            result = runner.invoke(app, ["version", "--format", "json"])
+            result = runner.invoke(cli, ["version", "--format", "json"])
 
             assert result.exit_code == 0
             output = json.loads(result.output)
@@ -39,8 +43,10 @@ class TestCLICommands:
         """Test help command."""
         from typer.testing import CliRunner
 
+        from click.testing import CliRunner
+
         runner = CliRunner()
-        result = runner.invoke(app, ["--help"])
+        result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
         assert "Usage:" in result.output
@@ -50,8 +56,10 @@ class TestCLICommands:
         with patch("chatbot_ai_system.cli.run_server") as mock_run:
             from typer.testing import CliRunner
 
+            from click.testing import CliRunner
+
             runner = CliRunner()
-            result = runner.invoke(app, ["serve", "--port", "3000"])
+            result = runner.invoke(cli, ["serve", "--port", "3000"])
 
             mock_run.assert_called_once()
 
@@ -60,8 +68,10 @@ class TestCLICommands:
         with patch("chatbot_ai_system.cli.run_server") as mock_run:
             from typer.testing import CliRunner
 
+            from click.testing import CliRunner
+
             runner = CliRunner()
-            result = runner.invoke(app, ["serve", "--reload"])
+            result = runner.invoke(cli, ["serve", "--reload"])
 
             mock_run.assert_called_once()
 
@@ -70,8 +80,10 @@ class TestCLICommands:
         with patch("chatbot_ai_system.cli.run_demo") as mock_demo:
             from typer.testing import CliRunner
 
+            from click.testing import CliRunner
+
             runner = CliRunner()
-            result = runner.invoke(app, ["demo"])
+            result = runner.invoke(cli, ["demo"])
 
             mock_demo.assert_called_once()
 
@@ -80,7 +92,9 @@ class TestCLICommands:
         with patch("chatbot_ai_system.cli.run_benchmark") as mock_bench:
             from typer.testing import CliRunner
 
+            from click.testing import CliRunner
+
             runner = CliRunner()
-            result = runner.invoke(app, ["bench", "--requests", "10"])
+            result = runner.invoke(cli, ["bench", "--requests", "10"])
 
             mock_bench.assert_called_once()

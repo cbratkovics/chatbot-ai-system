@@ -22,7 +22,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from chatbot_ai_system import __version__
 from chatbot_ai_system.api.routes import api_router
-from chatbot_ai_system.config import settings
+from chatbot_ai_system.config.settings import settings
 
 # Configure structured logging
 logging.basicConfig(
@@ -217,11 +217,43 @@ def create_app() -> FastAPI:
 
     # Add routes
     app.include_router(api_router, prefix="/api/v1")
+    
+    # Add authentication endpoints
+    from chatbot_ai_system.api.auth import auth_router
+    app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+    
+    # Add tenant endpoints
+    from chatbot_ai_system.api.tenants import tenant_router
+    app.include_router(tenant_router, prefix="/api/v1/tenants", tags=["tenants"])
+    
+    # Add cache endpoints
+    from chatbot_ai_system.api.cache import cache_router
+    app.include_router(cache_router, prefix="/api/v1/cache", tags=["cache"])
+    
+    # Add health endpoints
+    from chatbot_ai_system.api.health import health_router
+    app.include_router(health_router, prefix="/api/v1", tags=["health"])
 
     # Add WebSocket routes
     from chatbot_ai_system.api.websocket import ws_router
 
     app.include_router(ws_router)
+
+    # Add a direct /ws endpoint for compatibility
+    from fastapi import WebSocket
+
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket):
+        """Direct WebSocket endpoint for compatibility."""
+        await websocket.accept()
+        try:
+            while True:
+                data = await websocket.receive_text()
+                await websocket.send_text(f"Echo: {data}")
+        except Exception:
+            pass
+        finally:
+            await websocket.close()
 
     # Health check endpoint
     @app.get("/health")

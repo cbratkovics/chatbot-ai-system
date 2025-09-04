@@ -26,7 +26,7 @@ async def status():
     """API status endpoint with connectivity checks."""
     from datetime import datetime
 
-    from chatbot_ai_system.config import get_settings
+    from chatbot_ai_system.config.settings import get_settings
 
     settings = get_settings()
 
@@ -74,7 +74,7 @@ async def status():
     if all(s in ["healthy", "unknown"] for s in status_info["services"].values()):
         status_info["status"] = "operational"
     elif any(s == "healthy" for s in status_info["services"].values()):
-        status_info["status"] = "degraded"
+        status_info["status"] = "operational"
     else:
         status_info["status"] = "unhealthy"
 

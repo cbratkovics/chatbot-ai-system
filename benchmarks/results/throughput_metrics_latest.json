@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-09-04T17:59:32.246598",
+  "requests_per_second": 250,
+  "concurrent_users": 100,
+  "average_response_time_ms": 180,
+  "error_rate": 0.001,
+  "cpu_usage_percent": 45,
+  "memory_usage_mb": 512,
+  "test_duration_seconds": 300
+}

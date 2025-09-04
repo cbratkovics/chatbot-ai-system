@@ -168,7 +168,7 @@ class Message(Base):
     cached = Column(Boolean, default=False)
 
     # Additional data
-    metadata = Column(JSON, default={})
+    message_metadata = Column(JSON, default={})
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -183,3 +183,7 @@ class Message(Base):
         Index("idx_message_created", "created_at"),
         Index("idx_message_role", "role"),
     )
+
+
+# Create an alias for compatibility
+Chat = Conversation

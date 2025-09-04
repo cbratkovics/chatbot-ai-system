@@ -3,6 +3,20 @@
 
 from .chat import ChatRequest, ChatResponse, Message, StreamChunk
 
+# Database models
+try:
+    from chatbot_ai_system.database.models import (
+        Conversation,
+        Message as DBMessage,
+        Tenant,
+        User,
+    )
+    # Alias for compatibility
+    Chat = Conversation
+except ImportError:
+    Chat = None
+    User = None
+
 # Conditional imports to avoid test failures
 try:
     from .cost import CostReport, TokenUsage, UsageMetrics
@@ -30,6 +44,9 @@ __all__ = [
     "ChatResponse",
     "StreamChunk",
     "Message",
+    # Database models
+    "Chat",
+    "User",
     # Conditionally available
     "WebSocketMessage",
     "MessageType",

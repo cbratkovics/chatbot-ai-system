@@ -20,8 +20,8 @@ class TestPackageStructure:
         from chatbot_ai_system import __version__
 
         version = Version(__version__)
-        assert version.major == 0
-        assert version.minor == 1
+        assert version.major == 1
+        assert version.minor == 0
         assert version.micro == 0
 
     def test_public_api_exports(self):
@@ -103,16 +103,17 @@ class TestConfiguration:
 
     def test_settings_defaults(self):
         """Test default settings."""
-        from chatbot_ai_system.config import Settings
+        from chatbot_ai_system.config.settings import Settings
 
         settings = Settings()
         assert settings.app_name == "AI Chatbot System"
-        assert settings.environment == "development"
+        # Environment is set to 'test' by conftest.py fixture
+        assert settings.environment in ["development", "test"]
         assert settings.port == 8000
 
     def test_settings_from_env(self, monkeypatch):
         """Test settings from environment variables."""
-        from chatbot_ai_system.config import Settings
+        from chatbot_ai_system.config.settings import Settings
 
         monkeypatch.setenv("ENVIRONMENT", "production")
         monkeypatch.setenv("PORT", "9000")
@@ -127,7 +128,7 @@ class TestConfiguration:
         """Test settings validation."""
         from pydantic import ValidationError
 
-        from chatbot_ai_system.config import Settings
+        from chatbot_ai_system.config.settings import Settings
 
         with pytest.raises(ValidationError):
             Settings(port="not-a-number")  # Should fail validation

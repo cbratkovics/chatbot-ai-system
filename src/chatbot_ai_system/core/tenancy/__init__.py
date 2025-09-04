@@ -1,22 +1,22 @@
-"""Tenancy service package."""
-
+"""Multi-tenancy support for the chatbot system."""
 
 from .rate_limiter import (
+    RateLimiter,
     AdaptiveRateLimiter,
     DistributedRateLimiter,
-    RateLimiter,
     SlidingWindowRateLimiter,
-    TenantRateLimiter,
     TokenBucketRateLimiter,
+    TenantRateLimiter,
 )
-from .tenant_manager import TenantManager
+from .tenant_manager import Tenant, TenantManager
 
 __all__ = [
-    "TenantManager",
-    "RateLimiter",
-    "TokenBucketRateLimiter",
-    "SlidingWindowRateLimiter",
-    "DistributedRateLimiter",
-    "TenantRateLimiter",
     "AdaptiveRateLimiter",
+    "DistributedRateLimiter",
+    "RateLimiter",
+    "SlidingWindowRateLimiter",
+    "Tenant",
+    "TenantManager",
+    "TenantRateLimiter",
+    "TokenBucketRateLimiter",
 ]

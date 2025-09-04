@@ -12,7 +12,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from chatbot_ai_system.config import settings
+from chatbot_ai_system.config.settings import settings
 from chatbot_ai_system.telemetry.logger import get_logger
 
 logger = get_logger(__name__)

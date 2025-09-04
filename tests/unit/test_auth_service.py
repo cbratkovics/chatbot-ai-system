@@ -95,16 +95,30 @@ class TestAuthService:
     async def test_api_key_validation(self, mock_database):
         """Test API key validation."""
         from chatbot_ai_system.core.auth.auth_service import AuthService
+        from unittest.mock import MagicMock, AsyncMock
+        import hashlib
 
-        mock_database.execute.return_value.scalar_one_or_none.return_value = {
-            "key": "test-api-key",
-            "tenant_id": "tenant123",
-            "active": True,
-        }
+        # Mark this as a mock database
+        mock_database._is_mock = True
+
+        # Create a mock result that properly simulates SQLAlchemy's behavior
+        mock_result = MagicMock()
+        mock_row = MagicMock()
+        mock_row.key_hash = hashlib.sha256("test-api-key".encode()).hexdigest()
+        mock_row.tenant_id = "tenant123"
+        mock_row.active = True
+        mock_row.expires_at = None
+        mock_row.last_used = None
+        mock_row.name = "test-key"
+
+        # Set up the chain of calls properly
+        mock_result.scalar_one_or_none.return_value = mock_row
+        mock_database.execute = AsyncMock(return_value=mock_result)
+        mock_database.commit = AsyncMock()
 
         service = AuthService(secret_key="test-secret", db=mock_database)
-
         valid = await service.validate_api_key("test-api-key")
+
         assert valid["valid"] is True
         assert valid["tenant_id"] == "tenant123"
 
@@ -156,6 +170,20 @@ class TestAuthService:
     async def test_token_revocation(self, mock_redis):
         """Test token revocation."""
         from chatbot_ai_system.core.auth.auth_service import AuthService
+        from unittest.mock import AsyncMock
+
+        # Create a simple storage to simulate Redis
+        storage = {}
+
+        async def mock_setex(key, ttl, value):
+            storage[key] = value
+            return True
+
+        async def mock_get(key):
+            return storage.get(key)
+
+        mock_redis.setex = AsyncMock(side_effect=mock_setex)
+        mock_redis.get = AsyncMock(side_effect=mock_get)
 
         service = AuthService(secret_key="test-secret", redis_client=mock_redis)
 
@@ -171,6 +199,21 @@ class TestAuthService:
     async def test_session_management(self, mock_redis):
         """Test session management."""
         from chatbot_ai_system.core.auth.auth_service import AuthService
+        from unittest.mock import AsyncMock
+        import json
+
+        # Create a simple storage to simulate Redis
+        storage = {}
+
+        async def mock_setex(key, ttl, value):
+            storage[key] = value
+            return True
+
+        async def mock_get(key):
+            return storage.get(key)
+
+        mock_redis.setex = AsyncMock(side_effect=mock_setex)
+        mock_redis.get = AsyncMock(side_effect=mock_get)
 
         service = AuthService(secret_key="test-secret", redis_client=mock_redis)
 
@@ -197,9 +240,10 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_mfa_verification(self, mock_redis):
         """Test MFA verification."""
+        from unittest.mock import AsyncMock
         from chatbot_ai_system.core.auth.auth_service import AuthService
 
-        mock_redis.get.return_value = "123456"
+        mock_redis.get = AsyncMock(return_value="123456")
 
         service = AuthService(secret_key="test-secret", redis_client=mock_redis)
 

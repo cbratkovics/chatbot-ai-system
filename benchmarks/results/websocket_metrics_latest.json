@@ -1,0 +1,10 @@
+{
+  "timestamp": "2025-09-04T17:59:32.246317",
+  "concurrent_connections": 100,
+  "message_latency_p50_ms": 15,
+  "message_latency_p95_ms": 45,
+  "message_latency_p99_ms": 85,
+  "messages_per_second": 1000,
+  "connection_success_rate": 0.99,
+  "average_connection_time_ms": 120
+}

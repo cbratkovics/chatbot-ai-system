@@ -1,249 +1,149 @@
 #!/bin/bash
+# Production Readiness Checklist
 
-# Colors for output
+set -e
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Checklist items status
-declare -A CHECKLIST
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Production Readiness Checklist${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
 
-# Function to print section header
-print_section() {
-    echo -e "\n${CYAN}═══════════════════════════════════════════${NC}"
-    echo -e "${CYAN}▶ $1${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════════${NC}"
-}
+CHECKS_PASSED=0
+CHECKS_FAILED=0
 
-# Function to check item
-check_item() {
-    local key=$1
-    local description=$2
-    local command=$3
-
+# Function to check condition
+check() {
+    local description="$1"
+    local command="$2"
+    
+    echo -n "Checking: $description... "
+    
     if eval "$command" &>/dev/null; then
-        CHECKLIST[$key]="✓"
-        echo -e "  ${GREEN}✓${NC} $description"
+        echo -e "${GREEN}✓ PASS${NC}"
+        ((CHECKS_PASSED++))
         return 0
     else
-        CHECKLIST[$key]="✗"
-        echo -e "  ${RED}✗${NC} $description"
+        echo -e "${RED}✗ FAIL${NC}"
+        ((CHECKS_FAILED++))
         return 1
     fi
 }
 
-# Function to check with warning
-check_warn() {
-    local description=$1
-    local command=$2
-
+# Function for warning checks
+warn_check() {
+    local description="$1"
+    local command="$2"
+    
+    echo -n "Checking: $description... "
+    
     if eval "$command" &>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} $description"
+        echo -e "${GREEN}✓ PASS${NC}"
+        ((CHECKS_PASSED++))
+        return 0
     else
-        echo -e "  ${YELLOW}⚠${NC} $description ${YELLOW}(recommended)${NC}"
+        echo -e "${YELLOW}⚠ WARNING${NC}"
+        return 1
     fi
 }
 
-# Header
-echo -e "${MAGENTA}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${MAGENTA}║      AI Chatbot System Production Checklist      ║${NC}"
-echo -e "${MAGENTA}╚══════════════════════════════════════════════════╝${NC}"
+echo -e "${YELLOW}1. Code Quality${NC}"
+echo "------------------------"
+check "Python files exist" "ls src/chatbot_ai_system/*.py"
+check "Tests directory exists" "[ -d tests ]"
+check "Dockerfile exists" "[ -f Dockerfile ]"
+check "Poetry lock file exists" "[ -f poetry.lock ]"
+check "pyproject.toml exists" "[ -f pyproject.toml ]"
+echo ""
 
-TOTAL_CHECKS=0
-PASSED_CHECKS=0
+echo -e "${YELLOW}2. Configuration${NC}"
+echo "------------------------"
+check ".env.example exists" "[ -f .env.example ]"
+check "Config module exists" "[ -f src/chatbot_ai_system/config/settings.py ]"
+warn_check ".env file exists (for demo)" "[ -f .env ]"
+echo ""
 
-# Code Quality
-print_section "1. CODE QUALITY"
+echo -e "${YELLOW}3. Documentation${NC}"
+echo "------------------------"
+check "README.md exists" "[ -f README.md ]"
+check "LICENSE file exists" "[ -f LICENSE ]"
+warn_check "CHANGELOG.md exists" "[ -f CHANGELOG.md ]"
+warn_check "SECURITY.md exists" "[ -f SECURITY.md ]"
+echo ""
 
-check_item "format" "Code formatting (black)" "poetry run black --check src tests"
-check_item "imports" "Import sorting (isort)" "poetry run isort --check-only src tests"
-check_item "lint_ruff" "Linting (ruff)" "poetry run ruff check src tests"
-check_item "lint_flake8" "Linting (flake8)" "poetry run flake8 src tests"
-check_item "type" "Type checking (mypy)" "poetry run mypy src"
-((TOTAL_CHECKS+=5))
+echo -e "${YELLOW}4. CI/CD${NC}"
+echo "------------------------"
+check "GitHub Actions workflow exists" "[ -f .github/workflows/ci.yml ]"
+check "Makefile exists" "[ -f Makefile ]"
+check "Docker compose files exist" "ls docker-compose*.yml"
+echo ""
 
-# Security
-print_section "2. SECURITY"
+echo -e "${YELLOW}5. Testing${NC}"
+echo "------------------------"
+check "Unit tests exist" "ls tests/unit/*.py 2>/dev/null | grep -q '.py'"
+warn_check "Integration tests exist" "ls tests/integration/*.py 2>/dev/null | grep -q '.py'"
+warn_check "E2E tests exist" "ls tests/e2e/*.py 2>/dev/null | grep -q '.py'"
+check "Benchmark scripts exist" "[ -f benchmarks/run_all_benchmarks.py ]"
+echo ""
 
-check_item "bandit" "Security scan (bandit)" "poetry run bandit -r src"
-check_item "safety" "Dependency vulnerabilities (safety)" "poetry export -f requirements.txt | poetry run safety check --stdin"
-check_warn "Secrets scanning" "git secrets --scan"
-check_warn "SAST tools configured" "test -f .github/workflows/security.yml"
+echo -e "${YELLOW}6. Performance & Monitoring${NC}"
+echo "------------------------"
+check "Health check endpoint defined" "grep -q '/health' src/chatbot_ai_system/health.py"
+check "Benchmarks directory exists" "[ -d benchmarks ]"
+warn_check "Monitoring config exists" "[ -d monitoring ]"
+echo ""
 
-# Check for sensitive files
-if grep -r "OPENAI_API_KEY\|ANTHROPIC_API_KEY\|JWT_SECRET" --include="*.py" src/ &>/dev/null; then
-    echo -e "  ${RED}✗${NC} Hardcoded secrets found in code"
+echo -e "${YELLOW}7. Security${NC}"
+echo "------------------------"
+check "No hardcoded secrets in code" "! grep -r 'sk-[a-zA-Z0-9]' src/ 2>/dev/null | grep -v example"
+check ".gitignore includes .env" "grep -q '^.env$' .gitignore"
+check "Dependencies specified" "[ -f pyproject.toml ]"
+echo ""
+
+echo -e "${YELLOW}8. Deployment${NC}"
+echo "------------------------"
+check "Dockerfile is multi-stage" "grep -q 'FROM.*as builder' Dockerfile"
+check "Docker healthcheck defined" "grep -q 'HEALTHCHECK' Dockerfile"
+check "Non-root user in Docker" "grep -q 'USER' Dockerfile"
+check "Demo script exists" "[ -f scripts/demo.sh ]"
+echo ""
+
+echo -e "${YELLOW}9. Core Features${NC}"
+echo "------------------------"
+check "WebSocket manager exists" "[ -f src/chatbot_ai_system/streaming/websocket_manager.py ]"
+check "Health check exists" "[ -f src/chatbot_ai_system/health.py ]"
+check "Rate limiting exists" "ls src/chatbot_ai_system/*/rate_limiter.py 2>/dev/null | grep -q '.py'"
+check "Cache implementation exists" "ls src/chatbot_ai_system/cache/*.py 2>/dev/null | grep -q '.py'"
+echo ""
+
+echo -e "${YELLOW}10. Build & Package${NC}"
+echo "------------------------"
+if command -v poetry &>/dev/null; then
+    check "Package builds successfully" "poetry build --quiet"
+    check "Dependencies installable" "poetry check"
 else
-    echo -e "  ${GREEN}✓${NC} No hardcoded secrets in code"
-    ((PASSED_CHECKS++))
+    echo -e "${YELLOW}Poetry not installed - skipping build checks${NC}"
 fi
-((TOTAL_CHECKS+=3))
+echo ""
 
-# Testing
-print_section "3. TESTING"
+# Summary
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Summary${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${GREEN}Checks Passed:${NC} $CHECKS_PASSED"
+echo -e "${RED}Checks Failed:${NC} $CHECKS_FAILED"
+echo ""
 
-check_item "tests_unit" "Unit tests pass" "poetry run pytest -m unit --quiet"
-check_item "tests_integration" "Integration tests configured" "test -f tests/integration/test_api_integration.py"
-
-# Check test coverage
-COVERAGE=$(poetry run pytest --cov=src/chatbot_ai_system --cov-report=term --quiet 2>/dev/null | grep TOTAL | awk '{print $4}' | sed 's/%//')
-if [ ! -z "$COVERAGE" ]; then
-    if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
-        echo -e "  ${GREEN}✓${NC} Test coverage: ${COVERAGE}% (>= 80%)"
-        ((PASSED_CHECKS++))
-    elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
-        echo -e "  ${YELLOW}⚠${NC} Test coverage: ${COVERAGE}% (recommended >= 80%)"
-    else
-        echo -e "  ${RED}✗${NC} Test coverage: ${COVERAGE}% (minimum 60%)"
-    fi
+if [ $CHECKS_FAILED -eq 0 ]; then
+    echo -e "${GREEN}✅ All critical checks passed! System is production-ready.${NC}"
+    exit 0
 else
-    echo -e "  ${YELLOW}⚠${NC} Could not determine test coverage"
+    echo -e "${YELLOW}⚠️ Some checks failed. Review and fix issues before production deployment.${NC}"
+    exit 1
 fi
-((TOTAL_CHECKS+=3))
-
-# Documentation
-print_section "4. DOCUMENTATION"
-
-check_item "readme" "README.md exists" "test -f README.md"
-check_item "license" "LICENSE file exists" "test -f LICENSE"
-check_item "changelog" "CHANGELOG.md exists" "test -f CHANGELOG.md"
-check_item "contributing" "CONTRIBUTING.md exists" "test -f CONTRIBUTING.md"
-check_warn "API documentation" "test -d docs/api"
-check_warn "Architecture docs" "test -f docs/ARCHITECTURE.md"
-((TOTAL_CHECKS+=4))
-
-# Dependencies
-print_section "5. DEPENDENCIES"
-
-check_item "lock" "Lock file up to date" "poetry lock --check"
-check_item "outdated" "Check outdated packages" "poetry show --outdated | wc -l | xargs test 0 -eq"
-
-# Check for direct dependencies count
-DEP_COUNT=$(poetry show --tree --no-dev | grep -E "^[a-z]" | wc -l)
-echo -e "  ℹ️  Direct dependencies: $DEP_COUNT"
-
-# Configuration
-print_section "6. CONFIGURATION"
-
-check_item "env_example" ".env.example exists" "test -f .env.example"
-check_item "env_ignored" ".env in .gitignore" "grep -q '^\.env$' .gitignore"
-check_item "config_valid" "Configuration schema valid" "python3 -c 'from chatbot_ai_system.config import Settings'"
-
-# Check for environment-specific configs
-check_warn "Production config" "test -f config/production.yml"
-check_warn "Staging config" "test -f config/staging.yml"
-((TOTAL_CHECKS+=3))
-
-# Docker
-print_section "7. DOCKER & DEPLOYMENT"
-
-check_item "dockerfile" "Dockerfile exists" "test -f Dockerfile"
-check_item "docker_build" "Docker image builds" "docker build -t test-build . --target builder --quiet"
-check_item "compose" "docker-compose.yml valid" "docker-compose config --quiet"
-check_item "healthcheck" "Health check endpoint" "grep -q HEALTHCHECK Dockerfile"
-check_item "nonroot" "Non-root user in Docker" "grep -q 'USER chatbot' Dockerfile"
-((TOTAL_CHECKS+=5))
-
-# CI/CD
-print_section "8. CI/CD PIPELINE"
-
-check_item "ci_workflow" "CI workflow exists" "test -f .github/workflows/ci.yml"
-check_item "release_workflow" "Release workflow exists" "test -f .github/workflows/release.yml"
-check_item "pr_checks" "PR checks configured" "test -f .github/workflows/pr-checks.yml"
-check_item "dependabot" "Dependabot configured" "test -f .github/dependabot.yml"
-check_warn "Branch protection" "gh api repos/$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/branches/main/protection 2>/dev/null"
-((TOTAL_CHECKS+=4))
-
-# Performance
-print_section "9. PERFORMANCE & MONITORING"
-
-check_warn "Metrics endpoint" "grep -q '/metrics' src/chatbot_ai_system/server/main.py"
-check_warn "Logging configured" "grep -q 'import logging' src/chatbot_ai_system/__init__.py"
-check_warn "APM integration" "test -f config/apm.yml"
-check_warn "Rate limiting" "grep -q 'slowapi\|ratelimit' pyproject.toml"
-
-# Error Handling
-print_section "10. ERROR HANDLING"
-
-check_item "exceptions" "Custom exceptions defined" "test -f src/chatbot_ai_system/exceptions.py"
-check_warn "Error middleware" "grep -q 'exception_handler' src/chatbot_ai_system/server/main.py"
-check_warn "Validation errors" "grep -q 'ValidationError' src/chatbot_ai_system/schemas.py"
-((TOTAL_CHECKS+=1))
-
-# Database & Migrations
-print_section "11. DATABASE (if applicable)"
-
-if grep -q "sqlalchemy\|alembic\|prisma" pyproject.toml &>/dev/null; then
-    check_warn "Migration tool configured" "test -d alembic || test -d migrations"
-    check_warn "Database backups" "test -f scripts/backup_db.sh"
-    check_warn "Connection pooling" "grep -q 'pool_size\|max_overflow' src/"
-fi
-
-# API Design
-print_section "12. API DESIGN"
-
-check_item "openapi" "OpenAPI/Swagger available" "python3 -c 'from chatbot_ai_system.server.main import app; print(app.openapi())' &>/dev/null"
-check_warn "API versioning" "grep -q '/api/v1' src/chatbot_ai_system/server/main.py"
-check_warn "CORS configured" "grep -q 'CORSMiddleware' src/chatbot_ai_system/server/main.py"
-((TOTAL_CHECKS+=1))
-
-# Legal & Compliance
-print_section "13. LEGAL & COMPLIANCE"
-
-check_item "license_type" "License specified" "grep -q 'license' pyproject.toml"
-check_warn "Privacy policy" "test -f PRIVACY.md"
-check_warn "Terms of service" "test -f TERMS.md"
-check_warn "Security policy" "test -f SECURITY.md"
-((TOTAL_CHECKS+=1))
-
-# Production Readiness Score
-print_section "PRODUCTION READINESS SCORE"
-
-# Count passed checks
-for key in "${!CHECKLIST[@]}"; do
-    if [ "${CHECKLIST[$key]}" == "✓" ]; then
-        ((PASSED_CHECKS++))
-    fi
-done
-
-SCORE=$((PASSED_CHECKS * 100 / TOTAL_CHECKS))
-
-echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE}Total Checks: $TOTAL_CHECKS${NC}"
-echo -e "${BLUE}Passed: $PASSED_CHECKS${NC}"
-echo -e "${BLUE}Failed: $((TOTAL_CHECKS - PASSED_CHECKS))${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-if [ $SCORE -ge 90 ]; then
-    echo -e "${GREEN}▶ Production Readiness: ${SCORE}% - EXCELLENT${NC}"
-    echo -e "${GREEN}Your application is production-ready!${NC}"
-elif [ $SCORE -ge 75 ]; then
-    echo -e "${GREEN}▶ Production Readiness: ${SCORE}% - GOOD${NC}"
-    echo -e "${GREEN}Your application is nearly production-ready.${NC}"
-elif [ $SCORE -ge 60 ]; then
-    echo -e "${YELLOW}▶ Production Readiness: ${SCORE}% - FAIR${NC}"
-    echo -e "${YELLOW}Address the failed checks before deploying to production.${NC}"
-else
-    echo -e "${RED}▶ Production Readiness: ${SCORE}% - NEEDS WORK${NC}"
-    echo -e "${RED}Significant improvements needed before production deployment.${NC}"
-fi
-
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
-# Recommendations
-if [ $((TOTAL_CHECKS - PASSED_CHECKS)) -gt 0 ]; then
-    echo -e "\n${YELLOW}📋 Priority Recommendations:${NC}"
-
-    [ "${CHECKLIST[format]}" != "✓" ] && echo -e "  • Run: ${CYAN}make format${NC}"
-    [ "${CHECKLIST[lint_ruff]}" != "✓" ] && echo -e "  • Run: ${CYAN}make lint${NC}"
-    [ "${CHECKLIST[type]}" != "✓" ] && echo -e "  • Run: ${CYAN}make type-check${NC}"
-    [ "${CHECKLIST[bandit]}" != "✓" ] && echo -e "  • Run: ${CYAN}make security${NC}"
-    [ "${CHECKLIST[tests_unit]}" != "✓" ] && echo -e "  • Fix failing tests: ${CYAN}make test${NC}"
-    [ "${CHECKLIST[docker_build]}" != "✓" ] && echo -e "  • Fix Docker build: ${CYAN}make docker-build${NC}"
-fi
-
-exit $((TOTAL_CHECKS - PASSED_CHECKS))

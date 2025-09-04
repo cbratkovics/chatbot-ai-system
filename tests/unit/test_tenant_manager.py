@@ -50,6 +50,9 @@ class TestTenantManager:
 
         manager = TenantManager(db=mock_database)
 
+        # Create the tenant first
+        await manager.create_tenant(tenant_config)
+
         updates = {"tier": "premium", "status": "active"}
         updated = await manager.update_tenant(tenant_config["tenant_id"], updates)
 

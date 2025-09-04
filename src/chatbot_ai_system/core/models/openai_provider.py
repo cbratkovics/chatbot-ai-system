@@ -76,6 +76,9 @@ class OpenAIProvider:
             if request.get("stream"):
                 return response
 
+            # Check if response is already a dict (e.g., from mock)
+            if isinstance(response, dict):
+                return response
             return response.model_dump()
 
         except Exception as e:
@@ -98,7 +101,11 @@ class OpenAIProvider:
         stream = await self.chat_completion(request)
 
         async for chunk in stream:
-            yield chunk.model_dump()
+            # Check if chunk is already a dict (e.g., from mock)
+            if isinstance(chunk, dict):
+                yield chunk
+            else:
+                yield chunk.model_dump()
 
     async def chat_completion_with_retry(self, request: dict[str, Any]) -> dict[str, Any]:
         """Chat completion with retry logic.

@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from fastapi import HTTPException, Request
 
-from chatbot_ai_system.config import settings
+from chatbot_ai_system.config.settings import settings
 
 
 class RateLimiter:

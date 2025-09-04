@@ -56,7 +56,7 @@ class FallbackHandler:
 
         if not self._is_circuit_open():
             try:
-                response = await self._try_primary(request)
+                response = await self.primary.chat_completion(request)
                 self._reset_circuit()
                 return response
             except Exception as e:
@@ -78,6 +78,17 @@ class FallbackHandler:
             raise
 
     async def _try_primary(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Try primary provider with retries.
+
+        Args:
+            request: Chat request
+
+        Returns:
+            Response from primary provider
+        """
+        return await self.primary.chat_completion(request)
+
+    async def _try_primary_with_retries(self, request: dict[str, Any]) -> dict[str, Any]:
         """Try primary provider with retries.
 
         Args:

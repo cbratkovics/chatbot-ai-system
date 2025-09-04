@@ -43,6 +43,9 @@ aioredis = "^2.0.1"
 prometheus-client = "^0.22.1"
 structlog = "^25.4.0"
 alembic = "^1.16.5"
+tiktoken = "^0.11.0"
+aiosqlite = "^0.21.0"
+asyncpg = "^0.29.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
@@ -71,5 +74,13 @@ ignore = ["E501", "E402", "F401", "F841"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
+minversion = "7.0"
 testpaths = ["tests"]
-addopts = "-v --tb=short"
+addopts = "-v --strict-markers --tb=short"
+markers = [
+    "unit: Unit tests (fast)",
+    "integration: Integration tests (requires services)",
+    "e2e: End-to-end tests (full stack)",
+    "benchmark: Performance benchmarks",
+]
+asyncio_mode = "auto"

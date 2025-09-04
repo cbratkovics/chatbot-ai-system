@@ -3,12 +3,12 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..app.config import settings
+from ..config.settings import settings
 
 # Create engine
 engine = create_engine(
     settings.database_url,
-    echo=settings.database_echo,
+    echo=settings.is_development,  # Use development flag for echo
     pool_size=20,
     max_overflow=40,
     pool_pre_ping=True,

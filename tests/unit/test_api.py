@@ -93,7 +93,7 @@ class TestSDK:
         # Create a mock response
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = lambda: {"status": "healthy", "version": "0.1.0"}
+        mock_response.json = lambda: {"status": "healthy", "version": "1.0.0"}
         mock_response.raise_for_status = MagicMock()
 
         # Patch the client's get method

@@ -2,7 +2,7 @@
 
 import pytest
 
-from chatbot_ai_system.config import Settings
+from chatbot_ai_system.config.settings import Settings
 
 
 def test_default_settings():

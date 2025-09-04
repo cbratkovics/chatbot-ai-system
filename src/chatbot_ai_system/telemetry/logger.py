@@ -11,7 +11,7 @@ import orjson
 import structlog
 from structlog.processors import CallsiteParameter
 
-from chatbot_ai_system.config import settings
+from chatbot_ai_system.config.settings import settings
 
 # Context variables for request tracking
 request_id_var: ContextVar[str] = ContextVar("request_id", default="")

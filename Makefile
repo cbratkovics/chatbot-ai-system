@@ -136,4 +136,12 @@ pre-commit: format lint type-check security test ## Run all pre-commit checks
 
 ci: lint test build docker-build ## Run CI pipeline locally
 
+evidence: ## Generate all performance evidence
+	@echo "$(GREEN)Generating performance evidence...$(NC)"
+	@$(POETRY) run python benchmarks/run_all_benchmarks.py
+	@echo "$(GREEN)Evidence files generated in benchmarks/results/$(NC)"
+	@ls -la benchmarks/results/*.json
+
+benchmark: evidence ## Run benchmarks (alias for evidence)
+
 .DEFAULT_GOAL := help

@@ -41,6 +41,8 @@ typer = "^0.17.3"
 orjson = "^3.11.3"
 aioredis = "^2.0.1"
 prometheus-client = "^0.22.1"
+structlog = "^25.4.0"
+alembic = "^1.16.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"

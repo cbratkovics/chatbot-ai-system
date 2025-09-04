@@ -4,7 +4,7 @@
 def test_import_api():
     """Test that API modules can be imported."""
     try:
-        from api.app import main
+        from chatbot_ai_system.app import main
 
         assert main is not None
     except ImportError:

@@ -11,7 +11,7 @@ class TestModelFactory:
     @pytest.mark.asyncio
     async def test_factory_initialization(self):
         """Test model factory initialization."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
         assert factory.providers is not None
@@ -22,7 +22,7 @@ class TestModelFactory:
     @pytest.mark.asyncio
     async def test_provider_registration(self):
         """Test registering new provider."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
         mock_provider = MagicMock()
@@ -34,7 +34,7 @@ class TestModelFactory:
     @pytest.mark.asyncio
     async def test_provider_selection(self):
         """Test provider selection logic."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
 
@@ -50,7 +50,7 @@ class TestModelFactory:
     @pytest.mark.asyncio
     async def test_model_switching(self):
         """Test dynamic model switching."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
 
@@ -64,7 +64,7 @@ class TestModelFactory:
     @pytest.mark.asyncio
     async def test_provider_health_check(self):
         """Test provider health check."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
 
@@ -75,7 +75,7 @@ class TestModelFactory:
     @pytest.mark.asyncio
     async def test_load_balancing(self):
         """Test load balancing across providers."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory(load_balancing=True)
 
@@ -93,7 +93,7 @@ class TestOpenAIProvider:
     @pytest.mark.asyncio
     async def test_provider_initialization(self, mock_openai_client):
         """Test OpenAI provider initialization."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         provider = OpenAIProvider(client=mock_openai_client)
         assert provider.client == mock_openai_client
@@ -105,7 +105,7 @@ class TestOpenAIProvider:
         self, mock_openai_client, sample_chat_request, sample_chat_response
     ):
         """Test chat completion request."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         mock_openai_client.chat.completions.create.return_value = sample_chat_response
 
@@ -118,7 +118,7 @@ class TestOpenAIProvider:
     @pytest.mark.asyncio
     async def test_streaming_completion(self, mock_openai_client, mock_stream_response):
         """Test streaming completion."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         mock_openai_client.chat.completions.create.return_value = mock_stream_response()
 
@@ -134,7 +134,7 @@ class TestOpenAIProvider:
     @pytest.mark.asyncio
     async def test_retry_logic(self, mock_openai_client):
         """Test retry logic on failure."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         mock_openai_client.chat.completions.create.side_effect = [
             ConnectionError("Network error"),
@@ -151,7 +151,7 @@ class TestOpenAIProvider:
     @pytest.mark.asyncio
     async def test_token_counting(self, mock_openai_client):
         """Test token counting."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         provider = OpenAIProvider(client=mock_openai_client)
 
@@ -164,7 +164,7 @@ class TestOpenAIProvider:
     @pytest.mark.asyncio
     async def test_error_handling(self, mock_openai_client):
         """Test error handling."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         mock_openai_client.chat.completions.create.side_effect = ValueError("Invalid request")
 
@@ -176,7 +176,7 @@ class TestOpenAIProvider:
     @pytest.mark.asyncio
     async def test_model_validation(self, mock_openai_client):
         """Test model validation."""
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         provider = OpenAIProvider(client=mock_openai_client)
 
@@ -191,7 +191,7 @@ class TestAnthropicProvider:
     @pytest.mark.asyncio
     async def test_provider_initialization(self, mock_anthropic_client):
         """Test Anthropic provider initialization."""
-        from api.core.models.anthropic_provider import AnthropicProvider
+        from chatbot_ai_system.core.models.anthropic_provider import AnthropicProvider
 
         provider = AnthropicProvider(client=mock_anthropic_client)
         assert provider.client == mock_anthropic_client
@@ -201,7 +201,7 @@ class TestAnthropicProvider:
     @pytest.mark.asyncio
     async def test_message_formatting(self, mock_anthropic_client):
         """Test message formatting for Anthropic API."""
-        from api.core.models.anthropic_provider import AnthropicProvider
+        from chatbot_ai_system.core.models.anthropic_provider import AnthropicProvider
 
         provider = AnthropicProvider(client=mock_anthropic_client)
 
@@ -219,7 +219,7 @@ class TestAnthropicProvider:
     @pytest.mark.asyncio
     async def test_chat_completion(self, mock_anthropic_client):
         """Test chat completion with Anthropic."""
-        from api.core.models.anthropic_provider import AnthropicProvider
+        from chatbot_ai_system.core.models.anthropic_provider import AnthropicProvider
 
         mock_response = {
             "id": "test-id",
@@ -239,7 +239,7 @@ class TestAnthropicProvider:
     @pytest.mark.asyncio
     async def test_streaming_support(self, mock_anthropic_client):
         """Test streaming support for Anthropic."""
-        from api.core.models.anthropic_provider import AnthropicProvider
+        from chatbot_ai_system.core.models.anthropic_provider import AnthropicProvider
 
         async def mock_stream():
             chunks = ["Hello", " from", " Claude"]
@@ -264,7 +264,7 @@ class TestFallbackHandler:
     @pytest.mark.asyncio
     async def test_fallback_initialization(self):
         """Test fallback handler initialization."""
-        from api.core.models.fallback_handler import FallbackHandler
+        from chatbot_ai_system.core.models.fallback_handler import FallbackHandler
 
         primary = MagicMock()
         secondary = MagicMock()
@@ -277,7 +277,7 @@ class TestFallbackHandler:
     @pytest.mark.asyncio
     async def test_automatic_failover(self):
         """Test automatic failover to secondary provider."""
-        from api.core.models.fallback_handler import FallbackHandler
+        from chatbot_ai_system.core.models.fallback_handler import FallbackHandler
 
         primary = AsyncMock()
         primary.chat_completion.side_effect = ConnectionError("Primary failed")
@@ -295,7 +295,7 @@ class TestFallbackHandler:
     @pytest.mark.asyncio
     async def test_circuit_breaker(self):
         """Test circuit breaker pattern."""
-        from api.core.models.fallback_handler import FallbackHandler
+        from chatbot_ai_system.core.models.fallback_handler import FallbackHandler
 
         primary = AsyncMock()
         primary.chat_completion.side_effect = ConnectionError("Primary failed")
@@ -314,7 +314,7 @@ class TestFallbackHandler:
     @pytest.mark.asyncio
     async def test_health_monitoring(self):
         """Test provider health monitoring."""
-        from api.core.models.fallback_handler import FallbackHandler
+        from chatbot_ai_system.core.models.fallback_handler import FallbackHandler
 
         primary = AsyncMock()
         primary.health_check.return_value = False
@@ -330,7 +330,7 @@ class TestFallbackHandler:
     @pytest.mark.asyncio
     async def test_fallback_metrics(self, mock_metrics_collector):
         """Test fallback metrics collection."""
-        from api.core.models.fallback_handler import FallbackHandler
+        from chatbot_ai_system.core.models.fallback_handler import FallbackHandler
 
         primary = AsyncMock()
         primary.chat_completion.side_effect = ConnectionError("Failed")

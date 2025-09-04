@@ -12,7 +12,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_service_initialization(self):
         """Test auth service initialization."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
         assert service.secret_key == "test-secret"
@@ -22,7 +22,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_token_generation(self):
         """Test JWT token generation."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -39,7 +39,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_token_validation(self):
         """Test JWT token validation."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -53,7 +53,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_expired_token_handling(self):
         """Test expired token handling."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -68,7 +68,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_invalid_token_handling(self):
         """Test invalid token handling."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -81,7 +81,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_api_key_generation(self):
         """Test API key generation."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -94,7 +94,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_api_key_validation(self, mock_database):
         """Test API key validation."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         mock_database.execute.return_value.scalar_one_or_none.return_value = {
             "key": "test-api-key",
@@ -111,7 +111,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_permission_checking(self):
         """Test permission checking."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -127,7 +127,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_role_based_access(self):
         """Test role-based access control."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -139,7 +139,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_token_refresh(self):
         """Test token refresh mechanism."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -155,7 +155,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_token_revocation(self, mock_redis):
         """Test token revocation."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret", redis_client=mock_redis)
 
@@ -170,7 +170,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_session_management(self, mock_redis):
         """Test session management."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret", redis_client=mock_redis)
 
@@ -186,7 +186,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_mfa_token_generation(self):
         """Test MFA token generation."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 
@@ -197,7 +197,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_mfa_verification(self, mock_redis):
         """Test MFA verification."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         mock_redis.get.return_value = "123456"
 
@@ -210,7 +210,7 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_oauth_token_exchange(self):
         """Test OAuth token exchange."""
-        from api.core.auth.auth_service import AuthService
+        from chatbot_ai_system.core.auth.auth_service import AuthService
 
         service = AuthService(secret_key="test-secret")
 

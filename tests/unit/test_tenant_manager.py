@@ -11,7 +11,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_manager_initialization(self, mock_database):
         """Test tenant manager initialization."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
         assert manager.db == mock_database
@@ -20,7 +20,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_creation(self, mock_database, tenant_config):
         """Test creating new tenant."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
         tenant = await manager.create_tenant(tenant_config)
@@ -33,7 +33,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_retrieval(self, mock_database, tenant_config):
         """Test retrieving tenant by ID."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         mock_database.execute.return_value.scalar_one_or_none.return_value = tenant_config
 
@@ -46,7 +46,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_update(self, mock_database, tenant_config):
         """Test updating tenant configuration."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -59,7 +59,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_deletion(self, mock_database):
         """Test tenant deletion."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
         result = await manager.delete_tenant("tenant123")
@@ -71,7 +71,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_isolation(self, mock_database):
         """Test tenant data isolation."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -83,7 +83,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_quota_enforcement(self, mock_database, tenant_config):
         """Test tenant quota enforcement."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -97,7 +97,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_feature_flags(self, mock_database, tenant_config):
         """Test tenant feature flag management."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -108,7 +108,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_usage_tracking(self, mock_database):
         """Test tenant usage tracking."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -120,7 +120,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_billing_calculation(self, mock_database):
         """Test tenant billing calculation."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -136,7 +136,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_migration(self, mock_database):
         """Test tenant migration between tiers."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -150,7 +150,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_multi_tenant_query_filtering(self, mock_database):
         """Test multi-tenant query filtering."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -162,7 +162,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_backup(self, mock_database):
         """Test tenant data backup."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 
@@ -175,7 +175,7 @@ class TestTenantManager:
     @pytest.mark.asyncio
     async def test_tenant_restore(self, mock_database):
         """Test tenant data restoration."""
-        from api.core.tenancy.tenant_manager import TenantManager
+        from chatbot_ai_system.core.tenancy.tenant_manager import TenantManager
 
         manager = TenantManager(db=mock_database)
 

@@ -19,7 +19,7 @@ class TestFailoverScenarios:
             headers = {"Authorization": "Bearer test-token"}
 
             with patch(
-                "api.core.models.openai_provider.OpenAIProvider.chat_completion"
+                "chatbot_ai_system.core.models.openai_provider.OpenAIProvider.chat_completion"
             ) as mock_openai:
                 mock_openai.side_effect = ConnectionError("OpenAI API unavailable")
 
@@ -41,7 +41,7 @@ class TestFailoverScenarios:
         async with AsyncClient(base_url="http://localhost:8000") as client:
             headers = {"Authorization": "Bearer test-token"}
 
-            with patch("api.database.primary_connection") as mock_primary:
+            with patch("chatbot_ai_system.database.primary_connection") as mock_primary:
                 mock_primary.execute.side_effect = ConnectionError("Primary DB down")
 
                 response = await client.get("/api/v1/chat/history", headers=headers)
@@ -67,7 +67,7 @@ class TestFailoverScenarios:
         async with AsyncClient(base_url="http://localhost:8000") as client:
             headers = {"Authorization": "Bearer test-token"}
 
-            with patch("api.core.cache.redis_client") as mock_redis:
+            with patch("chatbot_ai_system.core.cache.redis_client") as mock_redis:
                 mock_redis.get.side_effect = ConnectionError("Redis unavailable")
 
                 response = await client.post(
@@ -92,7 +92,7 @@ class TestFailoverScenarios:
 
             for i in range(20):
                 with patch(
-                    "api.core.models.openai_provider.OpenAIProvider.chat_completion"
+                    "chatbot_ai_system.core.models.openai_provider.OpenAIProvider.chat_completion"
                 ) as mock:
                     if i < 5:
                         mock.side_effect = ConnectionError("Service unavailable")
@@ -125,7 +125,7 @@ class TestFailoverScenarios:
             services_to_fail = ["cache", "analytics", "advanced_features"]
 
             for service in services_to_fail:
-                with patch(f"api.services.{service}.available") as mock_service:
+                with patch(f"chatbot_ai_system.services.{service}.available") as mock_service:
                     mock_service.return_value = False
 
                     response = await client.post(
@@ -182,7 +182,7 @@ class TestFailoverScenarios:
 
             attempt_times = []
 
-            with patch("api.core.models.openai_provider.OpenAIProvider.chat_completion") as mock:
+            with patch("chatbot_ai_system.core.models.openai_provider.OpenAIProvider.chat_completion") as mock:
                 mock.side_effect = [
                     ConnectionError("Attempt 1 failed"),
                     ConnectionError("Attempt 2 failed"),
@@ -210,7 +210,7 @@ class TestFailoverScenarios:
             assert healthy_response.status_code == 200
             assert healthy_response.json()["status"] == "healthy"
 
-            with patch("api.database.health_check") as mock_db_health:
+            with patch("chatbot_ai_system.database.health_check") as mock_db_health:
                 mock_db_health.return_value = False
 
                 unhealthy_response = await client.get("/health")
@@ -245,7 +245,7 @@ class TestFailoverScenarios:
                 )
 
                 if i == 5:
-                    with patch("api.database.primary_connection") as mock_primary:
+                    with patch("chatbot_ai_system.database.primary_connection") as mock_primary:
                         mock_primary.execute.side_effect = ConnectionError("DB failover")
                         await asyncio.sleep(2)
 
@@ -289,7 +289,7 @@ class TestFailoverScenarios:
         response = await websocket.recv()
         assert json.loads(response)["type"] == "pong"
 
-        with patch("api.websocket.force_disconnect") as mock_disconnect:
+        with patch("chatbot_ai_system.websocket.force_disconnect") as mock_disconnect:
             mock_disconnect.return_value = True
             await asyncio.sleep(1)
 
@@ -304,12 +304,12 @@ class TestFailoverScenarios:
             headers = {"Authorization": "Bearer test-token"}
 
             with patch(
-                "api.core.models.openai_provider.OpenAIProvider.chat_completion"
+                "chatbot_ai_system.core.models.openai_provider.OpenAIProvider.chat_completion"
             ) as mock_openai:
                 mock_openai.side_effect = ConnectionError("OpenAI down")
 
                 with patch(
-                    "api.core.models.anthropic_provider.AnthropicProvider.chat_completion"
+                    "chatbot_ai_system.core.models.anthropic_provider.AnthropicProvider.chat_completion"
                 ) as mock_anthropic:
                     mock_anthropic.side_effect = ConnectionError("Anthropic down")
 

@@ -13,7 +13,7 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_database_connection_pool(self):
         """Test database connection pooling."""
-        from api.database import get_async_engine
+        from chatbot_ai_system.database import get_async_engine
 
         engine = get_async_engine(
             url="postgresql+asyncpg://test:test@localhost:5432/test", pool_size=10, max_overflow=5
@@ -30,7 +30,7 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_transaction_rollback(self, mock_database):
         """Test transaction rollback on error."""
-        from api.models import Chat, User
+        from chatbot_ai_system.models import Chat, User
 
         async with mock_database.begin():
             try:
@@ -51,7 +51,7 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_concurrent_database_writes(self, mock_database):
         """Test concurrent database write operations."""
-        from api.models import Chat
+        from chatbot_ai_system.models import Chat
 
         async def create_chat(session, chat_id):
             chat = Chat(
@@ -73,7 +73,7 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_database_query_optimization(self, mock_database):
         """Test database query optimization."""
-        from api.models import User
+        from chatbot_ai_system.models import User
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
 
@@ -106,7 +106,7 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_database_backup_restore(self, mock_database):
         """Test database backup and restore."""
-        from api.utils.database_backup import backup_database, restore_database
+        from chatbot_ai_system.utils.database_backup import backup_database, restore_database
 
         backup_data = await backup_database(mock_database)
         assert "timestamp" in backup_data
@@ -120,7 +120,7 @@ class TestDatabaseOperations:
         """Test database indexing performance."""
         import time
 
-        from api.models import Chat
+        from chatbot_ai_system.models import Chat
         from sqlalchemy import select
 
         query_with_index = select(Chat).where(
@@ -148,9 +148,9 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_database_connection_retry(self):
         """Test database connection retry logic."""
-        from api.database import create_database_connection
+        from chatbot_ai_system.database import create_database_connection
 
-        with patch("api.database.create_async_engine") as mock_engine:
+        with patch("chatbot_ai_system.database.create_async_engine") as mock_engine:
             mock_engine.side_effect = [
                 ConnectionError("Connection failed"),
                 ConnectionError("Connection failed"),
@@ -164,7 +164,7 @@ class TestDatabaseOperations:
     @pytest.mark.asyncio
     async def test_database_read_replica(self):
         """Test read replica routing."""
-        from api.database import get_read_replica_session
+        from chatbot_ai_system.database import get_read_replica_session
 
         primary_url = "postgresql://primary:5432/db"
         replica_url = "postgresql://replica:5432/db"

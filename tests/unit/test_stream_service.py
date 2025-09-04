@@ -11,7 +11,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connection_pool_initialization(self):
         """Test WebSocket connection pool initialization."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager(max_connections=100)
         assert manager.max_connections == 100
@@ -21,7 +21,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connection_accept(self, mock_websocket):
         """Test accepting WebSocket connection."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager()
         connection_id = await manager.accept_connection(mock_websocket, "user123")
@@ -34,7 +34,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connection_limit(self, mock_websocket):
         """Test connection pool limit enforcement."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager(max_connections=2)
 
@@ -47,7 +47,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_broadcast_message(self, mock_websocket):
         """Test broadcasting message to all connections."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager()
 
@@ -62,7 +62,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_send_to_user(self, mock_websocket):
         """Test sending message to specific user."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager()
         connection_id = await manager.accept_connection(mock_websocket, "user123")
@@ -75,7 +75,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connection_heartbeat(self, mock_websocket):
         """Test connection heartbeat mechanism."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager(heartbeat_interval=1)
         connection_id = await manager.accept_connection(mock_websocket, "user123")
@@ -91,7 +91,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connection_cleanup(self, mock_websocket):
         """Test connection cleanup on disconnect."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager()
         connection_id = await manager.accept_connection(mock_websocket, "user123")
@@ -104,7 +104,7 @@ class TestWebSocketManager:
     @pytest.mark.asyncio
     async def test_connection_recovery(self, mock_websocket):
         """Test connection recovery after failure."""
-        from api.core.streaming.websocket_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         manager = WebSocketManager()
         connection_id = await manager.accept_connection(mock_websocket, "user123")
@@ -124,7 +124,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_sse_stream_generation(self):
         """Test Server-Sent Events stream generation."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler()
 
@@ -146,7 +146,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_chunked_response_handling(self):
         """Test chunked response handling."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler()
 
@@ -159,7 +159,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_stream_with_timeout(self):
         """Test stream with timeout handling."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler()
 
@@ -174,7 +174,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_stream_error_handling(self):
         """Test stream error handling."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler()
 
@@ -197,7 +197,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_stream_buffering(self):
         """Test stream buffering mechanism."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler(buffer_size=3)
 
@@ -219,7 +219,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_stream_compression(self):
         """Test stream compression."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler()
 
@@ -238,7 +238,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_stream_rate_limiting(self):
         """Test stream rate limiting."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler()
 
@@ -260,7 +260,7 @@ class TestStreamHandler:
     @pytest.mark.asyncio
     async def test_stream_metrics_collection(self, mock_metrics_collector):
         """Test stream metrics collection."""
-        from api.core.streaming.stream_handler import StreamHandler
+        from chatbot_ai_system.core.streaming.stream_handler import StreamHandler
 
         handler = StreamHandler(metrics_collector=mock_metrics_collector)
 

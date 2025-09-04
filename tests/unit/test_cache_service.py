@@ -14,7 +14,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_initialization(self, mock_redis, cache_config):
         """Test cache service initialization."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
         assert cache.redis_client == mock_redis
@@ -24,9 +24,9 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_embedding_generation(self, mock_redis, cache_config):
         """Test embedding generation for cache keys."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
-        with patch("api.core.cache.semantic_cache.generate_embedding") as mock_embed:
+        with patch("chatbot_ai_system.core.cache.semantic_cache.generate_embedding") as mock_embed:
             mock_embed.return_value = np.random.rand(1536).tolist()
 
             cache = SemanticCache(redis_client=mock_redis, config=cache_config)
@@ -39,7 +39,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_similarity_calculation(self, mock_redis, cache_config):
         """Test cosine similarity calculation."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
 
@@ -55,7 +55,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_hit(self, mock_redis, cache_config, sample_chat_response):
         """Test cache hit scenario."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cached_data = {
             "embedding": np.random.rand(1536).tolist(),
@@ -65,7 +65,7 @@ class TestSemanticCache:
 
         mock_redis.zrange.return_value = [json.dumps(cached_data).encode()]
 
-        with patch("api.core.cache.semantic_cache.generate_embedding") as mock_embed:
+        with patch("chatbot_ai_system.core.cache.semantic_cache.generate_embedding") as mock_embed:
             mock_embed.return_value = cached_data["embedding"]
 
             cache = SemanticCache(redis_client=mock_redis, config=cache_config)
@@ -77,11 +77,11 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_miss(self, mock_redis, cache_config):
         """Test cache miss scenario."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         mock_redis.zrange.return_value = []
 
-        with patch("api.core.cache.semantic_cache.generate_embedding") as mock_embed:
+        with patch("chatbot_ai_system.core.cache.semantic_cache.generate_embedding") as mock_embed:
             mock_embed.return_value = np.random.rand(1536).tolist()
 
             cache = SemanticCache(redis_client=mock_redis, config=cache_config)
@@ -92,9 +92,9 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_set(self, mock_redis, cache_config, sample_chat_response):
         """Test setting cache entry."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
-        with patch("api.core.cache.semantic_cache.generate_embedding") as mock_embed:
+        with patch("chatbot_ai_system.core.cache.semantic_cache.generate_embedding") as mock_embed:
             mock_embed.return_value = np.random.rand(1536).tolist()
 
             cache = SemanticCache(redis_client=mock_redis, config=cache_config)
@@ -106,7 +106,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_invalidation(self, mock_redis, cache_config):
         """Test cache invalidation."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
         await cache.invalidate("test_key")
@@ -116,7 +116,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_ttl_management(self, mock_redis, cache_config):
         """Test TTL management for cache entries."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         mock_redis.ttl.return_value = 1800
 
@@ -129,7 +129,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_size_limit(self, mock_redis, cache_config):
         """Test cache size limit enforcement."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
         cache.max_size_mb = 1
@@ -142,7 +142,7 @@ class TestSemanticCache:
     @pytest.mark.asyncio
     async def test_batch_cache_operations(self, mock_redis, cache_config):
         """Test batch cache operations."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
 
@@ -161,7 +161,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_manager_initialization(self, mock_redis):
         """Test cache manager initialization."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
         assert manager.redis_client == mock_redis
@@ -170,7 +170,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_cache_strategy_selection(self, mock_redis):
         """Test cache strategy selection."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
 
@@ -183,7 +183,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_cache_warmup(self, mock_redis):
         """Test cache warmup process."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
 
@@ -198,7 +198,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_cache_statistics(self, mock_redis):
         """Test cache statistics collection."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         mock_redis.info.return_value = {
             "used_memory": 1024000,
@@ -216,7 +216,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_cache_clear(self, mock_redis):
         """Test cache clearing."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
         await manager.clear_all()
@@ -226,7 +226,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_cache_backup(self, mock_redis):
         """Test cache backup functionality."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         mock_redis.bgsave.return_value = True
 
@@ -239,7 +239,7 @@ class TestCacheManager:
     @pytest.mark.asyncio
     async def test_cache_restore(self, mock_redis):
         """Test cache restore functionality."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         backup_data = {"key1": "value1", "key2": "value2"}
 

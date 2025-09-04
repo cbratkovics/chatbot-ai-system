@@ -12,7 +12,7 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_openai_to_anthropic_switch(self, sample_chat_request):
         """Test switching from OpenAI to Anthropic model."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
 
@@ -27,9 +27,9 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_automatic_failover(self, sample_chat_request):
         """Test automatic failover when primary model fails."""
-        from api.core.models.anthropic_provider import AnthropicProvider
-        from api.core.models.fallback_handler import FallbackHandler
-        from api.core.models.openai_provider import OpenAIProvider
+        from chatbot_ai_system.core.models.anthropic_provider import AnthropicProvider
+        from chatbot_ai_system.core.models.fallback_handler import FallbackHandler
+        from chatbot_ai_system.core.models.openai_provider import OpenAIProvider
 
         primary = OpenAIProvider()
         secondary = AnthropicProvider()
@@ -48,7 +48,7 @@ class TestModelSwitching:
         """Test performance comparison between models."""
         import time
 
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
         models = ["gpt-4", "claude-3-opus", "gpt-3.5-turbo"]
@@ -72,7 +72,7 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_concurrent_model_requests(self, sample_chat_request):
         """Test concurrent requests to different models."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
 
@@ -92,7 +92,7 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_model_context_preservation(self, sample_chat_request):
         """Test context preservation across model switches."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
         session_id = "session123"
@@ -126,7 +126,7 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_model_cost_optimization(self, sample_chat_request):
         """Test cost optimization through model selection."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory(cost_optimization=True)
 
@@ -140,7 +140,7 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_model_capability_routing(self, sample_chat_request):
         """Test routing based on model capabilities."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory()
 
@@ -165,7 +165,7 @@ class TestModelSwitching:
     @pytest.mark.asyncio
     async def test_model_load_balancing(self):
         """Test load balancing across model providers."""
-        from api.core.models.model_factory import ModelFactory
+        from chatbot_ai_system.core.models.model_factory import ModelFactory
 
         factory = ModelFactory(load_balancing=True)
 

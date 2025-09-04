@@ -1,3 +1,44 @@
+#!/bin/bash
+
+# Install pydantic-settings
+poetry add pydantic-settings
+
+# Fix all settings imports
+find . -name "*.py" -type f -exec sed -i '' 's/from pydantic import BaseSettings/from pydantic_settings import BaseSettings/g' {} \;
+
+# Fix the specific settings.py file
+cat > src/chatbot_ai_system/config/settings.py << 'EOF'
+"""Settings configuration"""
+from typing import Optional
+from pydantic import Field
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    """Application settings"""
+    app_name: str = "AI Chatbot System"
+    version: str = "1.0.0"
+    api_base_url: Optional[str] = Field(default="http://localhost:8000", env="API_BASE_URL")
+
+    # API Keys
+    openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
+    anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
+
+    # Database
+    database_url: str = Field(
+        default="postgresql://user:pass@localhost/chatbot",
+        env="DATABASE_URL"
+    )
+
+    # Redis
+    redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+EOF
+
+# Fix other config.py files that might have the same issue
+cat > src/chatbot_ai_system/config.py << 'EOF'
 """Configuration management for the chatbot system."""
 
 from functools import lru_cache
@@ -68,3 +109,13 @@ def get_settings() -> Settings:
 
 # Create a global settings instance
 settings = get_settings()
+EOF
+
+echo "Fixes applied! Running tests..."
+poetry run pytest tests/test_basic.py tests/test_simple.py tests/unit/test_basic.py -v
+
+echo ""
+echo "If tests pass, run:"
+echo "git add -A"
+echo "git commit -m 'fix: update to pydantic-settings for Pydantic v2 compatibility'"
+echo "git push origin main"

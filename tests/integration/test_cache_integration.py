@@ -13,7 +13,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_semantic_cache_hit(self, mock_redis, sample_chat_response):
         """Test semantic cache hit for similar queries."""
-        from api.core.cache.semantic_cache import SemanticCache
+        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         cache = SemanticCache(redis_client=mock_redis)
 
@@ -33,7 +33,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_ttl_expiration(self, mock_redis, sample_chat_response):
         """Test cache TTL expiration."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis, ttl_seconds=1)
 
@@ -50,7 +50,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_invalidation_on_update(self, mock_redis):
         """Test cache invalidation when data is updated."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
 
@@ -64,7 +64,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_performance_metrics(self, mock_redis, mock_metrics_collector):
         """Test cache performance metrics collection."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis, metrics_collector=mock_metrics_collector)
 
@@ -85,7 +85,7 @@ class TestCacheIntegration:
     async def test_distributed_cache_consistency(self):
         """Test distributed cache consistency across instances."""
         import redis.asyncio as aioredis
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         redis1 = await aioredis.create_redis_pool("redis://localhost:6379/0")
         redis2 = await aioredis.create_redis_pool("redis://localhost:6379/0")
@@ -104,7 +104,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_warmup_performance(self, mock_redis):
         """Test cache warmup performance."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
 
@@ -120,7 +120,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_eviction_policy(self, mock_redis):
         """Test cache eviction policy."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis, max_size_mb=1, eviction_policy="lru")
 
@@ -133,7 +133,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_compression(self, mock_redis):
         """Test cache compression for large responses."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis, compression=True)
 
@@ -149,7 +149,7 @@ class TestCacheIntegration:
     @pytest.mark.asyncio
     async def test_cache_batch_operations(self, mock_redis):
         """Test batch cache operations."""
-        from api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         manager = CacheManager(redis_client=mock_redis)
 

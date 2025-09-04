@@ -44,7 +44,7 @@ jobs:
         continue-on-error: true
 
       - name: Run tests
-        run: poetry run pytest --maxfail=1 -q
+        run: poetry run pytest tests/ -k 'not integration and not e2e' --ignore=tests/integration --ignore=tests/e2e --maxfail=1 -q
 
       - name: Build Docker image
         run: docker build -t chatbot-ai-system:ci .

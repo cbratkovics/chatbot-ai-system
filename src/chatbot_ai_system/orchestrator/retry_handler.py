@@ -4,8 +4,13 @@ import asyncio
 from collections.abc import Callable
 from typing import TypeVar
 
-from tenacity import (AsyncRetrying, RetryError, stop_after_attempt,
-                      wait_exponential, wait_random_exponential)
+from tenacity import (
+    AsyncRetrying,
+    RetryError,
+    stop_after_attempt,
+    wait_exponential,
+    wait_random_exponential,
+)
 
 T = TypeVar("T")
 

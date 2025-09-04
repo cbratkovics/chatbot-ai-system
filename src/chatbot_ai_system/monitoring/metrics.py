@@ -10,8 +10,16 @@ from typing import Callable, Optional
 
 from fastapi import Request, Response
 from fastapi.responses import PlainTextResponse
-from prometheus_client import (CONTENT_TYPE_LATEST, REGISTRY, Counter, Gauge,
-                               Histogram, Info, Summary, generate_latest)
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    Summary,
+    generate_latest,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -14,9 +14,15 @@ from ..cache.cache_key_generator import CacheKeyGenerator
 from ..cache.redis_cache import RedisCache
 from ..config import Settings, get_settings
 from ..providers.anthropic_provider import AnthropicProvider
-from ..providers.base import (AuthenticationError, BaseProvider, ChatMessage,
-                              ModelNotFoundError, ProviderError,
-                              RateLimitError, TimeoutError)
+from ..providers.base import (
+    AuthenticationError,
+    BaseProvider,
+    ChatMessage,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
 from ..providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)

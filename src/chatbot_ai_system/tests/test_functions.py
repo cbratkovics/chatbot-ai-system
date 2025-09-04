@@ -1,7 +1,6 @@
 import pytest
 from api.services.functions.base import function_registry
-from api.services.functions.calculator import (CalculatorFunction,
-                                               DataAnalysisFunction)
+from api.services.functions.calculator import CalculatorFunction, DataAnalysisFunction
 from api.services.functions.init_functions import initialize_functions
 
 

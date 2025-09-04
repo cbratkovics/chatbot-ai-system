@@ -26,8 +26,14 @@ class TestPackageStructure:
 
     def test_public_api_exports(self):
         """Test public API exports."""
-        from chatbot_ai_system import (ChatbotClient, Settings, __version__,
-                                       app, settings, start_server)
+        from chatbot_ai_system import (
+            ChatbotClient,
+            Settings,
+            __version__,
+            app,
+            settings,
+            start_server,
+        )
 
         assert __version__
         assert Settings

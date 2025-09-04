@@ -12,9 +12,16 @@ from openai import AuthenticationError as OpenAIAuthError
 from openai import NotFoundError
 from openai import RateLimitError as OpenAIRateLimitError
 
-from .base import (AuthenticationError, BaseProvider, ChatMessage,
-                   ChatResponse, ModelNotFoundError, ProviderError,
-                   RateLimitError, TimeoutError)
+from .base import (
+    AuthenticationError,
+    BaseProvider,
+    ChatMessage,
+    ChatResponse,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
 from .streaming_mixin import StreamingOpenAIMixin
 
 logger = logging.getLogger(__name__)

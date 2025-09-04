@@ -2,8 +2,7 @@
 
 
 from .isolation_manager import CrossTenantValidator, IsolationManager
-from .rate_limiter import (DistributedRateLimiter, TenantRateLimiter,
-                           UsageTracker)
+from .rate_limiter import DistributedRateLimiter, TenantRateLimiter, UsageTracker
 from .tenant_middleware import TenantContextManager, TenantMiddleware
 from .usage_tracker import UsageTracker as BillingUsageTracker
 

@@ -6,8 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
-from prometheus_client import (REGISTRY, Counter, Gauge, Histogram, Info,
-                               Summary, generate_latest)
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, Info, Summary, generate_latest
 
 
 @dataclass

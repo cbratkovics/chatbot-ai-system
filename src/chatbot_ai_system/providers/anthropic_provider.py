@@ -7,15 +7,21 @@ import logging
 import time
 from typing import List, Optional
 
-from anthropic import (APIConnectionError, APIError, APITimeoutError,
-                       AsyncAnthropic)
+from anthropic import APIConnectionError, APIError, APITimeoutError, AsyncAnthropic
 from anthropic import AuthenticationError as AnthropicAuthError
 from anthropic import NotFoundError
 from anthropic import RateLimitError as AnthropicRateLimitError
 
-from .base import (AuthenticationError, BaseProvider, ChatMessage,
-                   ChatResponse, ModelNotFoundError, ProviderError,
-                   RateLimitError, TimeoutError)
+from .base import (
+    AuthenticationError,
+    BaseProvider,
+    ChatMessage,
+    ChatResponse,
+    ModelNotFoundError,
+    ProviderError,
+    RateLimitError,
+    TimeoutError,
+)
 from .streaming_mixin import StreamingAnthropicMixin
 
 logger = logging.getLogger(__name__)

@@ -5,8 +5,14 @@ import logging
 import random
 from collections.abc import AsyncIterator
 
-from .base import (BaseProvider, CompletionRequest, CompletionResponse,
-                   ProviderError, RateLimitError, StreamChunk)
+from .base import (
+    BaseProvider,
+    CompletionRequest,
+    CompletionResponse,
+    ProviderError,
+    RateLimitError,
+    StreamChunk,
+)
 from .circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger(__name__)

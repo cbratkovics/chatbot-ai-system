@@ -8,10 +8,20 @@ from uuid import uuid4
 
 import aiohttp
 
-from .base import (AuthenticationError, BaseProvider, CompletionRequest,
-                   CompletionResponse, ContentFilterError, Message,
-                   ModelNotFoundError, ProviderError, QuotaExceededError,
-                   RateLimitError, StreamChunk, TokenUsage)
+from .base import (
+    AuthenticationError,
+    BaseProvider,
+    CompletionRequest,
+    CompletionResponse,
+    ContentFilterError,
+    Message,
+    ModelNotFoundError,
+    ProviderError,
+    QuotaExceededError,
+    RateLimitError,
+    StreamChunk,
+    TokenUsage,
+)
 
 logger = logging.getLogger(__name__)
 

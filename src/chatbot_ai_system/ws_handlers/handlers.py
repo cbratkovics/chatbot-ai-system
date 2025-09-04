@@ -8,10 +8,19 @@ from api.providers import CompletionRequest
 from api.providers import Message as ProviderMessage
 from api.providers import ProviderError, ProviderOrchestrator
 
-from .events import (AuthFailedEvent, AuthSuccessEvent, ErrorEvent, EventType,
-                     ResponseEvent, StreamChunkEvent, StreamEndEvent,
-                     StreamStartEvent, SystemMessageEvent,
-                     TypingIndicatorEvent, WebSocketEvent)
+from .events import (
+    AuthFailedEvent,
+    AuthSuccessEvent,
+    ErrorEvent,
+    EventType,
+    ResponseEvent,
+    StreamChunkEvent,
+    StreamEndEvent,
+    StreamStartEvent,
+    SystemMessageEvent,
+    TypingIndicatorEvent,
+    WebSocketEvent,
+)
 from .manager import ConnectionManager, WebSocketConnection
 
 logger = logging.getLogger(__name__)

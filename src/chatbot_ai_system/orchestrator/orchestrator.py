@@ -14,9 +14,13 @@ from uuid import UUID
 
 import structlog
 
-from chatbot_ai_system.providers.base import (BaseProvider, CompletionRequest,
-                                              CompletionResponse,
-                                              ProviderError, RateLimitError)
+from chatbot_ai_system.providers.base import (
+    BaseProvider,
+    CompletionRequest,
+    CompletionResponse,
+    ProviderError,
+    RateLimitError,
+)
 from chatbot_ai_system.telemetry.metrics import metrics_collector
 
 logger = structlog.get_logger()

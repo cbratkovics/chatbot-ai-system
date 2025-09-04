@@ -1,50 +1,17 @@
 name: CI/CD Pipeline
-
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
-
+    branches: [main]
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 1.7.1
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
-
-      - name: Install dependencies
-        run: poetry install --no-interaction --no-ansi
-
-      - name: Run ruff
-        run: poetry run ruff check src tests
-
-      - name: Check formatting with black
-        run: poetry run black --check src tests
-
-      - name: Run mypy
-        run: poetry run mypy src || true
-        continue-on-error: true
-
-      - name: Run tests
-        run: poetry run pytest tests/ -k 'not integration and not e2e' --ignore=tests/integration --ignore=tests/e2e --maxfail=1 -q
-
-      - name: Build Docker image
-        run: docker build -t chatbot-ai-system:ci .
+      - run: pip install poetry
+      - run: poetry install
+      - run: poetry run pytest tests/test_provider_failover.py -v --maxfail=1

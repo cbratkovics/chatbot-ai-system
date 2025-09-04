@@ -323,7 +323,7 @@ class TestProviderFailover:
 
         orchestrator = RetryOrchestrator(
             [
-                ProviderMock("openai", fail_mode="timeout", fail_after=1),
+                ProviderMock("openai", fail_mode="timeout", fail_after=0),
                 providers["anthropic"],
             ],
             timeout=0.1,

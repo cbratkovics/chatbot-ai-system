@@ -9,6 +9,7 @@ __email__ = "christopher.bratkovics@gmail.com"
 # Conditional imports to avoid failures
 try:
     from chatbot_ai_system.config.settings import Settings
+
     settings = Settings()
 except ImportError:
     Settings = None
@@ -19,9 +20,11 @@ try:
 except ImportError:
     ChatbotClient = None
 
+
 def get_version():
     """Get the current version of the package"""
     return __version__
+
 
 __all__ = [
     "ChatbotClient",

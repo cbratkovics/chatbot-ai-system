@@ -182,7 +182,9 @@ class TestFailoverScenarios:
 
             attempt_times = []
 
-            with patch("chatbot_ai_system.core.models.openai_provider.OpenAIProvider.chat_completion") as mock:
+            with patch(
+                "chatbot_ai_system.core.models.openai_provider.OpenAIProvider.chat_completion"
+            ) as mock:
                 mock.side_effect = [
                     ConnectionError("Attempt 1 failed"),
                     ConnectionError("Attempt 2 failed"),

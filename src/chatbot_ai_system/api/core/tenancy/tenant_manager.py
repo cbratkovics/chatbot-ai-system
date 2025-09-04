@@ -2,6 +2,7 @@
 TenantManager module
 """
 
+
 class TenantManager:
     """Placeholder for TenantManager"""
 

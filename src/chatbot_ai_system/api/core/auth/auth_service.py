@@ -2,6 +2,7 @@
 AuthService module
 """
 
+
 class AuthService:
     """Placeholder for AuthService"""
 

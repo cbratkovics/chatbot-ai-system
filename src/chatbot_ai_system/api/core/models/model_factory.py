@@ -2,6 +2,7 @@
 ModelFactory module
 """
 
+
 class ModelFactory:
     """Placeholder for ModelFactory"""
 

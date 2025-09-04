@@ -2,6 +2,7 @@
 StreamHandler module
 """
 
+
 class StreamHandler:
     """Placeholder for StreamHandler"""
 

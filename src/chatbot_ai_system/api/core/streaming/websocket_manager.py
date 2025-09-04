@@ -2,6 +2,7 @@
 WebsocketManager module
 """
 
+
 class WebsocketManager:
     """Placeholder for WebsocketManager"""
 

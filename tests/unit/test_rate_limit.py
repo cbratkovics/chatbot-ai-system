@@ -3,6 +3,7 @@ import time
 import pytest
 from unittest.mock import MagicMock, patch
 
+
 # Create a simple TokenBucket class for testing
 class TokenBucket:
     """Token bucket for rate limiting."""
@@ -30,6 +31,7 @@ class TokenBucket:
 
         self.tokens = min(self.capacity, self.tokens + tokens_to_add)
         self.last_refill = now
+
 
 class TestTokenBucket:
     """Test token bucket rate limiter."""

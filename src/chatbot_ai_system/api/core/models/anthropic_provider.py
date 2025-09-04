@@ -2,6 +2,7 @@
 AnthropicProvider module
 """
 
+
 class AnthropicProvider:
     """Placeholder for AnthropicProvider"""
 

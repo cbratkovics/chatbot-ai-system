@@ -8,6 +8,7 @@ pytest.importorskip("chatbot_ai_system.cli")
 
 from chatbot_ai_system.cli import app
 
+
 class TestCLICommands:
     """Test CLI commands"""
 
@@ -15,6 +16,7 @@ class TestCLICommands:
         """Test version command."""
         with patch("chatbot_ai_system.cli.get_version", return_value="1.0.0"):
             from typer.testing import CliRunner
+
             runner = CliRunner()
             result = runner.invoke(app, ["version"])
 
@@ -25,6 +27,7 @@ class TestCLICommands:
         """Test version command with JSON format."""
         with patch("chatbot_ai_system.cli.get_version", return_value="1.0.0"):
             from typer.testing import CliRunner
+
             runner = CliRunner()
             result = runner.invoke(app, ["version", "--format", "json"])
 
@@ -35,6 +38,7 @@ class TestCLICommands:
     def test_help_command(self):
         """Test help command."""
         from typer.testing import CliRunner
+
         runner = CliRunner()
         result = runner.invoke(app, ["--help"])
 
@@ -45,6 +49,7 @@ class TestCLICommands:
         """Test serve command."""
         with patch("chatbot_ai_system.cli.run_server") as mock_run:
             from typer.testing import CliRunner
+
             runner = CliRunner()
             result = runner.invoke(app, ["serve", "--port", "3000"])
 
@@ -54,6 +59,7 @@ class TestCLICommands:
         """Test serve command with reload flag."""
         with patch("chatbot_ai_system.cli.run_server") as mock_run:
             from typer.testing import CliRunner
+
             runner = CliRunner()
             result = runner.invoke(app, ["serve", "--reload"])
 
@@ -63,6 +69,7 @@ class TestCLICommands:
         """Test demo command."""
         with patch("chatbot_ai_system.cli.run_demo") as mock_demo:
             from typer.testing import CliRunner
+
             runner = CliRunner()
             result = runner.invoke(app, ["demo"])
 
@@ -72,6 +79,7 @@ class TestCLICommands:
         """Test benchmark command."""
         with patch("chatbot_ai_system.cli.run_benchmark") as mock_bench:
             from typer.testing import CliRunner
+
             runner = CliRunner()
             result = runner.invoke(app, ["bench", "--requests", "10"])
 

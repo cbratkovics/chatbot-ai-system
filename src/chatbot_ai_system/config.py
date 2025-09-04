@@ -5,6 +5,7 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
 
@@ -24,8 +25,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(
-        default="postgresql://user:pass@localhost/chatbot",
-        env="DATABASE_URL"
+        default="postgresql://user:pass@localhost/chatbot", env="DATABASE_URL"
     )
 
     # Redis Cache
@@ -57,14 +57,17 @@ class Settings(BaseSettings):
 
     class Config:
         """Pydantic config."""
+
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+
 
 @lru_cache()
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
+
 
 # Create a global settings instance
 settings = get_settings()

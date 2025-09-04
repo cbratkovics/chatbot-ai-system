@@ -19,7 +19,9 @@ class ChatbotClient:
         timeout: float = 30.0,
     ):
         """Initialize the client."""
-        self.base_url = base_url or getattr(settings, 'api_base_url', None) or "http://localhost:8000"
+        self.base_url = (
+            base_url or getattr(settings, "api_base_url", None) or "http://localhost:8000"
+        )
         self.api_key = api_key or settings.api_key
         self.timeout = timeout
         self._client = httpx.AsyncClient(

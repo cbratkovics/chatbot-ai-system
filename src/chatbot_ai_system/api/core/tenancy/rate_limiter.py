@@ -2,6 +2,7 @@
 RateLimiter module
 """
 
+
 class RateLimiter:
     """Placeholder for RateLimiter"""
 

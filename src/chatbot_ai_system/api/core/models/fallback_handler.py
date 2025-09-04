@@ -2,6 +2,7 @@
 FallbackHandler module
 """
 
+
 class FallbackHandler:
     """Placeholder for FallbackHandler"""
 

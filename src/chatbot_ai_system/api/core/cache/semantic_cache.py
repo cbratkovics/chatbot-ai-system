@@ -2,6 +2,7 @@
 SemanticCache module
 """
 
+
 class SemanticCache:
     """Placeholder for SemanticCache"""
 

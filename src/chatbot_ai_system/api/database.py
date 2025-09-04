@@ -2,6 +2,7 @@
 Database module
 """
 
+
 class Database:
     """Placeholder for Database"""
 

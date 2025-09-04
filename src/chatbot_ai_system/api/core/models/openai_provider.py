@@ -2,6 +2,7 @@
 OpenaiProvider module
 """
 
+
 class OpenaiProvider:
     """Placeholder for OpenaiProvider"""
 

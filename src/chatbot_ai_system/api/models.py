@@ -2,6 +2,7 @@
 Models module
 """
 
+
 class Models:
     """Placeholder for Models"""
 

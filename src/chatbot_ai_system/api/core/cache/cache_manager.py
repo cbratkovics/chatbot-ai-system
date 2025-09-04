@@ -2,6 +2,7 @@
 CacheManager module
 """
 
+
 class CacheManager:
     """Placeholder for CacheManager"""
 

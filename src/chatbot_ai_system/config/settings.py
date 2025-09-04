@@ -62,7 +62,7 @@ class Settings(BaseSettings):
             if v.startswith("["):
                 try:
                     return json.loads(v)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     pass
             # Handle comma-separated format
             return [origin.strip() for origin in v.split(",")]
@@ -76,7 +76,7 @@ class Settings(BaseSettings):
             if v.startswith("["):
                 try:
                     return json.loads(v)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     pass
             # Handle comma-separated format
             return [method.strip() for method in v.split(",")]
@@ -90,7 +90,7 @@ class Settings(BaseSettings):
             if v.startswith("["):
                 try:
                     return json.loads(v)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     pass
             # Handle comma-separated format or wildcard
             if v == "*":

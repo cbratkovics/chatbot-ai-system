@@ -65,7 +65,7 @@ line-length = 100
 
 [tool.ruff]
 line-length = 100
-ignore = ["E501", "F401", "F841"]
+ignore = ["E501", "E402", "F401", "F841"]
 
 [tool.mypy]
 ignore_missing_imports = true

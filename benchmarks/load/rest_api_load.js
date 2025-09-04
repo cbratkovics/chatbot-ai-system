@@ -108,21 +108,21 @@ function makeAuthHeaders() {
 
 function extractMetrics(response) {
   const headers = response.headers;
-  
+
   // Extract cache hit from headers
   if (headers['X-Cache-Hit']) {
     cacheHitRate.add(headers['X-Cache-Hit'] === 'true' ? 1 : 0);
   }
-  
+
   // Extract cost metrics
   if (headers['X-Token-Count']) {
     tokenCount.add(parseInt(headers['X-Token-Count']) || 0);
   }
-  
+
   if (headers['X-Cost-USD']) {
     costPerRequest.add(parseFloat(headers['X-Cost-USD']) || 0);
   }
-  
+
   // Extract latency
   if (headers['X-Processing-Time-Ms']) {
     apiLatency.add(parseFloat(headers['X-Processing-Time-Ms']) || 0);
@@ -132,12 +132,12 @@ function extractMetrics(response) {
 // Main test execution
 export default function () {
   const scenario = __ENV.K6_SCENARIO || 'default';
-  
+
   group('Health Check', () => {
     const healthRes = http.get(`${BASE_URL}/health`, {
       tags: { endpoint: '/health', scenario },
     });
-    
+
     check(healthRes, {
       'health status is 200': (r) => r.status === 200,
       'health response has status': (r) => {
@@ -150,10 +150,10 @@ export default function () {
       },
       'health latency < 100ms': (r) => r.timings.duration < 100,
     }) || errorRate.add(1);
-    
+
     sleep(0.1);
   });
-  
+
   group('Chat Completion', () => {
     const prompt = chatPrompts[Math.floor(Math.random() * chatPrompts.length)];
     const chatPayload = JSON.stringify({
@@ -165,7 +165,7 @@ export default function () {
       temperature: 0.7,
       max_tokens: 150,
     });
-    
+
     const chatRes = http.post(
       `${BASE_URL}/v1/chat`,
       chatPayload,
@@ -175,7 +175,7 @@ export default function () {
         timeout: '30s',
       }
     );
-    
+
     const chatChecks = check(chatRes, {
       'chat status is 200': (r) => r.status === 200,
       'chat response has content': (r) => {
@@ -196,7 +196,7 @@ export default function () {
       },
       'chat latency < 500ms': (r) => r.timings.duration < 500,
     });
-    
+
     if (!chatChecks) {
       errorRate.add(1);
       console.error(`Chat failed: ${chatRes.status} - ${chatRes.body}`);
@@ -204,17 +204,17 @@ export default function () {
       errorRate.add(0);
       extractMetrics(chatRes);
     }
-    
+
     sleep(Math.random() * 2 + 1); // Random sleep 1-3s
   });
-  
+
   group('Embeddings', () => {
     const text = embeddingTexts[Math.floor(Math.random() * embeddingTexts.length)];
     const embeddingPayload = JSON.stringify({
       model: 'text-embedding-ada-002',
       input: text,
     });
-    
+
     const embeddingRes = http.post(
       `${BASE_URL}/v1/embeddings`,
       embeddingPayload,
@@ -224,7 +224,7 @@ export default function () {
         timeout: '10s',
       }
     );
-    
+
     const embeddingChecks = check(embeddingRes, {
       'embedding status is 200': (r) => r.status === 200,
       'embedding response has data': (r) => {
@@ -244,23 +244,23 @@ export default function () {
         }
       },
     });
-    
+
     if (!embeddingChecks) {
       errorRate.add(1);
     } else {
       errorRate.add(0);
       extractMetrics(embeddingRes);
     }
-    
+
     sleep(Math.random() + 0.5); // Random sleep 0.5-1.5s
   });
-  
+
   group('Metrics Scrape', () => {
     const metricsRes = http.get(`${BASE_URL}/metrics`, {
       tags: { endpoint: '/metrics', scenario },
       timeout: '5s',
     });
-    
+
     if (metricsRes.status === 200) {
       // Parse Prometheus metrics for cache hit rate
       const lines = metricsRes.body.split('\n');
@@ -280,7 +280,7 @@ export default function () {
 // Custom report generation
 export function handleSummary(data) {
   const timestamp = TIMESTAMP;
-  
+
   // Calculate aggregate metrics
   const aggregateMetrics = {
     timestamp: new Date().toISOString(),
@@ -319,7 +319,7 @@ export function handleSummary(data) {
       },
     },
   };
-  
+
   // Generate outputs
   return {
     'stdout': textSummary(data, { indent: ' ', enableColors: true }),

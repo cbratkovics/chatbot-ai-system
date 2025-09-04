@@ -8,11 +8,10 @@ from typing import Any
 from uuid import uuid4
 
 import numpy as np
-
 import redis.asyncio as redis
 from redis.asyncio import ConnectionPool
 
-from ..app.config import settings
+from ..config import Settings, get_settings
 from .embeddings import Embedding, EmbeddingGenerator, SimilarityCalculator
 
 logger = logging.getLogger(__name__)
@@ -149,6 +148,7 @@ class SemanticCache:
         max_entries: int = 10000,
         ttl: int = 3600,
     ):
+        settings = get_settings()
         self.redis_url = redis_url or settings.redis_url
         self.embedding_generator = embedding_generator or EmbeddingGenerator()
         self.similarity_calculator = similarity_calculator or SimilarityCalculator()
@@ -173,7 +173,7 @@ class SemanticCache:
         """Connect to Redis."""
         if not self.redis_client:
             self.connection_pool = ConnectionPool.from_url(
-                self.redis_url, max_connections=settings.redis_max_connections
+                self.redis_url, max_connections=get_settings().redis_max_connections
             )
             self.redis_client = redis.Redis(connection_pool=self.connection_pool)
 

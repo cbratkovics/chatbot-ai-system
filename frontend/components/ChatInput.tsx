@@ -107,7 +107,7 @@ export function ChatInput({
           )}
           rows={1}
         />
-        
+
         <AnimatePresence>
           {isRecording && (
             <motion.div

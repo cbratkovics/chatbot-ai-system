@@ -7,7 +7,8 @@ from fastapi import HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .jwt_handler import jwt_handler
-from .permissions import Permission, check_permission, expand_roles_to_permissions
+from .permissions import (Permission, check_permission,
+                          expand_roles_to_permissions)
 
 logger = logging.getLogger(__name__)
 

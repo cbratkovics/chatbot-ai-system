@@ -392,7 +392,7 @@ class ChatbotClient:
     def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
         self.session = requests.Session()
-    
+
     def chat(self, message, model="gpt-3.5-turbo"):
         response = self.session.post(
             f"{self.base_url}/api/v1/chat/completion",
@@ -411,14 +411,14 @@ print(response["response"])
 ```typescript
 class ChatbotClient {
   constructor(private baseURL = "http://localhost:8000") {}
-  
+
   async chat(message: string, model = "gpt-3.5-turbo") {
     const response = await fetch(`${this.baseURL}/api/v1/chat/completion`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, model })
     });
-    
+
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
   }

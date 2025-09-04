@@ -106,12 +106,12 @@ export function useChat(options: UseChatOptions = {}) {
   // Handle streaming chunk
   function handleStreamChunk(message: WebSocketMessage) {
     const chunk = message.data?.chunk || '';
-    
+
     if (streamingMessageRef.current) {
       // Update existing streaming message
-      streamingMessageRef.current.streamingContent = 
+      streamingMessageRef.current.streamingContent =
         (streamingMessageRef.current.streamingContent || '') + chunk;
-      
+
       setMessages(prev => prev.map(msg =>
         msg.id === streamingMessageRef.current?.id
           ? { ...streamingMessageRef.current! }
@@ -148,7 +148,7 @@ export function useChat(options: UseChatOptions = {}) {
   // Handle stream error
   function handleStreamError(message: WebSocketMessage) {
     const error = message.data?.error || 'Stream error occurred';
-    
+
     if (streamingMessageRef.current) {
       setMessages(prev => prev.map(msg =>
         msg.id === streamingMessageRef.current?.id
@@ -157,7 +157,7 @@ export function useChat(options: UseChatOptions = {}) {
       ));
       streamingMessageRef.current = null;
     }
-    
+
     setError(error);
     setIsLoading(false);
   }
@@ -174,7 +174,7 @@ export function useChat(options: UseChatOptions = {}) {
   ) => {
     // Clear error
     setError(null);
-    
+
     // Create user message
     const userMessage: Message = {
       id: uuidv4(),
@@ -224,7 +224,7 @@ export function useChat(options: UseChatOptions = {}) {
       if (enableStreaming && isConnected) {
         // Use WebSocket for streaming
         streamingMessageRef.current = assistantMessage;
-        
+
         sendChat(
           assistantMessage.id,
           content,
@@ -268,14 +268,14 @@ export function useChat(options: UseChatOptions = {}) {
       }
     } catch (err) {
       console.error('Failed to send message:', err);
-      
+
       // Update message with error
       setMessages(prev => prev.map(msg =>
         msg.id === assistantMessage.id
           ? { ...msg, status: 'error', error: (err as Error).message, isStreaming: false }
           : msg
       ));
-      
+
       setError((err as Error).message);
       setIsLoading(false);
       streamingMessageRef.current = null;
@@ -286,7 +286,7 @@ export function useChat(options: UseChatOptions = {}) {
   const cancelCurrentStream = useCallback(() => {
     if (streamingMessageRef.current) {
       cancelStream(streamingMessageRef.current.id);
-      
+
       // Mark message as cancelled
       setMessages(prev => prev.map(msg =>
         msg.id === streamingMessageRef.current?.id
@@ -300,7 +300,7 @@ export function useChat(options: UseChatOptions = {}) {
             }
           : msg
       ));
-      
+
       streamingMessageRef.current = null;
       setIsLoading(false);
     }
@@ -351,7 +351,7 @@ export function useChat(options: UseChatOptions = {}) {
     error,
     wsStatus,
     isConnected,
-    
+
     // Actions
     sendMessage,
     cancelCurrentStream,

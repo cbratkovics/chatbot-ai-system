@@ -100,21 +100,31 @@ clean: ## Clean build artifacts
 
 run: ## Run development server
 	@echo "$(GREEN)Starting development server...$(NC)"
-	$(POETRY) run uvicorn chatbot_system_api.app:app --reload --host 0.0.0.0 --port 8000
+	$(POETRY) run uvicorn chatbot_ai_system.server.main:app --reload --host 0.0.0.0 --port 8000
 
 demo: ## Run local demo environment
 	@echo "$(GREEN)Starting demo environment...$(NC)"
-	docker-compose --profile demo up -d
+	docker-compose -f docker-compose.yml up -d
 	@echo "✓ Demo running at http://localhost:8000"
 	@echo "✓ API docs at http://localhost:8000/docs"
 
-evidence: ## Generate benchmark evidence
-	@echo "$(GREEN)Generating benchmark evidence...$(NC)"
-	@mkdir -p benchmarks/results
-	$(POETRY) run chatbot-bench
-	$(POETRY) run chatbot-failover
-	$(POETRY) run chatbot-cache-metrics
-	@echo "✓ Evidence generated in benchmarks/results/"
+demo-benchmark: ## Run benchmark tests
+	@echo "$(GREEN)Running benchmark tests...$(NC)"
+	@if [ -f benchmarks/run_load_test.sh ]; then \
+		./benchmarks/run_load_test.sh; \
+	else \
+		echo "Load test script not found, running simple benchmark"; \
+		$(POETRY) run pytest benchmarks/ -v --tb=short || true; \
+	fi
+
+demo-test: ## Run tests for demo
+	@echo "$(GREEN)Running tests...$(NC)"
+	$(POETRY) run pytest tests/ -v --tb=short
+
+demo-clean: ## Clean up demo environment
+	@echo "$(RED)Cleaning up demo...$(NC)"
+	docker-compose down -v
+	@echo "✓ Demo environment cleaned"
 
 ci-local: lint test build ## Run CI checks locally
 	@echo "$(GREEN)✓ All CI checks passed locally!$(NC)"

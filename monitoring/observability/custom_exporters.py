@@ -168,7 +168,7 @@ class AIModelMetricsExporter:
             async with self.db_pool.acquire() as conn:
                 # Get model usage stats from last 5 minutes
                 query = """
-                    SELECT 
+                    SELECT
                         model,
                         provider,
                         COUNT(*) as request_count,
@@ -179,7 +179,7 @@ class AIModelMetricsExporter:
                         AVG(quality_score) as avg_quality_score,
                         COUNT(CASE WHEN status = 'success' THEN 1 END) as success_count,
                         COUNT(CASE WHEN status = 'error' THEN 1 END) as error_count
-                    FROM ai_model_requests 
+                    FROM ai_model_requests
                     WHERE created_at > NOW() - INTERVAL '5 minutes'
                     GROUP BY model, provider
                 """
@@ -458,7 +458,7 @@ class BusinessMetricsExporter:
             async with self.db_pool.acquire() as conn:
                 # Conversations started in last hour
                 query = """
-                    SELECT 
+                    SELECT
                         u.plan_type,
                         COUNT(*) as conversations_started,
                         AVG(s.message_count) as avg_messages,
@@ -499,7 +499,7 @@ class BusinessMetricsExporter:
             async with self.db_pool.acquire() as conn:
                 # Monthly Recurring Revenue
                 mrr_query = """
-                    SELECT 
+                    SELECT
                         plan_type,
                         SUM(monthly_amount) as mrr
                     FROM subscriptions s
@@ -517,7 +517,7 @@ class BusinessMetricsExporter:
 
                 # Churn rate (monthly)
                 churn_query = """
-                    SELECT 
+                    SELECT
                         plan_type,
                         COUNT(CASE WHEN cancelled_at > NOW() - INTERVAL '30 days' THEN 1 END)::float /
                         NULLIF(COUNT(*), 0) as churn_rate
@@ -541,7 +541,7 @@ class BusinessMetricsExporter:
             async with self.db_pool.acquire() as conn:
                 # Average satisfaction scores
                 satisfaction_query = """
-                    SELECT 
+                    SELECT
                         feedback_type,
                         AVG(rating) as avg_rating
                     FROM user_feedback
@@ -558,7 +558,7 @@ class BusinessMetricsExporter:
 
                 # Net Promoter Score
                 nps_query = """
-                    SELECT 
+                    SELECT
                         COUNT(CASE WHEN rating >= 9 THEN 1 END)::float /
                         NULLIF(COUNT(*), 0) * 100 -
                         COUNT(CASE WHEN rating <= 6 THEN 1 END)::float /

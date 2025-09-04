@@ -154,47 +154,47 @@ class GlobalRoutingManager:
 def lambda_handler(event, context):
     import json
     import hashlib
-    
+
     request = event['Records'][0]['cf']['request']
     headers = request['headers']
-    
+
     # Get client IP and geographic location
     client_ip = headers.get('cloudfront-viewer-address', [{}])[0].get('value', '').split(':')[0]
     country = headers.get('cloudfront-viewer-country', [{}])[0].get('value', 'US')
-    
+
     # Get user identifier for consistent hashing
     user_id = headers.get('authorization', [{}])[0].get('value', client_ip)
-    
+
     # Determine target region based on geography and load
     regions = {
         'us-east-1': {'countries': ['US', 'CA'], 'weight': 40},
         'eu-west-1': {'countries': ['GB', 'DE', 'FR', 'IT', 'ES'], 'weight': 35},
         'ap-southeast-1': {'countries': ['SG', 'MY', 'TH', 'ID'], 'weight': 25}
     }
-    
+
     # Default region selection
     target_region = 'us-east-1'
-    
+
     # Geographic routing
     for region, config in regions.items():
         if country in config['countries']:
             target_region = region
             break
-    
+
     # Consistent hashing for sticky sessions
     if 'session-id' in headers:
         session_id = headers['session-id'][0]['value']
         hash_value = int(hashlib.md5(session_id.encode()).hexdigest(), 16)
         region_index = hash_value % len(regions)
         target_region = list(regions.keys())[region_index]
-    
+
     # Update origin to target region
     request['origin']['custom']['domainName'] = f'{target_region}.api.example.com'
-    
+
     # Add routing headers
     request['headers']['x-target-region'] = [{'key': 'X-Target-Region', 'value': target_region}]
     request['headers']['x-client-country'] = [{'key': 'X-Client-Country', 'value': country}]
-    
+
     return request
         """
 
@@ -203,25 +203,25 @@ def lambda_handler(event, context):
 def lambda_handler(event, context):
     response = event['Records'][0]['cf']['response']
     headers = response['headers']
-    
+
     # Add CORS headers
     headers['access-control-allow-origin'] = [{'key': 'Access-Control-Allow-Origin', 'value': '*'}]
     headers['access-control-allow-methods'] = [{'key': 'Access-Control-Allow-Methods', 'value': 'GET,HEAD,OPTIONS,POST,PUT'}]
     headers['access-control-allow-headers'] = [{'key': 'Access-Control-Allow-Headers', 'value': 'Authorization,Content-Type'}]
-    
+
     # Cache control for different content types
     uri = event['Records'][0]['cf']['request']['uri']
-    
+
     if uri.startswith('/api/'):
         # API responses - short cache
         headers['cache-control'] = [{'key': 'Cache-Control', 'value': 'max-age=60, must-revalidate'}]
     elif uri.startswith('/static/'):
         # Static assets - long cache
         headers['cache-control'] = [{'key': 'Cache-Control', 'value': 'max-age=31536000, immutable'}]
-    
+
     # Add region information
     headers['x-served-by'] = [{'key': 'X-Served-By', 'value': 'global-edge'}]
-    
+
     return response
         """
 

@@ -22,7 +22,7 @@ data:
             endpoint: 0.0.0.0:6831
           thrift_binary:
             endpoint: 0.0.0.0:6832
-    
+
     processors:
       batch:
         timeout: 1s
@@ -36,7 +36,7 @@ data:
             value: production
           - key: service.namespace
             value: ai-chatbot
-    
+
     exporters:
       jaeger:
         endpoint: jaeger-collector:14250
@@ -44,7 +44,7 @@ data:
           insecure: true
       prometheus:
         endpoint: 0.0.0.0:8889
-    
+
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
@@ -52,7 +52,7 @@ data:
         endpoint: 0.0.0.0:1777
       zpages:
         endpoint: 0.0.0.0:55679
-    
+
     service:
       extensions: [health_check, pprof, zpages]
       pipelines:

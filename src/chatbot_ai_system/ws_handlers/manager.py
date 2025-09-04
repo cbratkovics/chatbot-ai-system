@@ -10,13 +10,8 @@ from uuid import UUID, uuid4
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from .events import (
-    ErrorEvent,
-    EventType,
-    HeartbeatEvent,
-    WebSocketEvent,
-    create_connection_event,
-)
+from .events import (ErrorEvent, EventType, HeartbeatEvent, WebSocketEvent,
+                     create_connection_event)
 
 logger = logging.getLogger(__name__)
 

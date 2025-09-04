@@ -55,29 +55,29 @@ graph TB
     Web --> LB
     Mobile --> LB
     API --> LB
-    
+
     LB --> RateLimit
     RateLimit --> Auth
     Auth --> FastAPI
-    
+
     FastAPI --> WebSocket
     FastAPI --> StreamHandler
-    
+
     FastAPI --> ModelFactory
     FastAPI --> CacheManager
     FastAPI --> TenantManager
     FastAPI --> AuthService
-    
+
     ModelFactory --> OpenAI
     ModelFactory --> Anthropic
     ModelFactory --> Llama
     ModelFactory --> Fallback
-    
+
     CacheManager --> Redis
     TenantManager --> PostgreSQL
     AuthService --> PostgreSQL
     AuthService --> Redis
-    
+
     FastAPI --> Prometheus
     Prometheus --> Grafana
     FastAPI --> Jaeger

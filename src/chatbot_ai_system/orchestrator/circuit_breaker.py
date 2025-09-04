@@ -4,6 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 from enum import Enum
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -12,7 +13,6 @@ T = TypeVar("T")
 
 class CircuitState(str, Enum):
     """Circuit breaker states."""
-from typing import TypeVar
 
     CLOSED = "closed"
     OPEN = "open"

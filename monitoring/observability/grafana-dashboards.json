@@ -213,7 +213,7 @@
         "type": "dashboards"
       },
       {
-        "title": "Cost Analysis Dashboard", 
+        "title": "Cost Analysis Dashboard",
         "url": "/d/cost-dashboard",
         "type": "dashboards"
       }

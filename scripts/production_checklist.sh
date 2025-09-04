@@ -24,7 +24,7 @@ check_item() {
     local key=$1
     local description=$2
     local command=$3
-    
+
     if eval "$command" &>/dev/null; then
         CHECKLIST[$key]="✓"
         echo -e "  ${GREEN}✓${NC} $description"
@@ -40,7 +40,7 @@ check_item() {
 check_warn() {
     local description=$1
     local command=$2
-    
+
     if eval "$command" &>/dev/null; then
         echo -e "  ${GREEN}✓${NC} $description"
     else
@@ -237,7 +237,7 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 # Recommendations
 if [ $((TOTAL_CHECKS - PASSED_CHECKS)) -gt 0 ]; then
     echo -e "\n${YELLOW}📋 Priority Recommendations:${NC}"
-    
+
     [ "${CHECKLIST[format]}" != "✓" ] && echo -e "  • Run: ${CYAN}make format${NC}"
     [ "${CHECKLIST[lint_ruff]}" != "✓" ] && echo -e "  • Run: ${CYAN}make lint${NC}"
     [ "${CHECKLIST[type]}" != "✓" ] && echo -e "  • Run: ${CYAN}make type-check${NC}"

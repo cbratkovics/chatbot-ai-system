@@ -26,14 +26,8 @@ class TestPackageStructure:
 
     def test_public_api_exports(self):
         """Test public API exports."""
-        from chatbot_ai_system import (
-            ChatbotClient,
-            Settings,
-            __version__,
-            app,
-            settings,
-            start_server,
-        )
+        from chatbot_ai_system import (ChatbotClient, Settings, __version__,
+                                       app, settings, start_server)
 
         assert __version__
         assert Settings
@@ -46,7 +40,7 @@ class TestPackageStructure:
         """Test get_version utility."""
         from chatbot_ai_system import get_version
 
-        assert get_version() == "0.1.0"
+        assert get_version() == "1.0.0"
 
 
 @pytest.mark.unit
@@ -90,7 +84,7 @@ class TestSchemas:
 
         status = HealthStatus(
             status="healthy",
-            version="0.1.0",
+            version="1.0.0",
         )
 
         assert status.status == "healthy"
@@ -125,8 +119,9 @@ class TestConfiguration:
 
     def test_settings_validation(self):
         """Test settings validation."""
-        from chatbot_ai_system.config import Settings
         from pydantic import ValidationError
+
+        from chatbot_ai_system.config import Settings
 
         with pytest.raises(ValidationError):
             Settings(port="not-a-number")  # Should fail validation

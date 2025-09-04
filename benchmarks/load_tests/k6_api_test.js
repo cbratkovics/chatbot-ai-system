@@ -102,13 +102,13 @@ const conversationContexts = [
 // Helper function to generate auth token
 function authenticate(tenantId, userId) {
   const startTime = Date.now();
-  
+
   const payload = JSON.stringify({
     username: `user_${userId}`,
     password: 'test_password',
     tenant_id: tenantId,
   });
-  
+
   const params = {
     headers: {
       'Content-Type': 'application/json',
@@ -116,20 +116,20 @@ function authenticate(tenantId, userId) {
     },
     tags: { name: 'auth', tenant: tenantId },
   };
-  
+
   const response = http.post(`${BASE_URL}/api/v1/auth/login`, payload, params);
   authLatency.add(Date.now() - startTime);
-  
+
   check(response, {
     'auth successful': (r) => r.status === 200,
     'auth returns token': (r) => r.json('access_token') !== undefined,
   });
-  
+
   if (response.status !== 200) {
     errorRate.add(1);
     return null;
   }
-  
+
   return response.json('access_token');
 }
 
@@ -147,22 +147,22 @@ export default function () {
   const tenantId = randomItem(tenants);
   const userId = `${__VU}_${randomString(8)}`;
   const sessionId = randomString(16);
-  
+
   // Authenticate
   const token = authenticate(tenantId, userId);
   if (!token) {
     console.error(`Authentication failed for user ${userId}`);
     return;
   }
-  
+
   // Test different API endpoints
   group('API Operations', () => {
-    
+
     // 1. Create conversation
     group('Create Conversation', () => {
       const startTime = Date.now();
       const context = randomItem(conversationContexts);
-      
+
       const payload = JSON.stringify({
         title: `Conversation ${randomString(8)}`,
         model: randomItem(models),
@@ -173,7 +173,7 @@ export default function () {
           timestamp: new Date().toISOString(),
         },
       });
-      
+
       const response = http.post(
         `${BASE_URL}/api/v1/conversations`,
         payload,
@@ -182,29 +182,29 @@ export default function () {
           tags: { name: 'create_conversation' },
         }
       );
-      
+
       apiLatency.add(Date.now() - startTime);
-      
+
       check(response, {
         'conversation created': (r) => r.status === 201,
         'returns conversation id': (r) => r.json('id') !== undefined,
       });
-      
+
       if (response.status === 201) {
         const conversationId = response.json('id');
-        
+
         // 2. Send chat messages
         group('Chat Messages', () => {
           const numMessages = randomIntBetween(3, 10);
           let previousMessageId = null;
-          
+
           for (let i = 0; i < numMessages; i++) {
-            const prompt = __ENV.TEST_CACHE === 'true' && i % 3 === 0 
+            const prompt = __ENV.TEST_CACHE === 'true' && i % 3 === 0
               ? testPrompts[0]  // Repeat same prompt to test cache
               : randomItem(testPrompts);
-            
+
             const chatStartTime = Date.now();
-            
+
             const chatPayload = JSON.stringify({
               conversation_id: conversationId,
               message: prompt,
@@ -216,7 +216,7 @@ export default function () {
                 stream: false,
               },
             });
-            
+
             const chatResponse = http.post(
               `${BASE_URL}/api/v1/chat/completions`,
               chatPayload,
@@ -226,52 +226,52 @@ export default function () {
                 timeout: '30s',
               }
             );
-            
+
             chatLatency.add(Date.now() - chatStartTime);
-            
+
             // Check for cache hit
             if (chatResponse.headers['X-Cache-Hit'] === 'true') {
               cacheHitRate.add(1);
             } else {
               cacheHitRate.add(0);
             }
-            
+
             // Check for rate limiting
             if (chatResponse.status === 429) {
               rateLimitHits.add(1);
             }
-            
+
             // Check for circuit breaker
             if (chatResponse.headers['X-Circuit-Breaker'] === 'open') {
               circuitBreakerTrips.add(1);
             }
-            
+
             // Check for model switch
             if (chatResponse.headers['X-Model-Switch'] === 'true') {
               modelSwitches.add(1);
             }
-            
+
             check(chatResponse, {
               'chat response successful': (r) => r.status === 200,
               'returns message': (r) => r.json('message') !== undefined,
               'includes model used': (r) => r.json('model') !== undefined,
               'includes usage stats': (r) => r.json('usage') !== undefined,
             });
-            
+
             if (chatResponse.status === 200) {
               previousMessageId = chatResponse.json('id');
             } else {
               errorRate.add(1);
             }
-            
+
             sleep(randomIntBetween(1, 3)); // Simulate thinking time
           }
         });
-        
+
         // 3. Test semantic search
         group('Semantic Search', () => {
           const searchQuery = randomItem(testPrompts);
-          
+
           const searchResponse = http.post(
             `${BASE_URL}/api/v1/search/semantic`,
             JSON.stringify({
@@ -285,13 +285,13 @@ export default function () {
               tags: { name: 'semantic_search' },
             }
           );
-          
+
           check(searchResponse, {
             'search successful': (r) => r.status === 200,
             'returns results': (r) => r.json('results') !== undefined,
           });
         });
-        
+
         // 4. Get conversation history
         group('Get History', () => {
           const historyResponse = http.get(
@@ -301,13 +301,13 @@ export default function () {
               tags: { name: 'get_history' },
             }
           );
-          
+
           check(historyResponse, {
             'history retrieved': (r) => r.status === 200,
             'returns messages array': (r) => Array.isArray(r.json('messages')),
           });
         });
-        
+
         // 5. Test tenant isolation (if enabled)
         if (__ENV.TEST_ISOLATION === 'true') {
           group('Tenant Isolation', () => {
@@ -320,18 +320,18 @@ export default function () {
                 tags: { name: 'tenant_isolation_test' },
               }
             );
-            
+
             check(isolationResponse, {
               'tenant isolation enforced': (r) => r.status === 403 || r.status === 404,
             });
-            
+
             if (isolationResponse.status !== 403 && isolationResponse.status !== 404) {
               tenantIsolationErrors.add(1);
               console.error(`Tenant isolation breach: ${tenantId} accessed ${otherTenant} data`);
             }
           });
         }
-        
+
         // 6. Get usage statistics
         group('Usage Stats', () => {
           const usageResponse = http.get(
@@ -341,7 +341,7 @@ export default function () {
               tags: { name: 'usage_stats' },
             }
           );
-          
+
           check(usageResponse, {
             'usage stats retrieved': (r) => r.status === 200,
             'includes token count': (r) => r.json('total_tokens') !== undefined,
@@ -349,7 +349,7 @@ export default function () {
             'includes cost estimate': (r) => r.json('estimated_cost') !== undefined,
           });
         });
-        
+
         // 7. Test model health check
         group('Model Health', () => {
           const healthResponse = http.get(
@@ -359,7 +359,7 @@ export default function () {
               tags: { name: 'model_health' },
             }
           );
-          
+
           check(healthResponse, {
             'health check successful': (r) => r.status === 200,
             'all models reported': (r) => {
@@ -371,7 +371,7 @@ export default function () {
       }
     });
   });
-  
+
   // Add realistic think time
   sleep(randomIntBetween(2, 5));
 }
@@ -429,7 +429,7 @@ export function handleSummary(data) {
 function textSummary(data, options) {
   const indent = options.indent || '';
   let output = '\n=== API Load Test Results ===\n\n';
-  
+
   // API latency
   if (data.metrics.api_latency) {
     output += `${indent}API Latency:\n`;
@@ -437,7 +437,7 @@ function textSummary(data, options) {
     output += `${indent}  P95: ${data.metrics.api_latency.values['p(95)'].toFixed(2)}ms\n`;
     output += `${indent}  P99: ${data.metrics.api_latency.values['p(99)'].toFixed(2)}ms\n\n`;
   }
-  
+
   // Chat latency
   if (data.metrics.chat_latency) {
     output += `${indent}Chat Completion Latency:\n`;
@@ -445,48 +445,48 @@ function textSummary(data, options) {
     output += `${indent}  P95: ${data.metrics.chat_latency.values['p(95)'].toFixed(2)}ms\n`;
     output += `${indent}  P99: ${data.metrics.chat_latency.values['p(99)'].toFixed(2)}ms\n\n`;
   }
-  
+
   // Cache performance
   if (data.metrics.cache_hit_rate) {
     output += `${indent}Cache Performance:\n`;
     output += `${indent}  Hit Rate: ${(data.metrics.cache_hit_rate.values.rate * 100).toFixed(2)}%\n\n`;
   }
-  
+
   // Rate limiting
   if (data.metrics.rate_limit_hits) {
     output += `${indent}Rate Limiting:\n`;
     output += `${indent}  Hits: ${data.metrics.rate_limit_hits.values.count}\n\n`;
   }
-  
+
   // Circuit breaker
   if (data.metrics.circuit_breaker_trips) {
     output += `${indent}Circuit Breaker:\n`;
     output += `${indent}  Trips: ${data.metrics.circuit_breaker_trips.values.count}\n\n`;
   }
-  
+
   // Throughput
   if (data.metrics.http_reqs) {
     output += `${indent}Throughput:\n`;
     output += `${indent}  Total Requests: ${data.metrics.http_reqs.values.count}\n`;
     output += `${indent}  Requests/sec: ${data.metrics.http_reqs.values.rate.toFixed(2)}\n\n`;
   }
-  
+
   // Error rate
   if (data.metrics.api_errors) {
     output += `${indent}Error Rate: ${(data.metrics.api_errors.values.rate * 100).toFixed(2)}%\n\n`;
   }
-  
+
   // Max concurrent users
   if (data.metrics.vus_max) {
     output += `${indent}Max Concurrent Users: ${data.metrics.vus_max.values.value}\n\n`;
   }
-  
+
   // Threshold results
   output += `${indent}Threshold Results:\n`;
   for (const [key, value] of Object.entries(data.thresholds || {})) {
     const status = value.ok ? 'PASS' : 'FAIL';
     output += `${indent}  ${key}: ${status}\n`;
   }
-  
+
   return output;
 }

@@ -72,7 +72,7 @@ WORKDIR /app
 # Install project
 RUN poetry install --only-root
 
-# ML-GPU stage - GPU-optimized ML dependencies  
+# ML-GPU stage - GPU-optimized ML dependencies
 FROM builder-base as ml-gpu
 
 # Install CUDA dependencies (example for CUDA 12.1)

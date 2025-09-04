@@ -16,61 +16,60 @@ from ..websocket.ws_manager import WebSocketManager
 logger = logging.getLogger(__name__)
 
 # Create router
-ws_router = APIRouter(
-    prefix="/ws",
-    tags=["websocket"]
-)
+ws_router = APIRouter(prefix="/ws", tags=["websocket"])
 
 # Initialize components
 ws_manager = WebSocketManager()
 message_handler = MessageHandler()
 
+
 # Provider factory (similar to chat.py)
 class ProviderFactory:
     """Factory for creating streaming-capable providers."""
-    
+
     MODEL_PROVIDER_MAP = {
         # OpenAI models
         "gpt-3.5-turbo": "openai",
         "gpt-3.5-turbo-16k": "openai",
         "gpt-4": "openai",
         "gpt-4-turbo-preview": "openai",
-        
         # Anthropic models
         "claude-3-opus-20240229": "anthropic",
         "claude-3-sonnet-20240229": "anthropic",
         "claude-3-haiku-20240307": "anthropic",
     }
-    
+
     @classmethod
     def create_streaming_provider(cls, model: str, settings: Settings):
         """Create a streaming-capable provider."""
         provider_name = cls.MODEL_PROVIDER_MAP.get(model)
-        
+
         if not provider_name:
             raise ValueError(f"Model '{model}' not supported for streaming")
-        
+
         if provider_name == "openai":
             if not settings.has_openai_key:
                 raise ValueError("OpenAI API key not configured")
             # Import streaming-enhanced provider
             from ..providers.openai_provider import OpenAIProvider
+
             return OpenAIProvider(
                 api_key=settings.openai_api_key,
                 timeout=settings.request_timeout,
-                max_retries=settings.max_retries
+                max_retries=settings.max_retries,
             )
-        
+
         elif provider_name == "anthropic":
             if not settings.has_anthropic_key:
                 raise ValueError("Anthropic API key not configured")
             from ..providers.anthropic_provider import AnthropicProvider
+
             return AnthropicProvider(
                 api_key=settings.anthropic_api_key,
                 timeout=settings.request_timeout,
-                max_retries=settings.max_retries
+                max_retries=settings.max_retries,
             )
-        
+
         else:
             raise ValueError(f"Unknown provider: {provider_name}")
 
@@ -80,17 +79,17 @@ async def websocket_chat_endpoint(
     websocket: WebSocket,
     token: Optional[str] = Query(None, description="Authentication token"),
     client_id: Optional[str] = Query(None, description="Client identifier"),
-    settings: Settings = Depends(get_settings)
+    settings: Settings = Depends(get_settings),
 ):
     """
     WebSocket endpoint for streaming chat.
-    
+
     Args:
         websocket: WebSocket connection
         token: Optional authentication token
         client_id: Optional client identifier
         settings: Application settings
-    
+
     WebSocket Protocol:
         Client -> Server:
         {
@@ -103,7 +102,7 @@ async def websocket_chat_endpoint(
                 "temperature": 0.7
             }
         }
-        
+
         Server -> Client (streaming):
         {
             "type": "stream",
@@ -114,7 +113,7 @@ async def websocket_chat_endpoint(
                 "finished": false
             }
         }
-        
+
         Server -> Client (complete):
         {
             "type": "complete",
@@ -129,81 +128,70 @@ async def websocket_chat_endpoint(
         }
     """
     connection_id = None
-    
+
     try:
         # Extract user info from token (placeholder for auth)
         user_id = None
         if token:
             # TODO: Validate token and extract user_id
             user_id = f"user_{token[:8]}"  # Mock implementation
-        
+
         # Client info
         client_info = {
             "client_id": client_id,
             "user_agent": websocket.headers.get("user-agent", "unknown"),
-            "origin": websocket.headers.get("origin", "unknown")
+            "origin": websocket.headers.get("origin", "unknown"),
         }
-        
+
         # Accept connection
         connection_id = await ws_manager.connect(
-            websocket=websocket,
-            user_id=user_id,
-            client_info=client_info
+            websocket=websocket, user_id=user_id, client_info=client_info
         )
-        
+
         logger.info(f"WebSocket connection established: {connection_id}")
-        
+
         # Message processing loop
         while True:
             try:
                 # Receive message
                 message = await ws_manager.receive_message(connection_id)
-                
+
                 if not message:
                     break
-                
+
                 # Handle message
                 response = await message_handler.handle_message(
                     websocket=websocket,
                     message=message,
                     connection_id=connection_id,
                     provider_factory=ProviderFactory.create_streaming_provider,
-                    settings=settings
+                    settings=settings,
                 )
-                
+
                 # Send response if any
                 if response:
-                    await ws_manager.send_personal_message(
-                        connection_id,
-                        response.dict()
-                    )
-                
+                    await ws_manager.send_personal_message(connection_id, response.dict())
+
             except WebSocketDisconnect:
                 logger.info(f"WebSocket disconnected: {connection_id}")
                 break
-                
+
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid message format: {e}")
                 error_response = {
                     "type": "error",
-                    "data": {
-                        "error": "Invalid message format",
-                        "code": 4000
-                    }
+                    "data": {"error": "Invalid message format", "code": 4000},
                 }
                 await ws_manager.send_personal_message(connection_id, error_response)
-                
+
             except Exception as e:
                 logger.error(f"WebSocket error: {e}", exc_info=True)
                 error_response = {
                     "type": "error",
-                    "data": {
-                        "error": "Internal server error",
-                        "code": 5000
-                    }
+                    "data": {"error": "Internal server error", "code": 5000},
                 }
                 await ws_manager.send_personal_message(connection_id, error_response)
-    
+
     finally:
         # Clean up
         if connection_id:
@@ -238,11 +226,11 @@ async def websocket_info():
     <body>
         <div class="container">
             <h1>WebSocket Chat Test</h1>
-            
+
             <div class="status" id="status">Disconnected</div>
-            
+
             <div class="messages" id="messages"></div>
-            
+
             <div class="controls">
                 <input type="text" id="messageInput" placeholder="Type your message..." />
                 <select id="modelSelect">
@@ -255,55 +243,55 @@ async def websocket_info():
                 <button onclick="disconnect()">Disconnect</button>
             </div>
         </div>
-        
+
         <script>
             let ws = null;
             let messageId = 0;
-            
+
             function connect() {
                 const wsUrl = `ws://localhost:8000/ws/chat?client_id=test-client`;
                 ws = new WebSocket(wsUrl);
-                
+
                 ws.onopen = () => {
                     updateStatus('Connected', 'green');
                     addMessage('System', 'WebSocket connected');
                 };
-                
+
                 ws.onmessage = (event) => {
                     const message = JSON.parse(event.data);
                     handleMessage(message);
                 };
-                
+
                 ws.onerror = (error) => {
                     updateStatus('Error', 'red');
                     addMessage('Error', 'WebSocket error: ' + error);
                 };
-                
+
                 ws.onclose = () => {
                     updateStatus('Disconnected', 'gray');
                     addMessage('System', 'WebSocket disconnected');
                 };
             }
-            
+
             function disconnect() {
                 if (ws) {
                     ws.close();
                     ws = null;
                 }
             }
-            
+
             function sendMessage() {
                 if (!ws || ws.readyState !== WebSocket.OPEN) {
                     alert('Please connect first');
                     return;
                 }
-                
+
                 const input = document.getElementById('messageInput');
                 const model = document.getElementById('modelSelect').value;
                 const message = input.value.trim();
-                
+
                 if (!message) return;
-                
+
                 const msgId = `msg-${++messageId}`;
                 const payload = {
                     type: 'chat',
@@ -315,12 +303,12 @@ async def websocket_info():
                         temperature: 0.7
                     }
                 };
-                
+
                 ws.send(JSON.stringify(payload));
                 addMessage('You', message, 'sent');
                 input.value = '';
             }
-            
+
             function handleMessage(message) {
                 switch (message.type) {
                     case 'stream':
@@ -339,7 +327,7 @@ async def websocket_info():
                         break;
                 }
             }
-            
+
             function addMessage(sender, text, className = '') {
                 const messages = document.getElementById('messages');
                 const messageDiv = document.createElement('div');
@@ -348,7 +336,7 @@ async def websocket_info():
                 messages.appendChild(messageDiv);
                 messages.scrollTop = messages.scrollHeight;
             }
-            
+
             let lastAIMessage = null;
             function appendToLastMessage(chunk) {
                 const messages = document.getElementById('messages');
@@ -362,18 +350,18 @@ async def websocket_info():
                 span.textContent += chunk;
                 messages.scrollTop = messages.scrollHeight;
             }
-            
+
             function updateStatus(text, color) {
                 const status = document.getElementById('status');
                 status.textContent = text;
                 status.style.color = color;
             }
-            
+
             // Enter key to send
             document.getElementById('messageInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendMessage();
             });
-            
+
             // Auto-connect on load
             window.onload = () => connect();
         </script>
@@ -391,6 +379,6 @@ async def websocket_stats():
         "websocket": stats,
         "handler": {
             "active_streams": len(message_handler.active_streams),
-            "total_connections": len(message_handler.message_history)
-        }
+            "total_connections": len(message_handler.message_history),
+        },
     }

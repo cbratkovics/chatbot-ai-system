@@ -62,7 +62,7 @@ if command -v docker &> /dev/null; then
   docker version > /dev/null 2>&1
   if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Docker is available${NC}"
-    
+
     # Test Docker build (dry run)
     echo -e "\n${YELLOW}Testing Docker build (dry run)...${NC}"
     docker build --no-cache --progress=plain -f config/docker/dockerfiles/Dockerfile.multistage -t test-build:ci-verify . --target=builder > /dev/null 2>&1

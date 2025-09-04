@@ -41,7 +41,7 @@ echo ""
 echo "Checking Docker..."
 if docker --version > /dev/null 2>&1; then
   echo -e "${GREEN}✓${NC} Docker installed: $(docker --version)"
-  
+
   # Check if Docker daemon is running
   if docker info > /dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} Docker daemon is running"

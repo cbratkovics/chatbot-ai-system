@@ -106,11 +106,11 @@ server {
     listen 443 ssl http2;
     ssl_certificate /etc/ssl/certs/cert.pem;
     ssl_certificate_key /etc/ssl/private/key.pem;
-    
+
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
-    
+
     add_header Strict-Transport-Security "max-age=31536000" always;
 }
 ```
@@ -125,7 +125,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     model: str = Field(..., pattern="^(gpt-4|gpt-3.5-turbo|claude-3)$")
     temperature: float = Field(0.7, ge=0, le=2)
-    
+
     @validator('message')
     def sanitize_message(cls, v):
         # Remove potential XSS
@@ -138,13 +138,13 @@ class ChatRequest(BaseModel):
 ```python
 async def get_user_chats(tenant_id: str, user_id: str):
     query = """
-        SELECT * FROM chats 
-        WHERE tenant_id = :tenant_id 
+        SELECT * FROM chats
+        WHERE tenant_id = :tenant_id
         AND user_id = :user_id
         ORDER BY created_at DESC
     """
     return await db.execute(
-        query, 
+        query,
         {"tenant_id": tenant_id, "user_id": user_id}
     )
 ```
@@ -198,7 +198,7 @@ class TenantContext:
         self.tenant_id = tenant_id
         self.redis_prefix = f"tenant:{tenant_id}:"
         self.rate_limit_key = f"rate:{tenant_id}"
-    
+
     def get_isolated_key(self, key: str) -> str:
         return f"{self.redis_prefix}{key}"
 ```
@@ -273,7 +273,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr
     anthropic_api_key: SecretStr
     encryption_key: SecretStr
-    
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -286,13 +286,13 @@ async def rotate_encryption_keys():
     """Rotate encryption keys every 90 days"""
     new_key = Fernet.generate_key()
     old_key = await get_current_key()
-    
+
     # Re-encrypt with new key
     async for item in get_encrypted_items():
         decrypted = decrypt(item.data, old_key)
         encrypted = encrypt(decrypted, new_key)
         await update_item(item.id, encrypted)
-    
+
     await store_new_key(new_key)
     await archive_old_key(old_key)
 ```
@@ -355,17 +355,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Run Snyk Security Scan
         uses: snyk/actions/python@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
+
       - name: Run Bandit Security Linter
         run: |
           pip install bandit
           bandit -r api/ -f json -o bandit-report.json
-      
+
       - name: SAST with Semgrep
         uses: returntocorp/semgrep-action@v1
 ```
@@ -393,11 +393,11 @@ class GDPRService:
     async def export_user_data(user_id: str) -> Dict:
         """Right to data portability"""
         return await gather_all_user_data(user_id)
-    
+
     async def delete_user_data(user_id: str) -> bool:
         """Right to erasure"""
         return await anonymize_user_data(user_id)
-    
+
     async def update_consent(user_id: str, consents: Dict) -> bool:
         """Consent management"""
         return await store_user_consents(user_id, consents)
@@ -445,17 +445,17 @@ class SecurityIncidentHandler:
     async def handle_breach(self, incident_type: str):
         # 1. Immediate containment
         await self.isolate_affected_systems()
-        
+
         # 2. Assessment
         scope = await self.assess_breach_scope()
-        
+
         # 3. Notification
         if scope.requires_notification:
             await self.notify_stakeholders(scope)
-        
+
         # 4. Remediation
         await self.apply_security_patches()
-        
+
         # 5. Documentation
         await self.document_incident(incident_type, scope)
 ```
@@ -474,7 +474,7 @@ class SecurityIncidentHandler:
    # Good: Parameterized query
    query = "SELECT * FROM users WHERE id = %s"
    cursor.execute(query, (user_id,))
-   
+
    # Bad: String concatenation
    # query = f"SELECT * FROM users WHERE id = {user_id}"
    ```

@@ -23,7 +23,7 @@ class BaseAdapter(ABC):
     @abstractmethod
     async def generate_response(self, prompt: str, **kwargs) -> Response:
         pass
-    
+
     @abstractmethod
     async def generate_embedding(self, text: str) -> List[float]:
         pass
@@ -118,16 +118,16 @@ Modular request processing pipeline with ordered middleware execution.
 class Middleware(ABC):
     def __init__(self, next_handler: Optional[Middleware] = None):
         self.next_handler = next_handler
-    
+
     async def handle(self, request: Request) -> Response:
         # Process request
         result = await self.process(request)
-        
+
         # Pass to next handler if exists
         if self.next_handler:
             return await self.next_handler.handle(result)
         return result
-    
+
     @abstractmethod
     async def process(self, request: Request) -> Request:
         pass
@@ -184,10 +184,10 @@ Event-driven architecture for decoupled component communication.
 class EventManager:
     def __init__(self):
         self.listeners = defaultdict(list)
-    
+
     def subscribe(self, event_type: str, handler: Callable):
         self.listeners[event_type].append(handler)
-    
+
     async def emit(self, event_type: str, data: Dict):
         for handler in self.listeners[event_type]:
             await handler(data)
@@ -196,10 +196,10 @@ class MetricsCollector:
     def __init__(self, event_manager: EventManager):
         event_manager.subscribe("request_received", self.on_request)
         event_manager.subscribe("cache_hit", self.on_cache_hit)
-    
+
     async def on_request(self, data: Dict):
         self.request_count += 1
-    
+
     async def on_cache_hit(self, data: Dict):
         self.cache_hits += 1
 ```
@@ -224,15 +224,15 @@ class BaseRepository(ABC):
     @abstractmethod
     async def get(self, id: str) -> Optional[Model]:
         pass
-    
+
     @abstractmethod
     async def create(self, data: Dict) -> Model:
         pass
-    
+
     @abstractmethod
     async def update(self, id: str, data: Dict) -> Model:
         pass
-    
+
     @abstractmethod
     async def delete(self, id: str) -> bool:
         pass
@@ -240,7 +240,7 @@ class BaseRepository(ABC):
 class ConversationRepository(BaseRepository):
     async def get(self, id: str) -> Optional[Conversation]:
         return await self.db.conversations.find_one({"_id": id})
-    
+
     async def get_by_user(self, user_id: str) -> List[Conversation]:
         return await self.db.conversations.find({"user_id": user_id}).to_list()
 ```
@@ -270,11 +270,11 @@ class AdapterFactory:
             "claude": ClaudeAdapter,
             "huggingface": HuggingFaceAdapter
         }
-        
+
         adapter_class = adapters.get(provider)
         if not adapter_class:
             raise ValueError(f"Unknown provider: {provider}")
-        
+
         return adapter_class(**config)
 
 class CacheFactory:
@@ -303,7 +303,7 @@ Global configuration management with single instance guarantee.
 class ConfigurationManager:
     _instance = None
     _lock = threading.Lock()
-    
+
     def __new__(cls):
         if cls._instance is None:
             with cls._lock:
@@ -311,14 +311,14 @@ class ConfigurationManager:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialize()
         return cls._instance
-    
+
     def _initialize(self):
         self.config = self._load_config()
-    
+
     def _load_config(self) -> Dict:
         # Load from environment, files, etc.
         return {}
-    
+
     def get(self, key: str, default=None):
         return self.config.get(key, default)
 ```
@@ -345,18 +345,18 @@ def cached(ttl: int = 3600):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             cache_key = f"{func.__name__}:{hash(args)}:{hash(frozenset(kwargs.items()))}"
-            
+
             # Try cache lookup
             cached_result = await cache.get(cache_key)
             if cached_result:
                 return cached_result
-            
+
             # Execute function
             result = await func(*args, **kwargs)
-            
+
             # Store in cache
             await cache.set(cache_key, result, ttl=ttl)
-            
+
             return result
         return wrapper
     return decorator
@@ -368,7 +368,7 @@ def rate_limited(max_calls: int = 10, period: int = 60):
             user_id = kwargs.get("user_id")
             if await rate_limiter.is_exceeded(user_id, max_calls, period):
                 raise RateLimitExceeded()
-            
+
             await rate_limiter.increment(user_id)
             return await func(*args, **kwargs)
         return wrapper
@@ -389,7 +389,7 @@ class Command(ABC):
     @abstractmethod
     async def execute(self) -> Any:
         pass
-    
+
     @abstractmethod
     async def undo(self) -> None:
         pass
@@ -400,15 +400,15 @@ class GenerateResponseCommand(Command):
         self.model = model
         self.parameters = parameters
         self.result = None
-    
+
     async def execute(self) -> str:
         adapter = AdapterFactory.create_adapter(self.model)
         self.result = await adapter.generate_response(
-            self.prompt, 
+            self.prompt,
             **self.parameters
         )
         return self.result
-    
+
     async def undo(self) -> None:
         # Log reversal, clean up resources, etc.
         if self.result:
@@ -418,10 +418,10 @@ class CommandQueue:
     def __init__(self):
         self.queue = []
         self.history = []
-    
+
     async def add(self, command: Command):
         self.queue.append(command)
-    
+
     async def execute_all(self):
         while self.queue:
             command = self.queue.pop(0)
@@ -447,23 +447,23 @@ class BaseProcessor(ABC):
         result = await self.execute(preprocessed)
         postprocessed = await self.postprocess(result)
         return await self.format_response(postprocessed)
-    
+
     @abstractmethod
     async def validate(self, data: Dict) -> Dict:
         pass
-    
+
     @abstractmethod
     async def preprocess(self, data: Dict) -> Dict:
         pass
-    
+
     @abstractmethod
     async def execute(self, data: Dict) -> Dict:
         pass
-    
+
     async def postprocess(self, data: Dict) -> Dict:
         # Default implementation
         return data
-    
+
     async def format_response(self, data: Dict) -> Dict:
         # Default implementation
         return {"status": "success", "data": data}
@@ -473,12 +473,12 @@ class ChatProcessor(BaseProcessor):
         if "message" not in data:
             raise ValueError("Message required")
         return data
-    
+
     async def preprocess(self, data: Dict) -> Dict:
         # Clean and prepare message
         data["message"] = data["message"].strip()
         return data
-    
+
     async def execute(self, data: Dict) -> Dict:
         # Process chat message
         response = await llm.generate(data["message"])

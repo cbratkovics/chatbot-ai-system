@@ -31,14 +31,14 @@ run_load_test() {
     local spawn_rate=$3
     local run_time=$4
     local description=$5
-    
+
     echo -e "${YELLOW}Running $test_name...${NC}"
     echo "Description: $description"
     echo "Users: $users, Spawn Rate: $spawn_rate, Duration: $run_time"
     echo ""
-    
+
     local report_file="$OUTPUT_DIR/${test_name}_${TIMESTAMP}"
-    
+
     # Run locust with specified parameters
     locust -f locustfile.py \
         --host="$HOST" \
@@ -50,7 +50,7 @@ run_load_test() {
         --headless \
         --print-stats \
         --only-summary
-    
+
     echo -e "${GREEN}✅ $test_name completed${NC}"
     echo "Report: ${report_file}.html"
     echo ""
@@ -61,11 +61,11 @@ run_websocket_test() {
     local test_name=$1
     local users=$2
     local duration=$3
-    
+
     echo -e "${YELLOW}Running $test_name...${NC}"
     echo "WebSocket-focused test with $users concurrent connections for $duration"
     echo ""
-    
+
     # Use WebSocket-heavy user class
     locust -f locustfile.py \
         --host="$HOST" \
@@ -77,7 +77,7 @@ run_websocket_test() {
         --user-classes="WebSocketTaskSet" \
         --headless \
         --print-stats
-    
+
     echo -e "${GREEN}✅ $test_name completed${NC}"
     echo ""
 }
@@ -87,7 +87,7 @@ run_stress_test() {
     echo -e "${YELLOW}Running Stress Test...${NC}"
     echo "This test will push the system to its limits"
     echo ""
-    
+
     locust -f locustfile.py \
         --host="$HOST" \
         --users=2000 \
@@ -98,7 +98,7 @@ run_stress_test() {
         --user-classes="StressTestUser" \
         --headless \
         --print-stats
-    
+
     echo -e "${GREEN}✅ Stress test completed${NC}"
     echo ""
 }
@@ -108,11 +108,11 @@ run_capacity_test() {
     echo -e "${YELLOW}Running Capacity Test...${NC}"
     echo "Gradually increasing load to find system limits"
     echo ""
-    
+
     # Step-wise load increase
     for users in 50 100 200 500 1000; do
         echo "Testing with $users users..."
-        
+
         locust -f locustfile.py \
             --host="$HOST" \
             --users="$users" \
@@ -122,11 +122,11 @@ run_capacity_test() {
             --csv="$OUTPUT_DIR/capacity_${users}users_${TIMESTAMP}" \
             --headless \
             --only-summary
-        
+
         echo "Waiting 30 seconds before next test..."
         sleep 30
     done
-    
+
     echo -e "${GREEN}✅ Capacity test completed${NC}"
     echo ""
 }
@@ -136,7 +136,7 @@ run_endurance_test() {
     echo -e "${YELLOW}Running Endurance Test...${NC}"
     echo "Long-running test to check for memory leaks and stability"
     echo ""
-    
+
     locust -f locustfile.py \
         --host="$HOST" \
         --users=100 \
@@ -146,7 +146,7 @@ run_endurance_test() {
         --csv="$OUTPUT_DIR/endurance_test_${TIMESTAMP}" \
         --headless \
         --print-stats
-    
+
     echo -e "${GREEN}✅ Endurance test completed${NC}"
     echo ""
 }
@@ -155,13 +155,13 @@ run_endurance_test() {
 run_api_tests() {
     echo -e "${YELLOW}Running API-Specific Tests...${NC}"
     echo ""
-    
+
     # Test different endpoints with focused load
     endpoints=("auth" "chat" "upload" "analytics")
-    
+
     for endpoint in "${endpoints[@]}"; do
         echo "Testing $endpoint endpoint..."
-        
+
         # Create focused test for each endpoint
         locust -f locustfile.py \
             --host="$HOST" \
@@ -172,10 +172,10 @@ run_api_tests() {
             --csv="$OUTPUT_DIR/api_${endpoint}_${TIMESTAMP}" \
             --headless \
             --only-summary
-        
+
         sleep 10
     done
-    
+
     echo -e "${GREEN}✅ API tests completed${NC}"
     echo ""
 }
@@ -183,7 +183,7 @@ run_api_tests() {
 # Function to generate comparison report
 generate_comparison_report() {
     echo -e "${YELLOW}Generating Comparison Report...${NC}"
-    
+
     cat > "$OUTPUT_DIR/test_summary_${TIMESTAMP}.md" << EOF
 # Load Test Summary Report
 
@@ -219,7 +219,7 @@ Based on the test results:
 4. Schedule regular performance testing
 
 EOF
-    
+
     echo -e "${GREEN}✅ Comparison report generated${NC}"
     echo "Report: $OUTPUT_DIR/test_summary_${TIMESTAMP}.md"
     echo ""
@@ -248,7 +248,7 @@ run_custom_test() {
     read -p "Spawn rate: " spawn_rate
     read -p "Duration (e.g., 10m, 1h): " duration
     read -p "Test name: " test_name
-    
+
     run_load_test "$test_name" "$users" "$spawn_rate" "$duration" "Custom test configuration"
 }
 

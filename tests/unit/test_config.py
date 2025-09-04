@@ -1,7 +1,8 @@
 """Test configuration loading."""
 
 import pytest
-from chatbot_system_core.config import Settings
+
+from chatbot_ai_system.config import Settings
 
 
 def test_default_settings():

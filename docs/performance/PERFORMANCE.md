@@ -66,7 +66,7 @@ class SemanticCache:
     similarity_threshold = 0.85
     ttl_seconds = 3600
     max_size_mb = 100
-    
+
     async def get(query: str) -> Optional[Response]:
         embedding = generate_embedding(query)
         best_match = find_similar(embedding, threshold)
@@ -149,7 +149,7 @@ def get_next_provider():
 ```
 Requests      [total, rate, throughput]  270000, 1500.0/s, 1485.3/s
 Duration      [total, attack, wait]      3h0m0s, 3h0m0s, 142ms
-Latencies     [min, mean, 50, 90, 95, 99, max]  
+Latencies     [min, mean, 50, 90, 95, 99, max]
               12ms, 156ms, 145ms, 178ms, 189ms, 445ms, 2.1s
 Success       [ratio]                    99.2%
 Status Codes  [200:267840, 429:1620, 503:540]
@@ -226,13 +226,13 @@ groups:
         for: 5m
         annotations:
           summary: "P95 latency exceeds 200ms"
-      
+
       - alert: LowCacheHitRate
         expr: chatbot_cache_hit_ratio < 0.2
         for: 10m
         annotations:
           summary: "Cache hit rate below 20%"
-      
+
       - alert: HighErrorRate
         expr: rate(chatbot_errors_total[5m]) > 0.01
         for: 5m
@@ -273,14 +273,14 @@ groups:
 1. **Query Optimization**
    ```sql
    -- Add indexes
-   CREATE INDEX idx_chats_tenant_created 
+   CREATE INDEX idx_chats_tenant_created
    ON chats(tenant_id, created_at DESC);
-   
+
    -- Use prepared statements
    PREPARE chat_query AS
-   SELECT * FROM chats 
-   WHERE tenant_id = $1 
-   ORDER BY created_at DESC 
+   SELECT * FROM chats
+   WHERE tenant_id = $1
+   ORDER BY created_at DESC
    LIMIT $2;
    ```
 

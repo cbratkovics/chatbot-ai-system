@@ -32,12 +32,12 @@ ANTHROPIC_API_KEY=your-key-here  # Optional
 
 ## Features Included
 
-- Multi-model support (OpenAI GPT-4, Anthropic Claude)  
-- Real-time streaming responses  
-- Semantic caching for cost optimization  
-- WebSocket connections  
-- Rate limiting (30 req/min)  
-- Professional React UI  
+- Multi-model support (OpenAI GPT-4, Anthropic Claude)
+- Real-time streaming responses
+- Semantic caching for cost optimization
+- WebSocket connections
+- Rate limiting (30 req/min)
+- Professional React UI
 
 ## Simplified for Demo
 

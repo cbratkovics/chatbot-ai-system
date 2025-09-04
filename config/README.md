@@ -10,7 +10,7 @@ This directory contains all configuration files for the AI Chatbot System.
 - `requirements/` - Python dependency files
   - `base.txt` - Core dependencies (formerly config/requirements/base.txt)
   - `dev.txt` - Development dependencies
-  - `prod.txt` - Production dependencies  
+  - `prod.txt` - Production dependencies
 - `environments/` - Environment configurations
   - `config/environments/.env.example` - Environment variable template
   - `config/environments/render.yaml` - Render deployment configuration

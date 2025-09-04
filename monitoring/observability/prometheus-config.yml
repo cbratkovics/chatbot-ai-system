@@ -104,7 +104,7 @@ scrape_configs:
   # Redis - Cache and Session Store
   - job_name: 'redis'
     static_configs:
-      - targets: 
+      - targets:
           - 'redis-master:9121'
           - 'redis-replica-1:9121'
           - 'redis-replica-2:9121'
@@ -113,7 +113,7 @@ scrape_configs:
   # PostgreSQL Database
   - job_name: 'postgresql'
     static_configs:
-      - targets: 
+      - targets:
           - 'postgres-primary:9187'
           - 'postgres-replica-1:9187'
           - 'postgres-replica-2:9187'
@@ -122,7 +122,7 @@ scrape_configs:
   # Elasticsearch for Logging
   - job_name: 'elasticsearch'
     static_configs:
-      - targets: 
+      - targets:
           - 'elasticsearch-master-1:9114'
           - 'elasticsearch-master-2:9114'
           - 'elasticsearch-master-3:9114'

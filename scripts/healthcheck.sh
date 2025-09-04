@@ -33,9 +33,9 @@ check_service() {
     local service_name=$1
     local check_command=$2
     local critical=${3:-false}
-    
+
     echo -n "Checking $service_name... "
-    
+
     if eval $check_command > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Healthy${NC}"
         return 0
@@ -57,7 +57,7 @@ check_service() {
 get_metrics() {
     local url=$1
     local metric=$2
-    
+
     curl -s "$url" | grep -o "\"$metric\":[^,}]*" | cut -d':' -f2 | tr -d ' "'
 }
 
@@ -77,11 +77,11 @@ check_service "API Health Endpoint" \
 if [ $? -eq 0 ]; then
     # Get backend health details
     health_data=$(curl -s $BACKEND_URL/health)
-    
+
     # Check specific providers
     openai_configured=$(echo $health_data | grep -o '"openai":[^,}]*' | cut -d':' -f2 | tr -d ' "')
     anthropic_configured=$(echo $health_data | grep -o '"anthropic":[^,}]*' | cut -d':' -f2 | tr -d ' "')
-    
+
     echo "  - OpenAI Provider: $([ "$openai_configured" = "true" ] && echo -e "${GREEN}Configured${NC}" || echo -e "${YELLOW}Not configured${NC}")"
     echo "  - Anthropic Provider: $([ "$anthropic_configured" = "true" ] && echo -e "${GREEN}Configured${NC}" || echo -e "${YELLOW}Not configured${NC}")"
 fi
@@ -115,16 +115,16 @@ if [ $? -eq 0 ]; then
     # Get Redis stats
     used_memory=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT INFO memory | grep used_memory_human | cut -d':' -f2 | tr -d '\r')
     connected_clients=$(redis-cli -h $REDIS_HOST -p $REDIS_PORT INFO clients | grep connected_clients | cut -d':' -f2 | tr -d '\r')
-    
+
     echo "  - Memory Used: $used_memory"
     echo "  - Connected Clients: $connected_clients"
-    
+
     # Check cache stats from backend
     cache_stats=$(curl -s $BACKEND_URL/api/v1/cache/stats 2>/dev/null || echo "{}")
     if [ "$cache_stats" != "{}" ]; then
         hits=$(echo $cache_stats | grep -o '"hits":[^,}]*' | cut -d':' -f2 | tr -d ' "')
         misses=$(echo $cache_stats | grep -o '"misses":[^,}]*' | cut -d':' -f2 | tr -d ' "')
-        
+
         if [ -n "$hits" ] && [ -n "$misses" ] && [ $((hits + misses)) -gt 0 ]; then
             hit_rate=$(echo "scale=2; $hits * 100 / ($hits + $misses)" | bc)
             echo "  - Cache Hit Rate: ${hit_rate}%"
@@ -144,7 +144,7 @@ check_service "PostgreSQL Connection" \
 if [ $? -eq 0 ]; then
     # Get connection count
     conn_count=$(PGPASSWORD=${POSTGRES_PASSWORD:-chatbot123} psql -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER -d $POSTGRES_DB -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname='$POSTGRES_DB'" 2>/dev/null | tr -d ' ')
-    
+
     if [ -n "$conn_count" ]; then
         echo "  - Active Connections: $conn_count"
     fi
@@ -168,7 +168,7 @@ if command -v docker &> /dev/null; then
     echo ""
     echo "Container Resources:"
     echo "-------------------"
-    
+
     docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}" | grep chatbot || true
 fi
 

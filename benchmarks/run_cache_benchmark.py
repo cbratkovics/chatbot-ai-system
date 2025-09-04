@@ -8,14 +8,16 @@ Purpose: Measure performance improvements from semantic caching
 import argparse
 import asyncio
 import csv
-import json
-import time
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Any
 import hashlib
-import numpy as np
-from datetime import datetime
+import json
 import os
+import time
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any, Dict, List
+
+import numpy as np
+
 
 @dataclass
 class BenchmarkMetrics:
@@ -37,6 +39,7 @@ class BenchmarkMetrics:
             self.cache_lookup_times = []
         if self.embedding_times is None:
             self.embedding_times = []
+
 
 class SemanticCache:
     """Simulated semantic cache for benchmarking"""
@@ -63,27 +66,16 @@ class SemanticCache:
 
         if query_hash in self.cache:
             self.stats["hits"] += 1
-            return {
-                "hit": True,
-                "response": self.cache[query_hash],
-                "lookup_time": lookup_time
-            }
+            return {"hit": True, "response": self.cache[query_hash], "lookup_time": lookup_time}
 
         self.stats["misses"] += 1
-        return {
-            "hit": False,
-            "response": None,
-            "lookup_time": lookup_time
-        }
+        return {"hit": False, "response": None, "lookup_time": lookup_time}
 
     async def set(self, query: str, response: str, tokens: Dict[str, int]):
         """Store response in cache"""
         query_hash = hashlib.md5(query.encode()).hexdigest()
-        self.cache[query_hash] = {
-            "response": response,
-            "tokens": tokens,
-            "timestamp": time.time()
-        }
+        self.cache[query_hash] = {"response": response, "tokens": tokens, "timestamp": time.time()}
+
 
 class LLMSimulator:
     """Simulate LLM API calls with realistic metrics"""
@@ -111,8 +103,9 @@ class LLMSimulator:
             "output_tokens": output_tokens,
             "total_tokens": int(input_tokens) + output_tokens,
             "response_time": time.time() - start_time,
-            "cost": (int(input_tokens) + output_tokens) / 1000 * self.cost_per_1k_tokens
+            "cost": (int(input_tokens) + output_tokens) / 1000 * self.cost_per_1k_tokens,
         }
+
 
 class BenchmarkRunner:
     """Execute and measure cache benchmark scenarios"""
@@ -153,6 +146,7 @@ class BenchmarkRunner:
 
         # Add 150 duplicates randomly
         import random
+
         for _ in range(150):
             all_queries.append(random.choice(unique_queries[:100]))  # Duplicate from first 100
 
@@ -188,14 +182,17 @@ class BenchmarkRunner:
         self.metrics.response_times.append(result["response_time"])
 
         if self.use_cache:
-            await self.cache.set(query, result["response"], {
-                "input": result["input_tokens"],
-                "output": result["output_tokens"]
-            })
+            await self.cache.set(
+                query,
+                result["response"],
+                {"input": result["input_tokens"], "output": result["output_tokens"]},
+            )
 
     async def run(self) -> BenchmarkMetrics:
         """Execute the benchmark"""
-        print(f"Starting benchmark - Mode: {'Optimized (with cache)' if self.use_cache else 'Baseline (no cache)'}")
+        print(
+            f"Starting benchmark - Mode: {'Optimized (with cache)' if self.use_cache else 'Baseline (no cache)'}"
+        )
         print(f"Processing {len(self.queries)} requests...")
 
         start_time = time.time()
@@ -203,17 +200,21 @@ class BenchmarkRunner:
         # Process requests with controlled concurrency
         batch_size = 10
         for i in range(0, len(self.queries), batch_size):
-            batch = self.queries[i:i+batch_size]
+            batch = self.queries[i : i + batch_size]
             await asyncio.gather(*[self.process_request(q) for q in batch])
 
             # Progress indicator
             if (i + batch_size) % 50 == 0:
-                print(f"  Processed {min(i + batch_size, len(self.queries))}/{len(self.queries)} requests...")
+                print(
+                    f"  Processed {min(i + batch_size, len(self.queries))}/{len(self.queries)} requests..."
+                )
 
         total_time = time.time() - start_time
 
         # Calculate final metrics
-        self.metrics.total_tokens = self.metrics.total_input_tokens + self.metrics.total_output_tokens
+        self.metrics.total_tokens = (
+            self.metrics.total_input_tokens + self.metrics.total_output_tokens
+        )
         self.metrics.total_cost_usd = self.metrics.total_tokens / 1000 * self.llm.cost_per_1k_tokens
 
         print(f"Completed in {total_time:.2f} seconds")
@@ -222,6 +223,7 @@ class BenchmarkRunner:
             print(f"Cache hit rate: {hit_rate:.1f}%")
 
         return self.metrics
+
 
 def save_results(baseline_metrics: BenchmarkMetrics, optimized_metrics: BenchmarkMetrics):
     """Save benchmark results to CSV"""
@@ -233,22 +235,57 @@ def save_results(baseline_metrics: BenchmarkMetrics, optimized_metrics: Benchmar
     # Prepare CSV data
     rows = [
         ["metric", "baseline", "optimized", "improvement", "unit"],
-        ["total_requests", baseline_metrics.total_requests, optimized_metrics.total_requests, 0, "%"],
+        [
+            "total_requests",
+            baseline_metrics.total_requests,
+            optimized_metrics.total_requests,
+            0,
+            "%",
+        ],
         ["cache_hits", 0, optimized_metrics.cache_hits, optimized_metrics.cache_hits, "count"],
-        ["cache_misses", baseline_metrics.total_requests, optimized_metrics.cache_misses,
-         -(baseline_metrics.total_requests - optimized_metrics.cache_misses), "count"],
-        ["cache_hit_rate", 0, round((optimized_metrics.cache_hits / optimized_metrics.total_requests) * 100, 2),
-         round((optimized_metrics.cache_hits / optimized_metrics.total_requests) * 100, 2), "%"],
-        ["total_input_tokens", baseline_metrics.total_input_tokens, optimized_metrics.total_input_tokens,
-         baseline_metrics.total_input_tokens - optimized_metrics.total_input_tokens, "tokens"],
-        ["total_output_tokens", baseline_metrics.total_output_tokens, optimized_metrics.total_output_tokens,
-         baseline_metrics.total_output_tokens - optimized_metrics.total_output_tokens, "tokens"],
-        ["total_tokens", baseline_metrics.total_tokens, optimized_metrics.total_tokens,
-         baseline_metrics.total_tokens - optimized_metrics.total_tokens, "tokens"],
+        [
+            "cache_misses",
+            baseline_metrics.total_requests,
+            optimized_metrics.cache_misses,
+            -(baseline_metrics.total_requests - optimized_metrics.cache_misses),
+            "count",
+        ],
+        [
+            "cache_hit_rate",
+            0,
+            round((optimized_metrics.cache_hits / optimized_metrics.total_requests) * 100, 2),
+            round((optimized_metrics.cache_hits / optimized_metrics.total_requests) * 100, 2),
+            "%",
+        ],
+        [
+            "total_input_tokens",
+            baseline_metrics.total_input_tokens,
+            optimized_metrics.total_input_tokens,
+            baseline_metrics.total_input_tokens - optimized_metrics.total_input_tokens,
+            "tokens",
+        ],
+        [
+            "total_output_tokens",
+            baseline_metrics.total_output_tokens,
+            optimized_metrics.total_output_tokens,
+            baseline_metrics.total_output_tokens - optimized_metrics.total_output_tokens,
+            "tokens",
+        ],
+        [
+            "total_tokens",
+            baseline_metrics.total_tokens,
+            optimized_metrics.total_tokens,
+            baseline_metrics.total_tokens - optimized_metrics.total_tokens,
+            "tokens",
+        ],
         ["token_reduction", 0, round(token_reduction, 2), round(token_reduction, 2), "%"],
-        ["baseline_cost_usd", round(baseline_metrics.total_cost_usd, 3),
-         round(optimized_metrics.total_cost_usd, 3),
-         round(baseline_metrics.total_cost_usd - optimized_metrics.total_cost_usd, 3), "USD"],
+        [
+            "baseline_cost_usd",
+            round(baseline_metrics.total_cost_usd, 3),
+            round(optimized_metrics.total_cost_usd, 3),
+            round(baseline_metrics.total_cost_usd - optimized_metrics.total_cost_usd, 3),
+            "USD",
+        ],
         ["cost_reduction", 0, round(cost_reduction, 2), round(cost_reduction, 2), "%"],
     ]
 
@@ -262,20 +299,37 @@ def save_results(baseline_metrics: BenchmarkMetrics, optimized_metrics: Benchmar
             if name == "baseline":
                 baseline_p50, baseline_p95, baseline_p99 = p50, p95, p99
             else:
-                rows.extend([
-                    ["p50_response_time_ms", round(baseline_p50), round(p50),
-                     round(baseline_p50 - p50), "ms"],
-                    ["p95_response_time_ms", round(baseline_p95), round(p95),
-                     round(baseline_p95 - p95), "ms"],
-                    ["p99_response_time_ms", round(baseline_p99), round(p99),
-                     round(baseline_p99 - p99), "ms"],
-                ])
+                rows.extend(
+                    [
+                        [
+                            "p50_response_time_ms",
+                            round(baseline_p50),
+                            round(p50),
+                            round(baseline_p50 - p50),
+                            "ms",
+                        ],
+                        [
+                            "p95_response_time_ms",
+                            round(baseline_p95),
+                            round(p95),
+                            round(baseline_p95 - p95),
+                            "ms",
+                        ],
+                        [
+                            "p99_response_time_ms",
+                            round(baseline_p99),
+                            round(p99),
+                            round(baseline_p99 - p99),
+                            "ms",
+                        ],
+                    ]
+                )
 
     # Write to CSV
     output_path = "docs/benchmarks/cache_savings/results.csv"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    with open(output_path, 'w', newline='') as f:
+    with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerows(rows)
 
@@ -283,34 +337,36 @@ def save_results(baseline_metrics: BenchmarkMetrics, optimized_metrics: Benchmar
     print(f"Token reduction: {token_reduction:.2f}%")
     print(f"Cost reduction: {cost_reduction:.2f}%")
 
+
 async def main():
     parser = argparse.ArgumentParser(description="Run semantic cache benchmark")
-    parser.add_argument("--mode", choices=["baseline", "optimized", "both"],
-                       default="both", help="Benchmark mode")
-    parser.add_argument("--report", action="store_true",
-                       help="Generate comparison report")
+    parser.add_argument(
+        "--mode", choices=["baseline", "optimized", "both"], default="both", help="Benchmark mode"
+    )
+    parser.add_argument("--report", action="store_true", help="Generate comparison report")
 
     args = parser.parse_args()
 
     if args.mode in ["baseline", "both"]:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("BASELINE BENCHMARK (No Cache)")
-        print("="*60)
+        print("=" * 60)
         runner = BenchmarkRunner(use_cache=False)
         baseline_metrics = await runner.run()
 
     if args.mode in ["optimized", "both"]:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("OPTIMIZED BENCHMARK (With Semantic Cache)")
-        print("="*60)
+        print("=" * 60)
         runner = BenchmarkRunner(use_cache=True)
         optimized_metrics = await runner.run()
 
     if args.mode == "both" or args.report:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("GENERATING COMPARISON REPORT")
-        print("="*60)
+        print("=" * 60)
         save_results(baseline_metrics, optimized_metrics)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -17,17 +17,17 @@ from typing import Any
 
 import httpx
 import jwt
+import redis.asyncio as redis
 from ariadne import QueryType, make_executable_schema
 from celery import Celery
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text, create_engine
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Integer, String, Text,
+                        create_engine)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
-import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +218,7 @@ class EnterpriseIntegrationPlatform:
         self.rest_app = FastAPI(
             title="AI Chatbot Enterprise API",
             description="Enterprise-grade REST API for AI chatbot system",
-            version="2.0.0",
+            version="1.0.0",
         )
 
         # GraphQL schema
@@ -502,13 +502,13 @@ class EnterpriseIntegrationPlatform:
                 messages(sessionId: String!, limit: Int, offset: Int): [Message!]!
                 usageAnalytics(startDate: String!, endDate: String!): UsageAnalytics!
             }
-            
+
             type Mutation {
                 createChatSession(input: CreateChatSessionInput!): ChatSession!
                 sendMessage(sessionId: String!, input: SendMessageInput!): Message!
                 updateChatSession(id: String!, input: UpdateChatSessionInput!): ChatSession!
             }
-            
+
             type ChatSession {
                 id: String!
                 userId: String!
@@ -521,7 +521,7 @@ class EnterpriseIntegrationPlatform:
                 totalCost: Float!
                 messages: [Message!]!
             }
-            
+
             type Message {
                 id: String!
                 sessionId: String!
@@ -531,21 +531,21 @@ class EnterpriseIntegrationPlatform:
                 metadata: MessageMetadata!
                 createdAt: String!
             }
-            
+
             type SessionConfig {
                 model: String!
                 temperature: Float!
                 maxTokens: Int!
                 systemPrompt: String
             }
-            
+
             type Attachment {
                 type: String!
                 url: String!
                 filename: String
                 size: Int
             }
-            
+
             type MessageMetadata {
                 model: String
                 tokens: Int
@@ -553,7 +553,7 @@ class EnterpriseIntegrationPlatform:
                 responseTime: Float
                 qualityScore: Float
             }
-            
+
             type UsageAnalytics {
                 totalRequests: Int!
                 totalTokens: Int!
@@ -562,26 +562,26 @@ class EnterpriseIntegrationPlatform:
                 successRate: Float!
                 breakdowns: UsageBreakdowns!
             }
-            
+
             type UsageBreakdowns {
                 byModel: [ModelUsage!]!
                 byDay: [DailyUsage!]!
             }
-            
+
             type ModelUsage {
                 model: String!
                 requests: Int!
                 tokens: Int!
                 cost: Float!
             }
-            
+
             type DailyUsage {
                 date: String!
                 requests: Int!
                 tokens: Int!
                 cost: Float!
             }
-            
+
             input CreateChatSessionInput {
                 model: String!
                 temperature: Float = 0.7
@@ -589,25 +589,25 @@ class EnterpriseIntegrationPlatform:
                 systemPrompt: String
                 metadata: String
             }
-            
+
             input SendMessageInput {
                 content: String!
                 stream: Boolean = false
                 attachments: [AttachmentInput!]
                 context: String
             }
-            
+
             input UpdateChatSessionInput {
                 status: String
                 config: SessionConfigInput
             }
-            
+
             input SessionConfigInput {
                 temperature: Float
                 maxTokens: Int
                 systemPrompt: String
             }
-            
+
             input AttachmentInput {
                 type: String!
                 url: String!
@@ -1141,7 +1141,7 @@ class ChatbotAPI:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-    
+
     def create_session(self, model: str = "gpt-4", temperature: float = 0.7):
         response = requests.post(
             f"{self.base_url}/api/v2/chat/sessions",
@@ -1153,7 +1153,7 @@ class ChatbotAPI:
             }
         )
         return response.json()
-    
+
     def send_message(self, session_id: str, content: str):
         response = requests.post(
             f"{self.base_url}/api/v2/chat/sessions/{session_id}/messages",
@@ -1179,7 +1179,7 @@ class ChatbotAPI {
             'Content-Type': 'application/json'
         };
     }
-    
+
     async createSession(model = 'gpt-4', temperature = 0.7) {
         const response = await fetch(`${this.baseUrl}/api/v2/chat/sessions`, {
             method: 'POST',
@@ -1192,7 +1192,7 @@ class ChatbotAPI {
         });
         return response.json();
     }
-    
+
     async sendMessage(sessionId, content) {
         const response = await fetch(`${this.baseUrl}/api/v2/chat/sessions/${sessionId}/messages`, {
             method: 'POST',

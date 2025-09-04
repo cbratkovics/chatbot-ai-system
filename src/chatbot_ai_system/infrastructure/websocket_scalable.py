@@ -15,10 +15,9 @@ from enum import Enum
 from typing import Any
 
 import jwt
+import redis.asyncio as redis
 import socketio
 from aiohttp import web
-
-import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 

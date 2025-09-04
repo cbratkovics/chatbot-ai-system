@@ -18,14 +18,14 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const groupedModels = React.useMemo(() => {
     const groups: Record<string, Model[]> = {};
-    
+
     models.forEach((model) => {
       if (!groups[model.provider]) {
         groups[model.provider] = [];
       }
       groups[model.provider].push(model);
     });
-    
+
     return groups;
   }, [models]);
 
@@ -53,7 +53,7 @@ export function ModelSelector({
           </optgroup>
         ))}
       </select>
-      
+
       {currentModelData && (
         <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
           <div>Context: {currentModelData.contextLength.toLocaleString()} tokens</div>

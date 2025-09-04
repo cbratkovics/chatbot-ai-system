@@ -29,7 +29,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   // Initialize WebSocket client
   useEffect(() => {
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/chat';
-    
+
     const client = new WebSocketClient({
       url: wsUrl,
       reconnectInterval: Number(process.env.NEXT_PUBLIC_WS_RECONNECT_INTERVAL) || 5000,

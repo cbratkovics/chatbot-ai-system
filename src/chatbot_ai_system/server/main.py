@@ -27,37 +27,34 @@ from chatbot_ai_system.config import settings
 # Configure structured logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
 # Create rate limiter
 limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[f"{settings.rate_limit_requests}/minute"]
+    key_func=get_remote_address, default_limits=[f"{settings.rate_limit_requests}/minute"]
 )
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Middleware to add request ID to all requests."""
-    
+
     async def dispatch(self, request: Request, call_next):
         # Generate or extract request ID
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
-        
+
         # Process request
         start_time = time.time()
         response = await call_next(request)
         process_time = time.time() - start_time
-        
+
         # Add headers to response
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Process-Time"] = str(process_time)
-        
+
         # Log request
         logger.info(
             "Request processed",
@@ -66,10 +63,10 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,
-                "process_time": process_time
-            }
+                "process_time": process_time,
+            },
         )
-        
+
         return response
 
 
@@ -91,7 +88,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Initialize Redis cache for chat API
     try:
         from chatbot_ai_system.api.chat import initialize_cache
-        
+
         await initialize_cache(settings)
         logger.info("Redis cache system initialized")
     except Exception as e:
@@ -113,17 +110,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Close Redis cache
     try:
         from chatbot_ai_system.api.chat import redis_cache
-        
+
         if redis_cache:
             await redis_cache.disconnect()
             logger.info("Redis cache disconnected")
     except Exception as e:
         logger.warning(f"Error disconnecting Redis cache: {e}")
-    
+
     # Shutdown WebSocket manager
     try:
         from chatbot_ai_system.websocket.ws_manager import WebSocketManager
-        
+
         ws_manager = WebSocketManager()
         await ws_manager.shutdown()
         logger.info("WebSocket manager shut down")
@@ -146,7 +143,7 @@ def create_app() -> FastAPI:
     # Add rate limiting
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    
+
     # Add middleware (order matters - reverse order of execution)
     app.add_middleware(
         CORSMiddleware,
@@ -169,8 +166,8 @@ def create_app() -> FastAPI:
             extra={
                 "request_id": request_id,
                 "status_code": exc.status_code,
-                "path": request.url.path
-            }
+                "path": request.url.path,
+            },
         )
         return JSONResponse(
             status_code=exc.status_code,
@@ -178,20 +175,17 @@ def create_app() -> FastAPI:
                 "error": exc.detail,
                 "status_code": exc.status_code,
                 "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         )
-    
+
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         """Handle validation errors."""
         request_id = getattr(request.state, "request_id", "unknown")
         logger.error(
             f"Validation error: {exc.errors()}",
-            extra={
-                "request_id": request_id,
-                "path": request.url.path
-            }
+            extra={"request_id": request_id, "path": request.url.path},
         )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -199,38 +193,36 @@ def create_app() -> FastAPI:
                 "error": "Validation error",
                 "details": exc.errors(),
                 "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         )
-    
+
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
         """Handle unexpected exceptions."""
         request_id = getattr(request.state, "request_id", "unknown")
         logger.error(
             f"Unexpected error: {str(exc)}",
-            extra={
-                "request_id": request_id,
-                "path": request.url.path
-            },
-            exc_info=True
+            extra={"request_id": request_id, "path": request.url.path},
+            exc_info=True,
         )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
                 "error": "Internal server error",
                 "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat()
-            }
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         )
-    
+
     # Add routes
     app.include_router(api_router, prefix="/api/v1")
-    
+
     # Add WebSocket routes
     from chatbot_ai_system.api.websocket import ws_router
+
     app.include_router(ws_router)
-    
+
     # Health check endpoint
     @app.get("/health")
     async def health():
@@ -245,11 +237,11 @@ def create_app() -> FastAPI:
                 "environment": settings.environment,
                 "providers_configured": {
                     "openai": settings.has_openai_key,
-                    "anthropic": settings.has_anthropic_key
-                }
+                    "anthropic": settings.has_anthropic_key,
+                },
             },
         )
-    
+
     @app.get("/")
     async def root():
         """Root endpoint."""
@@ -258,9 +250,9 @@ def create_app() -> FastAPI:
             "version": __version__,
             "docs": "/docs",
             "health": "/health",
-            "api": "/api/v1"
+            "api": "/api/v1",
         }
-    
+
     return app
 
 

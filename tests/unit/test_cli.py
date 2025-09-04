@@ -4,8 +4,9 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-from chatbot_ai_system.cli import app
 from typer.testing import CliRunner
+
+from chatbot_ai_system.cli import app
 
 runner = CliRunner()
 
@@ -18,7 +19,7 @@ class TestCLICommands:
         """Test version command."""
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "0.1.0" in result.stdout
+        assert "1.0.0" in result.stdout
 
     def test_version_json_format(self):
         """Test version with JSON format."""
@@ -26,7 +27,7 @@ class TestCLICommands:
         assert result.exit_code == 0
 
         data = json.loads(result.stdout)
-        assert data["version"] == "0.1.0"
+        assert data["version"] == "1.0.0"
         assert data["package"] == "chatbot-ai-system"
 
     def test_help_command(self):

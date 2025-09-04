@@ -9,18 +9,14 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Dict, List
 from uuid import UUID
 
 import structlog
 
-from chatbot_ai_system.providers.base import (
-    BaseProvider,
-    CompletionRequest,
-    CompletionResponse,
-    ProviderError,
-    RateLimitError,
-, Dict, List)
+from chatbot_ai_system.providers.base import (BaseProvider, CompletionRequest,
+                                              CompletionResponse,
+                                              ProviderError, RateLimitError)
 from chatbot_ai_system.telemetry.metrics import metrics_collector
 
 logger = structlog.get_logger()

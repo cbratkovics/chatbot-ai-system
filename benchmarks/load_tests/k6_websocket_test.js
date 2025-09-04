@@ -83,7 +83,7 @@ export default function () {
   const userId = `user_${__VU}_${randomString(8)}`;
   const sessionId = `session_${randomString(16)}`;
   const startTime = Date.now();
-  
+
   // Test WebSocket connection with authentication
   const params = {
     headers: {
@@ -99,11 +99,11 @@ export default function () {
     const connectTime = Date.now() - startTime;
     connectionTime.add(connectTime);
     activeConnections.add(1);
-    
+
     // Connection established handler
     socket.on('open', () => {
       console.log(`User ${userId}: Connected in ${connectTime}ms`);
-      
+
       // Send initial configuration
       socket.send(JSON.stringify({
         type: 'config',
@@ -114,17 +114,17 @@ export default function () {
           streaming: true,
         }
       }));
-      
+
       // Simulate conversation
       let messageCount = 0;
       const maxMessages = 10;
-      
+
       socket.setInterval(() => {
         if (messageCount < maxMessages) {
           const prompt = randomItem(testPrompts);
           const messageId = `msg_${randomString(16)}`;
           const sentTime = Date.now();
-          
+
           // Send chat message
           socket.send(JSON.stringify({
             type: 'chat',
@@ -135,10 +135,10 @@ export default function () {
               timestamp: sentTime,
             }
           }));
-          
+
           messagesSent.add(1);
           messageCount++;
-          
+
           // Store sent time for latency calculation
           socket.messageTimestamps = socket.messageTimestamps || {};
           socket.messageTimestamps[messageId] = sentTime;
@@ -149,11 +149,11 @@ export default function () {
     // Handle incoming messages
     socket.on('message', (data) => {
       messagesReceived.add(1);
-      
+
       try {
         const message = JSON.parse(data);
         const receivedTime = Date.now();
-        
+
         switch (message.type) {
           case 'response':
             // Calculate message round-trip latency
@@ -163,13 +163,13 @@ export default function () {
               delete socket.messageTimestamps[message.id];
             }
             break;
-            
+
           case 'stream_start':
             // Track streaming start
             socket.streamStart = socket.streamStart || {};
             socket.streamStart[message.id] = receivedTime;
             break;
-            
+
           case 'stream_chunk':
             // Track streaming chunks
             if (socket.streamStart && socket.streamStart[message.id]) {
@@ -178,23 +178,23 @@ export default function () {
               socket.streamStart[message.id] = receivedTime; // Update for next chunk
             }
             break;
-            
+
           case 'stream_end':
             // Clean up streaming tracking
             if (socket.streamStart && socket.streamStart[message.id]) {
               delete socket.streamStart[message.id];
             }
             break;
-            
+
           case 'error':
             errorRate.add(1);
             console.error(`Error for user ${userId}: ${message.error}`);
             break;
-            
+
           case 'pong':
             // Heartbeat response
             break;
-            
+
           default:
             console.log(`Unknown message type: ${message.type}`);
         }
@@ -226,16 +226,16 @@ export default function () {
       if (Math.random() < 0.1) { // 10% chance to test reconnection
         console.log(`User ${userId}: Testing reconnection`);
         socket.close();
-        
+
         // Attempt reconnection
         const reconnectStart = Date.now();
         sleep(1);
-        
+
         ws.connect(WS_URL, params, function(newSocket) {
           const reconnectDuration = Date.now() - reconnectStart;
           reconnectionTime.add(reconnectDuration);
           console.log(`User ${userId}: Reconnected in ${reconnectDuration}ms`);
-          
+
           // Continue with new socket
           newSocket.setTimeout(() => {
             newSocket.close();
@@ -254,7 +254,7 @@ export default function () {
   check(response, {
     'WebSocket connection established': (r) => r && r.status === 101,
   });
-  
+
   // Add some think time between user connections
   sleep(Math.random() * 2);
 }
@@ -305,7 +305,7 @@ export function handleSummary(data) {
 function textSummary(data, options) {
   const indent = options.indent || '';
   let output = '\n=== WebSocket Load Test Results ===\n\n';
-  
+
   // Connection metrics
   if (data.metrics.ws_connection_time) {
     output += `${indent}Connection Time:\n`;
@@ -313,7 +313,7 @@ function textSummary(data, options) {
     output += `${indent}  P95: ${data.metrics.ws_connection_time.values['p(95)'].toFixed(2)}ms\n`;
     output += `${indent}  P99: ${data.metrics.ws_connection_time.values['p(99)'].toFixed(2)}ms\n\n`;
   }
-  
+
   // Message latency
   if (data.metrics.ws_message_latency) {
     output += `${indent}Message Latency:\n`;
@@ -321,7 +321,7 @@ function textSummary(data, options) {
     output += `${indent}  P95: ${data.metrics.ws_message_latency.values['p(95)'].toFixed(2)}ms\n`;
     output += `${indent}  P99: ${data.metrics.ws_message_latency.values['p(99)'].toFixed(2)}ms\n\n`;
   }
-  
+
   // Streaming performance
   if (data.metrics.ws_streaming_latency) {
     output += `${indent}Streaming Latency:\n`;
@@ -329,30 +329,30 @@ function textSummary(data, options) {
     output += `${indent}  P95: ${data.metrics.ws_streaming_latency.values['p(95)'].toFixed(2)}ms\n`;
     output += `${indent}  P99: ${data.metrics.ws_streaming_latency.values['p(99)'].toFixed(2)}ms\n\n`;
   }
-  
+
   // Throughput
   if (data.metrics.ws_messages_sent && data.metrics.ws_messages_received) {
     output += `${indent}Throughput:\n`;
     output += `${indent}  Messages Sent: ${data.metrics.ws_messages_sent.values.count}\n`;
     output += `${indent}  Messages Received: ${data.metrics.ws_messages_received.values.count}\n\n`;
   }
-  
+
   // Error rate
   if (data.metrics.ws_errors) {
     output += `${indent}Error Rate: ${(data.metrics.ws_errors.values.rate * 100).toFixed(2)}%\n\n`;
   }
-  
+
   // Max concurrent users
   if (data.metrics.vus_max) {
     output += `${indent}Max Concurrent Users: ${data.metrics.vus_max.values.value}\n\n`;
   }
-  
+
   // Threshold results
   output += `${indent}Threshold Results:\n`;
   for (const [key, value] of Object.entries(data.thresholds || {})) {
     const status = value.ok ? 'PASS' : 'FAIL';
     output += `${indent}  ${key}: ${status}\n`;
   }
-  
+
   return output;
 }

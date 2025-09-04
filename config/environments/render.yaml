@@ -20,7 +20,7 @@ services:
         value: INFO
     healthCheckPath: /health
     autoDeploy: true
-      
+
   - type: redis
     name: ai-chat-redis
     ipAllowList: []

@@ -17,6 +17,7 @@ def test_imports():
     """Test basic imports work."""
     try:
         import api
+
         import app
     except ImportError:
         # If imports fail, just pass the test to keep CI green

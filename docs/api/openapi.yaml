@@ -3,9 +3,9 @@ info:
   title: Enterprise AI Chatbot System API
   description: |
     # Enterprise-Scale Conversational AI Platform
-    
+
     A production-grade API for conversational AI with enterprise features including:
-    
+
     - **Multi-Model Support**: GPT-4, Claude-3, and more
     - **Real-time Streaming**: WebSocket and Server-Sent Events
     - **Enterprise SSO**: SAML 2.0, OAuth 2.0, API keys
@@ -13,29 +13,29 @@ info:
     - **Safety & Compliance**: Content filtering, audit trails
     - **Cost Optimization**: Intelligent model routing, caching
     - **Multi-Region**: Global deployment with failover
-    
+
     ## Authentication
-    
+
     This API supports multiple authentication methods:
-    
+
     - **Bearer Token**: OAuth 2.0 JWT tokens for user authentication
-    - **API Key**: Server-to-server authentication with scoped permissions  
+    - **API Key**: Server-to-server authentication with scoped permissions
     - **Session Cookie**: Web application session management
-    
+
     ## Rate Limiting
-    
+
     API endpoints are rate limited based on your subscription tier:
-    
+
     | Tier | Requests/Hour | Concurrent WebSocket |
     |------|---------------|---------------------|
     | Free | 1,000 | 1 |
     | Pro | 10,000 | 10 |
     | Enterprise | 100,000+ | 1,000+ |
-    
+
     ## Error Handling
-    
+
     The API uses standard HTTP status codes and returns detailed error information:
-    
+
     ```json
     {
       "error": {
@@ -49,15 +49,15 @@ info:
       }
     }
     ```
-    
+
     ## WebSocket Connection
-    
+
     For real-time communication, establish a WebSocket connection:
-    
+
     ```javascript
     const ws = new WebSocket('wss://api.example.com/ws/chat/{session_id}?token={auth_token}');
     ```
-    
+
   version: 2.0.0
   contact:
     name: AI Chatbot Support
@@ -771,9 +771,9 @@ websockets:
     summary: Real-time chat WebSocket
     description: |
       WebSocket endpoint for real-time chat communication.
-      
+
       **Connection URL**: `wss://api.example.com/ws/chat/{sessionId}?token={auth_token}`
-      
+
       **Message Format**:
       ```json
       {
@@ -782,7 +782,7 @@ websockets:
         "timestamp": "2024-01-01T12:00:00Z"
       }
       ```
-      
+
       **Response Format**:
       ```json
       {

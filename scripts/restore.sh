@@ -24,54 +24,54 @@ list_backups() {
 # Function to restore Redis
 restore_redis() {
     local backup_file=$1
-    
+
     if [ ! -f "$backup_file" ]; then
         echo "Error: Redis backup file not found: $backup_file"
         return 1
     fi
-    
+
     echo "Restoring Redis from $backup_file..."
-    
+
     # Stop Redis writes
     redis-cli -h $REDIS_HOST -p $REDIS_PORT CONFIG SET stop-writes-on-bgsave-error yes
-    
+
     # Flush existing data (optional, uncomment if needed)
     # redis-cli -h $REDIS_HOST -p $REDIS_PORT FLUSHALL
-    
+
     # Restore the backup
     cat "$backup_file" | redis-cli -h $REDIS_HOST -p $REDIS_PORT --pipe
-    
+
     echo "Redis restore completed"
 }
 
 # Function to restore PostgreSQL
 restore_postgres() {
     local backup_file=$1
-    
+
     if [ ! -f "$backup_file" ]; then
         echo "Error: PostgreSQL backup file not found: $backup_file"
         return 1
     fi
-    
+
     echo "Restoring PostgreSQL from $backup_file..."
-    
+
     # Decompress if needed
     if [[ "$backup_file" == *.gz ]]; then
         echo "Decompressing backup..."
         gunzip -c "$backup_file" > /tmp/restore.sql
         backup_file="/tmp/restore.sql"
     fi
-    
+
     # Restore the backup
     PGPASSWORD="${POSTGRES_PASSWORD:-chatbot123}" psql \
         -h $POSTGRES_HOST \
         -U $POSTGRES_USER \
         -d $POSTGRES_DB \
         -f "$backup_file"
-    
+
     # Clean up temp file
     [ -f /tmp/restore.sql ] && rm /tmp/restore.sql
-    
+
     echo "PostgreSQL restore completed"
 }
 
@@ -95,7 +95,7 @@ case "$1" in
         fi
         restore_redis "$2"
         ;;
-    
+
     postgres)
         if [ -z "$2" ]; then
             echo "Please specify a PostgreSQL backup file"
@@ -104,7 +104,7 @@ case "$1" in
         fi
         restore_postgres "$2"
         ;;
-    
+
     all)
         if [ -z "$2" ] || [ -z "$3" ]; then
             echo "Please specify both Redis and PostgreSQL backup files"
@@ -115,11 +115,11 @@ case "$1" in
         restore_redis "$2"
         restore_postgres "$3"
         ;;
-    
+
     list)
         list_backups
         ;;
-    
+
     *)
         echo "Invalid option: $1"
         echo "Usage: $0 [redis|postgres|all|list] [backup_file]"

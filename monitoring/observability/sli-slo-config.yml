@@ -21,7 +21,7 @@ slos:
         threshold: 6     # 2% of 30d budget in 6h
         window: "6h"
         severity: "warning"
-    
+
   # Response Time SLO
   response_time:
     name: "API Response Time"
@@ -101,7 +101,7 @@ slis:
     total_query: 'sum(rate(http_requests_total[5m]))'
     labels:
       service: "api"
-      
+
   - name: "http_latency"
     type: "distribution"
     query: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))'
@@ -243,14 +243,14 @@ dashboard_config:
         - "response_time"
         - "ai_model_success"
         - "websocket_stability"
-    
+
     - title: "Error Budget Burn Rate"
       type: "graph"
       targets:
         - "1h_burn_rate"
         - "6h_burn_rate"
         - "1d_burn_rate"
-    
+
     - title: "SLI Trends"
       type: "graph"
       targets:
@@ -311,9 +311,9 @@ multiwindow_multiburn_alerts:
     burn_rate_threshold: 14.4
     error_budget_consumed_threshold: 2
     severity: "critical"
-    
+
   - name: "AI Model Success Multi-Burn"
-    slo: "ai_model_success" 
+    slo: "ai_model_success"
     short_window: "2m"
     long_window: "10m"
     burn_rate_threshold: 9
@@ -325,13 +325,13 @@ custom_expressions:
   user_facing_availability: |
     (sum(rate(http_requests_total{endpoint=~"/api/(chat|auth).*", status!~"5.."}[5m])) /
      sum(rate(http_requests_total{endpoint=~"/api/(chat|auth).*"}[5m]))) * 100
-     
+
   critical_user_journey_success: |
     (sum(rate(user_journey_completions_total{journey="chat_completion", status="success"}[5m])) /
      sum(rate(user_journey_completions_total{journey="chat_completion"}[5m]))) * 100
-     
+
   cost_efficiency_sli: |
-    sum(rate(successful_requests_total[5m])) / 
+    sum(rate(successful_requests_total[5m])) /
     sum(rate(infrastructure_cost_usd_hourly[1h]))
 
 # SLO Testing and Validation
@@ -341,7 +341,7 @@ slo_tests:
     queries:
       - 'sum(rate(http_requests_total{status!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))'
       - 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))'
-    
+
   - name: "Error Budget Math Verification"
     type: "calculation_test"
     test_cases:

@@ -3,7 +3,7 @@
 
 terraform {
   required_version = ">= 1.5.0"
-  
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -18,7 +18,7 @@ terraform {
       version = "~> 2.11"
     }
   }
-  
+
   backend "s3" {
     bucket         = "ai-chatbot-terraform-state"
     key            = "production/terraform.tfstate"
@@ -67,7 +67,7 @@ variable "anthropic_api_key" {
 # Providers
 provider "aws" {
   region = var.primary_region
-  
+
   default_tags {
     tags = {
       Environment = var.environment
@@ -98,13 +98,13 @@ data "aws_caller_identity" "current" {}
 # Local variables
 locals {
   name_prefix = "ai-chatbot-${var.environment}"
-  
+
   common_tags = {
     Environment = var.environment
     Project     = "AI-Chatbot-System"
     CostCenter  = "Engineering"
   }
-  
+
   # VPC CIDR blocks for each region
   vpc_cidrs = {
     "us-east-1"      = "10.0.0.0/16"
@@ -118,7 +118,7 @@ resource "aws_kms_key" "main" {
   description             = "KMS key for ${local.name_prefix}"
   deletion_window_in_days = 30
   enable_key_rotation     = true
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-kms"
   })
@@ -132,7 +132,7 @@ resource "aws_kms_alias" "main" {
 # S3 bucket for artifacts and backups
 resource "aws_s3_bucket" "artifacts" {
   bucket = "${local.name_prefix}-artifacts-${data.aws_caller_identity.current.account_id}"
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-artifacts"
   })
@@ -140,7 +140,7 @@ resource "aws_s3_bucket" "artifacts" {
 
 resource "aws_s3_bucket_versioning" "artifacts" {
   bucket = aws_s3_bucket.artifacts.id
-  
+
   versioning_configuration {
     status = "Enabled"
   }
@@ -148,7 +148,7 @@ resource "aws_s3_bucket_versioning" "artifacts" {
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
   bucket = aws_s3_bucket.artifacts.id
-  
+
   rule {
     apply_server_side_encryption_by_default {
       kms_master_key_id = aws_kms_key.main.arn
@@ -161,16 +161,16 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
 resource "aws_ecr_repository" "api" {
   name                 = "${local.name_prefix}-api"
   image_tag_mutability = "MUTABLE"
-  
+
   image_scanning_configuration {
     scan_on_push = true
   }
-  
+
   encryption_configuration {
     encryption_type = "KMS"
     kms_key        = aws_kms_key.main.arn
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-api"
   })
@@ -178,7 +178,7 @@ resource "aws_ecr_repository" "api" {
 
 resource "aws_ecr_lifecycle_policy" "api" {
   repository = aws_ecr_repository.api.name
-  
+
   policy = jsonencode({
     rules = [
       {
@@ -204,7 +204,7 @@ resource "aws_secretsmanager_secret" "api_keys" {
   description            = "API keys for AI services"
   kms_key_id             = aws_kms_key.main.id
   recovery_window_in_days = 7
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-api-keys"
   })
@@ -212,7 +212,7 @@ resource "aws_secretsmanager_secret" "api_keys" {
 
 resource "aws_secretsmanager_secret_version" "api_keys" {
   secret_id = aws_secretsmanager_secret.api_keys.id
-  
+
   secret_string = jsonencode({
     openai_api_key    = var.openai_api_key
     anthropic_api_key = var.anthropic_api_key
@@ -224,11 +224,11 @@ resource "aws_acm_certificate" "main" {
   domain_name               = var.domain_name
   subject_alternative_names = ["*.${var.domain_name}"]
   validation_method         = "DNS"
-  
+
   lifecycle {
     create_before_destroy = true
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-cert"
   })
@@ -248,7 +248,7 @@ resource "aws_route53_record" "cert_validation" {
       type   = dvo.resource_record_type
     }
   }
-  
+
   zone_id = data.aws_route53_zone.main.zone_id
   name    = each.value.name
   type    = each.value.type
@@ -270,11 +270,11 @@ resource "aws_ssm_parameter" "config" {
     "rate_limit_requests" = "1000"
     "rate_limit_window"   = "60"
   }
-  
+
   name  = "/${local.name_prefix}/config/${each.key}"
   type  = each.key == "database_url" ? "SecureString" : "String"
   value = each.value
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-${each.key}"
   })

@@ -146,7 +146,7 @@ print_header "Checking Tests"
 # Check if tests directory exists
 if [ -d "tests" ]; then
     print_status 0 "Tests directory exists"
-    
+
     # Count test files
     TEST_COUNT=$(find tests -name "test_*.py" | wc -l)
     print_status 0 "Found $TEST_COUNT test files"
@@ -164,7 +164,7 @@ print_header "Checking Docker Setup"
 # Check Dockerfile
 if [ -f "Dockerfile" ]; then
     print_status 0 "Dockerfile exists"
-    
+
     # Validate Dockerfile syntax
     docker build --no-cache -f Dockerfile . --target builder --dry-run &>/dev/null
     print_status $? "Dockerfile syntax valid"
@@ -175,7 +175,7 @@ fi
 # Check docker-compose.yml
 if [ -f "docker-compose.yml" ]; then
     print_status 0 "docker-compose.yml exists"
-    
+
     # Validate docker-compose syntax
     docker-compose config --quiet &>/dev/null
     print_status $? "docker-compose.yml syntax valid"
@@ -189,7 +189,7 @@ print_header "Checking CI/CD Setup"
 # Check GitHub Actions workflows
 if [ -d ".github/workflows" ]; then
     print_status 0 "GitHub workflows directory exists"
-    
+
     WORKFLOW_COUNT=$(find .github/workflows -name "*.yml" -o -name "*.yaml" | wc -l)
     print_status 0 "Found $WORKFLOW_COUNT workflow files"
 else
@@ -199,7 +199,7 @@ fi
 # Check Makefile
 if [ -f "Makefile" ]; then
     print_status 0 "Makefile exists"
-    
+
     # Check key Make targets
     make help &>/dev/null
     print_status $? "Make help target works"
@@ -233,7 +233,7 @@ fi
 
 if [ -f ".gitignore" ]; then
     print_status 0 ".gitignore exists"
-    
+
     # Check if .env is ignored
     grep -q "^\.env$" .gitignore
     print_status $? ".env is in .gitignore"

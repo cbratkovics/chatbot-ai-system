@@ -107,7 +107,7 @@ class DependencyReporter:
         <h1>Dependency Report - {{ project_name }}</h1>
         <p>Generated: {{ timestamp }}</p>
     </div>
-    
+
     <div class="content">
         {% if critical_alerts %}
         <div class="alert">
@@ -119,7 +119,7 @@ class DependencyReporter:
             </ul>
         </div>
         {% endif %}
-        
+
         <div class="metrics">
             <div class="metric">
                 <div class="metric-value">{{ total_packages }}</div>
@@ -142,7 +142,7 @@ class DependencyReporter:
                 <div>Outdated</div>
             </div>
         </div>
-        
+
         {% if vulnerabilities %}
         <h2>Security Vulnerabilities</h2>
         <table>
@@ -162,7 +162,7 @@ class DependencyReporter:
             {% endfor %}
         </table>
         {% endif %}
-        
+
         {% if updates_available %}
         <h2>Available Updates</h2>
         <table>
@@ -182,7 +182,7 @@ class DependencyReporter:
             {% endfor %}
         </table>
         {% endif %}
-        
+
         <h2>Recommendations</h2>
         <ul>
         {% for rec in recommendations %}
@@ -259,8 +259,8 @@ class DependencyReporter:
             """
 # Dependency Report
 
-**Project:** {{ project_name }}  
-**Generated:** {{ timestamp }}  
+**Project:** {{ project_name }}
+**Generated:** {{ timestamp }}
 
 ## Summary
 

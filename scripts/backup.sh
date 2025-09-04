@@ -39,7 +39,7 @@ if PGPASSWORD="${POSTGRES_PASSWORD:-chatbot123}" pg_isready -h $POSTGRES_HOST -U
         --verbose \
         --clean \
         --if-exists
-    
+
     # Compress the backup
     gzip "$BACKUP_DIR/postgres/dump_${TIMESTAMP}.sql"
     echo "PostgreSQL backup completed: dump_${TIMESTAMP}.sql.gz"

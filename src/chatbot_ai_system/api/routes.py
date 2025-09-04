@@ -27,9 +27,9 @@ async def status():
     from datetime import datetime
 
     from chatbot_ai_system.config import get_settings
-    
+
     settings = get_settings()
-    
+
     status_info = {
         "status": "operational",
         "timestamp": datetime.utcnow().isoformat(),
@@ -42,12 +42,13 @@ async def status():
         "providers": {
             "openai": "configured" if settings.has_openai_key else "not_configured",
             "anthropic": "configured" if settings.has_anthropic_key else "not_configured",
-        }
+        },
     }
 
     # Check cache connectivity if available
     try:
         from chatbot_ai_system.cache import cache
+
         test_key = "health:check"
         await cache.set(test_key, "ok", ttl=10)
         if await cache.get(test_key) == "ok":

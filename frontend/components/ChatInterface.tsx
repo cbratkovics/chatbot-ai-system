@@ -42,14 +42,14 @@ export function ChatInterface() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!input.trim() || isLoading) return;
-    
+
     sendMessage(input.trim(), {
       temperature,
       maxTokens,
     });
-    
+
     setInput('');
   };
 
@@ -85,7 +85,7 @@ export function ChatInterface() {
               </span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -97,7 +97,7 @@ export function ChatInterface() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
-            
+
             <button
               onClick={clearMessages}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
@@ -122,7 +122,7 @@ export function ChatInterface() {
                 onModelChange={setCurrentModel}
                 disabled={isLoading}
               />
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Temperature: {temperature}
@@ -137,7 +137,7 @@ export function ChatInterface() {
                   className="w-full"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Max Tokens: {maxTokens}
@@ -216,7 +216,7 @@ export function ChatInterface() {
               }}
               disabled={isLoading}
             />
-            
+
             {isLoading ? (
               <button
                 type="button"

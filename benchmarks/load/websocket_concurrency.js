@@ -92,30 +92,30 @@ export default function () {
       scenario: exec.scenario.name,
     },
   };
-  
+
   const connectionStart = Date.now();
   let messageCount = 0;
   let bytesReceived = 0;
   let lastPingTime = Date.now();
   let connectionEstablished = false;
-  
+
   // Establish WebSocket connection
   const response = ws.connect(url, params, function (socket) {
     const connectDuration = Date.now() - connectionStart;
     wsConnectTime.add(connectDuration);
     wsConnectionsActive.add(1);
     connectionEstablished = true;
-    
+
     // Connection established check
     check(response, {
       'ws connection successful': (r) => r && r.status === 101,
       'ws connect time < 1s': () => connectDuration < 1000,
     }) || wsErrorRate.add(1);
-    
+
     // Set up message handlers
     socket.on('open', () => {
       console.log(`WS connected: ${conversationId} (VU: ${exec.vu.idInTest})`);
-      
+
       // Send initial authentication/setup message
       const authMessage = JSON.stringify({
         type: 'auth',
@@ -127,28 +127,28 @@ export default function () {
       socket.send(authMessage);
       wsMessagesSent.add(1);
     });
-    
+
     socket.on('message', (data) => {
       const receiveTime = Date.now();
       messageCount++;
       wsMessagesReceived.add(1);
-      
+
       try {
         const message = typeof data === 'string' ? JSON.parse(data) : data;
         bytesReceived += JSON.stringify(message).length;
         wsThroughput.add(bytesReceived);
-        
+
         // Calculate latency for ping/pong messages
         if (message.type === 'pong' && message.payload?.timestamp) {
           const latency = receiveTime - message.payload.timestamp;
           wsMessageLatency.add(latency);
-          
+
           check(null, {
             'message latency < 150ms': () => latency < 150,
             'message latency < 200ms': () => latency < 200,
           });
         }
-        
+
         // Handle different message types
         switch (message.type) {
           case 'auth_success':
@@ -170,26 +170,26 @@ export default function () {
         wsErrorRate.add(1);
       }
     });
-    
+
     socket.on('close', (code) => {
       wsConnectionsActive.add(-1);
-      
+
       if (code !== 1000 && code !== 1001) {  // Abnormal closure
         wsUnexpectedClose.add(1);
         console.error(`Unexpected close for ${conversationId}: code ${code}`);
       }
-      
+
       // Log connection statistics
       const duration = Date.now() - connectionStart;
       console.log(`Connection closed: ${conversationId}, duration: ${duration}ms, messages: ${messageCount}`);
     });
-    
+
     socket.on('error', (e) => {
       console.error(`WS error for ${conversationId}: ${e}`);
       wsErrorRate.add(1);
       wsConnectionsFailed.add(1);
     });
-    
+
     // Connection test sequence
     socket.setTimeout(() => {
       // Send periodic messages during connection lifetime
@@ -197,17 +197,17 @@ export default function () {
         if (socket.state === 1) {  // OPEN state
           // Select random message type
           const testMessage = testMessages[Math.floor(Math.random() * testMessages.length)];
-          
+
           // Add timestamp for latency measurement
           if (testMessage.type === 'ping') {
             testMessage.payload.timestamp = Date.now();
             lastPingTime = Date.now();
           }
-          
+
           const messageStr = JSON.stringify(testMessage);
           socket.send(messageStr);
           wsMessagesSent.add(1);
-          
+
           // Performance checks
           check(null, {
             'can send message': () => true,
@@ -217,14 +217,14 @@ export default function () {
           clearInterval(messageInterval);
         }
       }, 1000 + Math.random() * 2000);  // Send message every 1-3 seconds
-      
+
       // Cleanup on socket close
       socket.on('close', () => {
         clearInterval(messageInterval);
       });
-      
+
     }, 100);
-    
+
     // Maintain connection for scenario duration
     const scenarioDuration = exec.scenario.name === 'soak' ? 600 : 30;  // seconds
     socket.setInterval(() => {
@@ -233,22 +233,22 @@ export default function () {
         socket.ping();
       }
     }, 30000);  // 30 second heartbeat
-    
+
     // Hold connection open
     sleep(scenarioDuration);
-    
+
     // Graceful close
     if (socket.state === 1) {
       socket.close(1000, 'Test completed');
     }
   });
-  
+
   // Check if connection failed to establish
   if (!connectionEstablished) {
     wsConnectionsFailed.add(1);
     wsErrorRate.add(1);
   }
-  
+
   // Small delay between connection attempts
   sleep(0.1);
 }
@@ -256,7 +256,7 @@ export default function () {
 // Generate summary report
 export function handleSummary(data) {
   const timestamp = TIMESTAMP;
-  
+
   // Calculate WebSocket-specific metrics
   const wsMetrics = {
     timestamp: new Date().toISOString(),
@@ -289,7 +289,7 @@ export function handleSummary(data) {
       messages_received: data.metrics.ws_messages_received?.values?.count || 0,
       total_bytes: data.metrics.ws_throughput?.values?.max || 0,
       avg_message_rate: Math.round(
-        (data.metrics.ws_messages_received?.values?.count || 0) / 
+        (data.metrics.ws_messages_received?.values?.count || 0) /
         ((data.state?.testRunDurationMs || 1) / 1000)
       ),
     },
@@ -299,7 +299,7 @@ export function handleSummary(data) {
     },
     scenarios: {},
   };
-  
+
   // Add scenario-specific metrics
   ['smoke', 'concurrency', 'soak'].forEach(scenario => {
     const scenarioData = data.metrics[`ws_connections_active{scenario:${scenario}}`];
@@ -310,13 +310,13 @@ export function handleSummary(data) {
       };
     }
   });
-  
+
   // Generate CSV data for analysis
   const csvHeader = 'timestamp,scenario,connections,p50_latency,p95_latency,p99_latency,error_rate\n';
   const csvRow = `${timestamp},${exec.scenario.name || 'all'},${wsMetrics.concurrency.max_connections},` +
     `${wsMetrics.latency.message_rtt.p50},${wsMetrics.latency.message_rtt.p95},` +
     `${wsMetrics.latency.message_rtt.p99},${wsMetrics.reliability.error_rate}\n`;
-  
+
   return {
     'stdout': textSummary(data, { indent: ' ', enableColors: true }),
     'benchmarks/results/ws_' + timestamp + '.json': JSON.stringify(wsMetrics, null, 2),

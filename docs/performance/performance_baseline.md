@@ -113,11 +113,11 @@ pytest tests/test_provider_failover.py::TestProviderFailover::test_failover_unde
 - **Short prompts (30%)**: 10-50 tokens
   - "What is machine learning?"
   - "Explain neural networks"
-  
+
 - **Medium prompts (50%)**: 50-150 tokens
   - Technical explanations
   - Code generation requests
-  
+
 - **Long prompts (20%)**: 150-500 tokens
   - Complex analysis requests
   - Multi-step instructions

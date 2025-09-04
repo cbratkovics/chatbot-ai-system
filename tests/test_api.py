@@ -1,8 +1,9 @@
 """API test suite."""
 
 import pytest
-from chatbot_ai_system.main import app
 from httpx import ASGITransport, AsyncClient
+
+from chatbot_ai_system.server.main import app
 
 
 @pytest.mark.asyncio

@@ -102,7 +102,7 @@ export const ChatMessage = memo(function ChatMessage({
                 </svg>
               </button>
             )}
-            
+
             <button
               onClick={handleCopy}
               className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"

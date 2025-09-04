@@ -25,8 +25,8 @@ Setup in < 5 minutes!
 - `demo`: Streamlined version for quick testing
 
 ## Technologies Mastered
-Backend: FastAPI, Python 3.11, AsyncIO, SQLAlchemy  
-Frontend: Next.js 14, TypeScript, Tailwind CSS  
-Infrastructure: Docker, Kubernetes, Terraform  
-Databases: PostgreSQL, Redis, Pinecone  
+Backend: FastAPI, Python 3.11, AsyncIO, SQLAlchemy
+Frontend: Next.js 14, TypeScript, Tailwind CSS
+Infrastructure: Docker, Kubernetes, Terraform
+Databases: PostgreSQL, Redis, Pinecone
 Monitoring: Prometheus, Grafana, Jaeger

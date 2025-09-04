@@ -22,12 +22,12 @@ MIN_NODE_VERSION="18"
 show_banner() {
     echo -e "${CYAN}"
     cat << "EOF"
-    ___    ____   ________          __  __          __ 
+    ___    ____   ________          __  __          __
    /   |  /  _/  / ____/ /_  ____ _/ /_/ /_  ____  / /_
   / /| |  / /   / /   / __ \/ __ `/ __/ __ \/ __ \/ __/
- / ___ |_/ /   / /___/ / / / /_/ / /_/ /_/ / /_/ / /_  
-/_/  |_/___/   \____/_/ /_/\__,_/\__/_.___/\____/\__/  
-                                                        
+ / ___ |_/ /   / /___/ / / / /_/ / /_/ /_/ / /_/ / /_
+/_/  |_/___/   \____/_/ /_/\__,_/\__/_.___/\____/\__/
+
 EOF
     echo -e "${NC}"
     echo -e "${GREEN}Welcome to $PROJECT_NAME Setup${NC}"
@@ -77,7 +77,7 @@ version_ge() {
 check_requirements() {
     echo -e "${BLUE}Checking system requirements...${NC}"
     echo ""
-    
+
     # Check OS
     OS="$(uname -s)"
     case "${OS}" in
@@ -87,12 +87,12 @@ check_requirements() {
         MINGW*)     OS_TYPE=Windows;;
         *)          OS_TYPE="UNKNOWN";;
     esac
-    
+
     if [ "$OS_TYPE" = "UNKNOWN" ]; then
         error "Unsupported operating system: ${OS}"
     fi
     log "Operating System: $OS_TYPE"
-    
+
     # Check Docker
     if command -v docker &> /dev/null; then
         DOCKER_VERSION=$(docker --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
@@ -104,7 +104,7 @@ check_requirements() {
     else
         error "Docker not found. Please install Docker from https://docs.docker.com/get-docker/"
     fi
-    
+
     # Check Docker Compose
     if command -v docker-compose &> /dev/null; then
         DC_VERSION=$(docker-compose --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
@@ -116,7 +116,7 @@ check_requirements() {
     else
         error "Docker Compose not found. Please install Docker Compose"
     fi
-    
+
     # Check Python (optional for local development)
     if command -v python3 &> /dev/null; then
         PYTHON_VERSION=$(python3 --version | grep -oE '[0-9]+\.[0-9]+' | head -1)
@@ -128,7 +128,7 @@ check_requirements() {
     else
         info "Python not found (optional for local development)"
     fi
-    
+
     # Check Node.js (optional for frontend development)
     if command -v node &> /dev/null; then
         NODE_VERSION=$(node --version | grep -oE '[0-9]+' | head -1)
@@ -140,14 +140,14 @@ check_requirements() {
     else
         info "Node.js not found (optional for frontend development)"
     fi
-    
+
     # Check Git
     if command -v git &> /dev/null; then
         log "Git $(git --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1) found"
     else
         warning "Git not found. Recommended for version control"
     fi
-    
+
     echo ""
 }
 
@@ -155,7 +155,7 @@ check_requirements() {
 setup_environment() {
     echo -e "${BLUE}Setting up environment...${NC}"
     echo ""
-    
+
     # Check if .env exists
     if [ -f .env ]; then
         warning ".env file already exists"
@@ -166,7 +166,7 @@ setup_environment() {
             return
         fi
     fi
-    
+
     # Copy .env.example to .env
     if [ -f .env.example ]; then
         cp .env.example .env
@@ -174,12 +174,12 @@ setup_environment() {
     else
         error ".env.example not found"
     fi
-    
+
     # Prompt for API keys
     echo ""
     echo -e "${CYAN}API Key Configuration${NC}"
     echo "----------------------"
-    
+
     # OpenAI API Key
     read -p "Enter your OpenAI API key (or press Enter to skip): " OPENAI_KEY
     if [ ! -z "$OPENAI_KEY" ]; then
@@ -188,7 +188,7 @@ setup_environment() {
     else
         warning "OpenAI API key not configured"
     fi
-    
+
     # Anthropic API Key
     read -p "Enter your Anthropic API key (or press Enter to skip): " ANTHROPIC_KEY
     if [ ! -z "$ANTHROPIC_KEY" ]; then
@@ -197,15 +197,15 @@ setup_environment() {
     else
         warning "Anthropic API key not configured"
     fi
-    
+
     # Clean up backup files
     rm -f .env.bak
-    
+
     if [ -z "$OPENAI_KEY" ] && [ -z "$ANTHROPIC_KEY" ]; then
         warning "No API keys configured. At least one is required for the chatbot to work."
         echo "You can add them later by editing the .env file"
     fi
-    
+
     echo ""
 }
 
@@ -213,7 +213,7 @@ setup_environment() {
 create_directories() {
     echo -e "${BLUE}Creating necessary directories...${NC}"
     echo ""
-    
+
     directories=(
         "logs"
         "data"
@@ -222,7 +222,7 @@ create_directories() {
         "nginx/cache"
         "scripts/backup"
     )
-    
+
     for dir in "${directories[@]}"; do
         if [ ! -d "$dir" ]; then
             mkdir -p "$dir"
@@ -231,7 +231,7 @@ create_directories() {
             info "Directory exists: $dir"
         fi
     done
-    
+
     echo ""
 }
 
@@ -239,19 +239,19 @@ create_directories() {
 build_docker_images() {
     echo -e "${BLUE}Building Docker images...${NC}"
     echo ""
-    
+
     info "This may take several minutes on first build..."
-    
+
     # Build all services
     ${DOCKER_COMPOSE_CMD:-docker-compose} build --no-cache &
     show_progress $!
-    
+
     if [ $? -eq 0 ]; then
         log "Docker images built successfully"
     else
         error "Failed to build Docker images"
     fi
-    
+
     echo ""
 }
 
@@ -259,18 +259,18 @@ build_docker_images() {
 start_services() {
     echo -e "${BLUE}Starting services...${NC}"
     echo ""
-    
+
     ${DOCKER_COMPOSE_CMD:-docker-compose} up -d &
     show_progress $!
-    
+
     if [ $? -eq 0 ]; then
         log "Services started successfully"
     else
         error "Failed to start services"
     fi
-    
+
     echo ""
-    
+
     # Show service status
     echo -e "${BLUE}Service Status:${NC}"
     ${DOCKER_COMPOSE_CMD:-docker-compose} ps
@@ -281,38 +281,38 @@ start_services() {
 run_health_checks() {
     echo -e "${BLUE}Running health checks...${NC}"
     echo ""
-    
+
     info "Waiting for services to be ready..."
     sleep 10
-    
+
     # Check backend health
     if curl -f -s http://localhost:8000/health > /dev/null; then
         log "Backend API is healthy"
     else
         warning "Backend API is not responding yet"
     fi
-    
+
     # Check frontend health
     if curl -f -s http://localhost:3000 > /dev/null; then
         log "Frontend is healthy"
     else
         warning "Frontend is not responding yet"
     fi
-    
+
     # Check Redis
     if docker exec chatbot-redis redis-cli ping > /dev/null 2>&1; then
         log "Redis is healthy"
     else
         warning "Redis is not responding"
     fi
-    
+
     # Check PostgreSQL
     if docker exec chatbot-postgres pg_isready > /dev/null 2>&1; then
         log "PostgreSQL is healthy"
     else
         warning "PostgreSQL is not ready"
     fi
-    
+
     echo ""
 }
 
@@ -354,12 +354,12 @@ cleanup() {
 # Main setup flow
 main() {
     trap cleanup EXIT
-    
+
     show_banner
     check_requirements
     setup_environment
     create_directories
-    
+
     # Ask if user wants to build and start services
     echo -e "${CYAN}Ready to build and start services${NC}"
     read -p "Do you want to continue? (Y/n): " -n 1 -r
@@ -368,12 +368,12 @@ main() {
         info "Setup complete. Run 'docker-compose up -d' when ready to start."
         exit 0
     fi
-    
+
     build_docker_images
     start_services
     run_health_checks
     show_access_info
-    
+
     # Optional: Open browser
     if [ "$OS_TYPE" = "Mac" ]; then
         read -p "Open browser to http://localhost:3000? (y/N): " -n 1 -r

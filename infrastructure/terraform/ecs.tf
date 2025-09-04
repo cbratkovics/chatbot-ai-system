@@ -4,24 +4,24 @@
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${local.name_prefix}-cluster"
-  
+
   configuration {
     execute_command_configuration {
       kms_key_id = aws_kms_key.main.arn
       logging    = "OVERRIDE"
-      
+
       log_configuration {
         cloud_watch_encryption_enabled = true
         cloud_watch_log_group_name     = aws_cloudwatch_log_group.ecs.name
       }
     }
   }
-  
+
   setting {
     name  = "containerInsights"
     value = "enabled"
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-cluster"
   })
@@ -32,7 +32,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${local.name_prefix}"
   retention_in_days = 30
   kms_key_id       = aws_kms_key.main.arn
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-ecs-logs"
   })
@@ -41,7 +41,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 # ECS Task Role
 resource "aws_iam_role" "ecs_task_role" {
   name = "${local.name_prefix}-ecs-task-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -54,7 +54,7 @@ resource "aws_iam_role" "ecs_task_role" {
       }
     ]
   })
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-ecs-task-role"
   })
@@ -64,7 +64,7 @@ resource "aws_iam_role" "ecs_task_role" {
 resource "aws_iam_role_policy" "ecs_task_policy" {
   name = "${local.name_prefix}-ecs-task-policy"
   role = aws_iam_role.ecs_task_role.id
-  
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -111,7 +111,7 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
 # ECS Execution Role
 resource "aws_iam_role" "ecs_execution_role" {
   name = "${local.name_prefix}-ecs-execution-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -124,7 +124,7 @@ resource "aws_iam_role" "ecs_execution_role" {
       }
     ]
   })
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-ecs-execution-role"
   })
@@ -144,12 +144,12 @@ resource "aws_ecs_task_definition" "api" {
   memory                  = 2048
   execution_role_arn      = aws_iam_role.ecs_execution_role.arn
   task_role_arn           = aws_iam_role.ecs_task_role.arn
-  
+
   container_definitions = jsonencode([
     {
       name  = "api"
       image = "${aws_ecr_repository.api.repository_url}:latest"
-      
+
       portMappings = [
         {
           containerPort = 8000
@@ -160,7 +160,7 @@ resource "aws_ecs_task_definition" "api" {
           protocol      = "tcp"
         }
       ]
-      
+
       environment = [
         {
           name  = "ENVIRONMENT"
@@ -171,7 +171,7 @@ resource "aws_ecs_task_definition" "api" {
           value = var.primary_region
         }
       ]
-      
+
       secrets = [
         {
           name      = "OPENAI_API_KEY"
@@ -182,7 +182,7 @@ resource "aws_ecs_task_definition" "api" {
           valueFrom = "${aws_secretsmanager_secret.api_keys.arn}:anthropic_api_key::"
         }
       ]
-      
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -191,7 +191,7 @@ resource "aws_ecs_task_definition" "api" {
           "awslogs-stream-prefix" = "api"
         }
       }
-      
+
       healthCheck = {
         command = [
           "CMD-SHELL",
@@ -202,11 +202,11 @@ resource "aws_ecs_task_definition" "api" {
         retries     = 3
         startPeriod = 60
       }
-      
+
       essential = true
     }
   ])
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-api-task"
   })
@@ -219,17 +219,17 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets           = module.vpc_primary.public_subnets
-  
+
   enable_deletion_protection       = true
   enable_cross_zone_load_balancing = true
   enable_http2                    = true
-  
+
   access_logs {
     bucket  = aws_s3_bucket.artifacts.bucket
     prefix  = "alb-logs"
     enabled = true
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-alb"
   })
@@ -242,7 +242,7 @@ resource "aws_lb_target_group" "api" {
   protocol    = "HTTP"
   vpc_id      = module.vpc_primary.vpc_id
   target_type = "ip"
-  
+
   health_check {
     enabled             = true
     healthy_threshold   = 2
@@ -254,7 +254,7 @@ resource "aws_lb_target_group" "api" {
     timeout             = 5
     unhealthy_threshold = 2
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-api-tg"
   })
@@ -266,7 +266,7 @@ resource "aws_lb_target_group" "websocket" {
   protocol    = "HTTP"
   vpc_id      = module.vpc_primary.vpc_id
   target_type = "ip"
-  
+
   health_check {
     enabled             = true
     healthy_threshold   = 2
@@ -278,12 +278,12 @@ resource "aws_lb_target_group" "websocket" {
     timeout             = 5
     unhealthy_threshold = 2
   }
-  
+
   stickiness {
     enabled = true
     type    = "lb_cookie"
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-ws-tg"
   })
@@ -296,12 +296,12 @@ resource "aws_lb_listener" "https" {
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
   certificate_arn   = aws_acm_certificate_validation.main.certificate_arn
-  
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-https-listener"
   })
@@ -311,17 +311,17 @@ resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = "80"
   protocol          = "HTTP"
-  
+
   default_action {
     type = "redirect"
-    
+
     redirect {
       port        = "443"
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-http-listener"
   })
@@ -331,18 +331,18 @@ resource "aws_lb_listener" "http" {
 resource "aws_lb_listener_rule" "websocket" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 100
-  
+
   action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.websocket.arn
   }
-  
+
   condition {
     path_pattern {
       values = ["/ws/*"]
     }
   }
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-ws-rule"
   })
@@ -355,46 +355,46 @@ resource "aws_ecs_service" "api" {
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = 3
   launch_type     = "FARGATE"
-  
+
   platform_version = "LATEST"
-  
+
   network_configuration {
     security_groups  = [aws_security_group.ecs.id]
     subnets         = module.vpc_primary.private_subnets
     assign_public_ip = false
   }
-  
+
   load_balancer {
     target_group_arn = aws_lb_target_group.api.arn
     container_name   = "api"
     container_port   = 8000
   }
-  
+
   load_balancer {
     target_group_arn = aws_lb_target_group.websocket.arn
     container_name   = "api"
     container_port   = 8001
   }
-  
+
   deployment_configuration {
     maximum_percent         = 200
     minimum_healthy_percent = 100
-    
+
     deployment_circuit_breaker {
       enable   = true
       rollback = true
     }
   }
-  
+
   service_registries {
     registry_arn = aws_service_discovery_service.api.arn
   }
-  
+
   depends_on = [
     aws_lb_listener.https,
     aws_lb_listener.http
   ]
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-api-service"
   })
@@ -405,7 +405,7 @@ resource "aws_service_discovery_private_dns_namespace" "main" {
   name        = "${local.name_prefix}.local"
   description = "Service discovery namespace for ${local.name_prefix}"
   vpc         = module.vpc_primary.vpc_id
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-service-discovery"
   })
@@ -413,20 +413,20 @@ resource "aws_service_discovery_private_dns_namespace" "main" {
 
 resource "aws_service_discovery_service" "api" {
   name = "api"
-  
+
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    
+
     dns_records {
       ttl  = 10
       type = "A"
     }
-    
+
     routing_policy = "MULTIVALUE"
   }
-  
+
   health_check_grace_period_seconds = 30
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-api-discovery"
   })
@@ -439,7 +439,7 @@ resource "aws_appautoscaling_target" "ecs_target" {
   resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
-  
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-autoscaling-target"
   })
@@ -452,12 +452,12 @@ resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
-  
+
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
-    
+
     target_value       = 70.0
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
@@ -471,12 +471,12 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy" {
   resource_id        = aws_appautoscaling_target.ecs_target.resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_target.scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_target.service_namespace
-  
+
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
-    
+
     target_value       = 80.0
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
@@ -488,7 +488,7 @@ resource "aws_route53_record" "api" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "api.${var.domain_name}"
   type    = "A"
-  
+
   alias {
     name                   = aws_lb.main.dns_name
     zone_id                = aws_lb.main.zone_id
@@ -500,7 +500,7 @@ resource "aws_route53_record" "websocket" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "ws.${var.domain_name}"
   type    = "A"
-  
+
   alias {
     name                   = aws_lb.main.dns_name
     zone_id                = aws_lb.main.zone_id

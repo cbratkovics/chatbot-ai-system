@@ -23,25 +23,25 @@ warning() {
 # Function to handle signals
 handle_shutdown() {
     log "Received shutdown signal, gracefully stopping services..."
-    
+
     # Send SIGTERM to the main process
     if [ -n "$MAIN_PID" ]; then
         kill -TERM "$MAIN_PID" 2>/dev/null || true
-        
+
         # Wait for process to exit (max 30 seconds)
         local count=0
         while kill -0 "$MAIN_PID" 2>/dev/null && [ $count -lt 30 ]; do
             sleep 1
             count=$((count + 1))
         done
-        
+
         # Force kill if still running
         if kill -0 "$MAIN_PID" 2>/dev/null; then
             warning "Process did not exit gracefully, forcing shutdown"
             kill -KILL "$MAIN_PID" 2>/dev/null || true
         fi
     fi
-    
+
     log "Shutdown complete"
     exit 0
 }
@@ -70,14 +70,14 @@ log "Checking dependencies..."
 if [ -n "$REDIS_URL" ]; then
     REDIS_HOST=$(echo $REDIS_URL | sed -n 's/.*\/\/\([^:]*\).*/\1/p')
     REDIS_PORT=$(echo $REDIS_URL | sed -n 's/.*:\([0-9]*\).*/\1/p')
-    
+
     log "Waiting for Redis at $REDIS_HOST:$REDIS_PORT..."
     count=0
     while ! nc -z "$REDIS_HOST" "$REDIS_PORT" 2>/dev/null && [ $count -lt 30 ]; do
         sleep 1
         count=$((count + 1))
     done
-    
+
     if [ $count -eq 30 ]; then
         warning "Redis is not available after 30 seconds, continuing anyway..."
     else
@@ -89,14 +89,14 @@ fi
 if [ -n "$DATABASE_URL" ]; then
     DB_HOST=$(echo $DATABASE_URL | sed -n 's/.*@\([^:]*\).*/\1/p')
     DB_PORT=$(echo $DATABASE_URL | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
-    
+
     log "Waiting for PostgreSQL at $DB_HOST:$DB_PORT..."
     count=0
     while ! nc -z "$DB_HOST" "$DB_PORT" 2>/dev/null && [ $count -lt 30 ]; do
         sleep 1
         count=$((count + 1))
     done
-    
+
     if [ $count -eq 30 ]; then
         warning "PostgreSQL is not available after 30 seconds, continuing anyway..."
     else
@@ -145,9 +145,9 @@ if [ "$ENVIRONMENT" = "production" ]; then
         --log-level ${LOG_LEVEL:-info} \
         --capture-output \
         --enable-stdio-inheritance &
-    
+
     MAIN_PID=$!
-    
+
 elif [ "$ENVIRONMENT" = "development" ]; then
     # Development mode with auto-reload
     exec python -m uvicorn chatbot_ai_system.server.main:app \
@@ -155,9 +155,9 @@ elif [ "$ENVIRONMENT" = "development" ]; then
         --port ${PORT:-8000} \
         --reload \
         --log-level ${LOG_LEVEL:-debug} &
-    
+
     MAIN_PID=$!
-    
+
 else
     # Default mode
     exec python -m uvicorn chatbot_ai_system.server.main:app \
@@ -165,7 +165,7 @@ else
         --port ${PORT:-8000} \
         --workers ${WORKERS:-1} \
         --log-level ${LOG_LEVEL:-info} &
-    
+
     MAIN_PID=$!
 fi
 

@@ -5,7 +5,7 @@ This runbook provides step-by-step procedures for recovering from critical servi
 
 ## Severity Classification
 - **P0 (Critical)**: Complete service outage affecting all users
-- **P1 (High)**: Partial service degradation affecting >50% of users  
+- **P1 (High)**: Partial service degradation affecting >50% of users
 - **P2 (Medium)**: Limited service impact affecting <50% of users
 - **P3 (Low)**: Minor issues with workarounds available
 
@@ -126,7 +126,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # Check region status
    aws ec2 describe-regions
-   
+
    # Verify secondary region health
    curl -f https://us-west-2.api.chatbot.com/health
    ```
@@ -135,7 +135,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # Check RDS replicas
    aws rds describe-db-instances --region us-west-2
-   
+
    # Check ECS/EKS cluster status
    aws eks describe-cluster --name chatbot-cluster --region us-west-2
    ```
@@ -152,7 +152,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    aws rds promote-read-replica \
      --db-instance-identifier chatbot-prod-replica-west \
      --region us-west-2
-   
+
    # Wait for promotion to complete
    aws rds wait db-instance-available \
      --db-instance-identifier chatbot-prod-replica-west \
@@ -167,7 +167,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
      --region us-west-2 \
      --query 'DBInstances[0].Endpoint.Address' \
      --output text)
-   
+
    # Update Kubernetes secrets
    kubectl create secret generic db-credentials \
      --from-literal=host=$NEW_ENDPOINT \
@@ -182,7 +182,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    # Update region in deployment
    kubectl patch deployment chatbot-api \
      -p '{"spec":{"template":{"spec":{"nodeSelector":{"topology.kubernetes.io/region":"us-west-2"}}}}}'
-   
+
    # Scale up to full capacity
    kubectl scale deployment chatbot-api --replicas=20
    kubectl scale deployment websocket-service --replicas=10
@@ -219,10 +219,10 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # API health check
    curl -f https://api.chatbot.com/health
-   
+
    # Database connectivity
    psql -h $NEW_ENDPOINT -U postgres -d chatbot -c "SELECT 1"
-   
+
    # Authentication flow
    curl -X POST https://api.chatbot.com/auth/login \
      -H "Content-Type: application/json" \
@@ -253,7 +253,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # Scale down to prevent further corruption
    kubectl scale deployment chatbot-api --replicas=0
-   
+
    # Put maintenance page up
    kubectl apply -f maintenance-mode.yaml
    ```
@@ -262,11 +262,11 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # Run database integrity checks
    psql -h $DB_HOST -U postgres -d chatbot -c "REINDEX DATABASE chatbot;"
-   
+
    # Check for corrupted tables
    psql -h $DB_HOST -U postgres -d chatbot -c "
-   SELECT schemaname, tablename, n_tup_ins, n_tup_upd, n_tup_del 
-   FROM pg_stat_user_tables 
+   SELECT schemaname, tablename, n_tup_ins, n_tup_upd, n_tup_del
+   FROM pg_stat_user_tables
    WHERE schemaname NOT IN ('information_schema', 'pg_catalog');"
    ```
 
@@ -274,13 +274,13 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # Find latest clean backup
    aws s3 ls s3://ai-chatbot-backups/database-backups/ --recursive | sort | tail -5
-   
+
    # Download backup
    aws s3 cp s3://ai-chatbot-backups/database-backups/chatbot_20241201_020000.sql.gz ./
-   
+
    # Create new database for restore
    createdb -h $DB_HOST -U postgres chatbot_restore
-   
+
    # Restore from backup
    gunzip -c chatbot_20241201_020000.sql.gz | psql -h $DB_HOST -U postgres chatbot_restore
    ```
@@ -289,11 +289,11 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    ```bash
    # Run data consistency checks
    psql -h $DB_HOST -U postgres chatbot_restore -c "
-   SELECT 
+   SELECT
      (SELECT COUNT(*) FROM users) as user_count,
      (SELECT COUNT(*) FROM chat_sessions) as session_count,
      (SELECT COUNT(*) FROM messages) as message_count;"
-   
+
    # Compare with expected counts
    # Check referential integrity
    psql -h $DB_HOST -U postgres chatbot_restore -f validate_integrity.sql
@@ -305,7 +305,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
    psql -h $DB_HOST -U postgres -c "
    ALTER DATABASE chatbot RENAME TO chatbot_corrupted_$(date +%Y%m%d);
    ALTER DATABASE chatbot_restore RENAME TO chatbot;"
-   
+
    # Restart applications
    kubectl scale deployment chatbot-api --replicas=10
    kubectl delete -f maintenance-mode.yaml
@@ -315,7 +315,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
 
 ### Primary On-Call Rotation
 - **SRE Team**: +1-555-0100 (PagerDuty)
-- **Database Team**: +1-555-0101 (PagerDuty) 
+- **Database Team**: +1-555-0101 (PagerDuty)
 - **Security Team**: +1-555-0102 (PagerDuty)
 
 ### Escalation Matrix
@@ -390,7 +390,7 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
 - **Participants**: SRE team
 - **Validation**: RTO/RPO metrics
 
-### Quarterly DR Tests  
+### Quarterly DR Tests
 - **Scope**: Full region failover
 - **Duration**: 2 hours
 - **Participants**: All engineering teams
@@ -436,8 +436,8 @@ kubectl scale deployment/chatbot-api --replicas=10 -n chatbot-production
 
 ---
 
-**Document Version**: 2.1  
-**Last Updated**: 2024-01-15  
-**Next Review**: 2024-04-15  
-**Owner**: SRE Team  
+**Document Version**: 2.1
+**Last Updated**: 2024-01-15
+**Next Review**: 2024-04-15
+**Owner**: SRE Team
 **Approvers**: VP Engineering, CTO

@@ -55,6 +55,9 @@ black = "^23.11.0"
 ruff = "^0.1.7"
 mypy = "^1.7.1"
 httpx = "^0.25.2"
+types-bleach = "^6.1.0"
+types-redis = "^4.6.0"
+types-aiofiles = "^23.2.0"
 
 [tool.poetry.scripts]
 chatbotai = "chatbot_ai_system.cli:main"

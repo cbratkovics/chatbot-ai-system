@@ -6,7 +6,7 @@ import logging
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -65,7 +65,7 @@ class ProviderError(Exception):
     """Base exception for provider-related errors."""
 
     def __init__(
-        self, message: str, provider: str = None, status_code: int = None, details: Dict = None
+        self, message: str, provider: Optional[str] = None, status_code: Optional[int] = None, details: Optional[Dict] = None
     ):
         """
         Initialize provider error.
@@ -105,6 +105,60 @@ class TimeoutError(ProviderError):
     """Request timeout error."""
 
     pass
+
+
+class ContentFilterError(ProviderError):
+    """Content was filtered/blocked by the provider."""
+
+    pass
+
+
+class QuotaExceededError(ProviderError):
+    """API quota exceeded error."""
+
+    pass
+
+
+class Message(BaseModel):
+    """Represents a message in a conversation."""
+
+    role: str = Field(..., description="Message role (system, user, assistant)")
+    content: str = Field(..., description="Message content")
+
+
+class TokenUsage(BaseModel):
+    """Token usage statistics."""
+
+    prompt_tokens: int = Field(..., description="Number of tokens in the prompt")
+    completion_tokens: int = Field(..., description="Number of tokens in the completion")
+    total_tokens: int = Field(..., description="Total number of tokens")
+
+
+class CompletionRequest(BaseModel):
+    """Request for a completion."""
+
+    messages: List[Message] = Field(..., description="List of messages")
+    model: str = Field(..., description="Model identifier")
+    temperature: float = Field(default=0.7, description="Temperature for sampling")
+    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens in response")
+    stream: bool = Field(default=False, description="Whether to stream the response")
+
+
+class CompletionResponse(BaseModel):
+    """Response from a completion request."""
+
+    content: str = Field(..., description="Response content")
+    model: str = Field(..., description="Model used for generation")
+    usage: Optional[TokenUsage] = Field(default=None, description="Token usage statistics")
+    finish_reason: Optional[str] = Field(default=None, description="Reason for completion")
+
+
+class StreamChunk(BaseModel):
+    """A chunk of streamed response."""
+
+    content: str = Field(..., description="Chunk content")
+    is_final: bool = Field(default=False, description="Whether this is the final chunk")
+    usage: Optional[TokenUsage] = Field(default=None, description="Token usage (if final)")
 
 
 class BaseProvider(ABC):
@@ -194,7 +248,7 @@ class BaseProvider(ABC):
             },
         )
 
-    def _log_response(self, response: ChatResponse, duration: float = None):
+    def _log_response(self, response: ChatResponse, duration: Optional[float] = None):
         """
         Log response details.
 
@@ -214,7 +268,7 @@ class BaseProvider(ABC):
             },
         )
 
-    def _log_error(self, error: Exception, model: str = None):
+    def _log_error(self, error: Exception, model: Optional[str] = None):
         """
         Log error details.
 

@@ -30,7 +30,11 @@ class ProviderBTokenUsage(TokenUsage):
     """Provider B specific token usage with cost calculation."""
 
     def __init__(self, input_tokens: int, output_tokens: int, model: str, config):
-        super().__init__(input_tokens, output_tokens, input_tokens + output_tokens)
+        super().__init__(
+            prompt_tokens=input_tokens,
+            completion_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens
+        )
         self.model = model
         self.config = config
         # Provider B uses different terminology

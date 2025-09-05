@@ -295,7 +295,7 @@ class TenantRateLimiter(RateLimiter):
         super().__init__(redis_client=redis_client)
         self.tenant_limiters = {}
 
-    async def is_allowed(self, key: str, tokens: int = 1, tenant_id: str = None) -> bool:
+    async def is_allowed(self, key: str, tokens: int = 1, tenant_id: Optional[str] = None) -> bool:
         if tenant_id not in self.tenant_limiters:
             self.tenant_limiters[tenant_id] = TokenBucketRateLimiter()
         return await self.tenant_limiters[tenant_id].is_allowed(key, tokens)

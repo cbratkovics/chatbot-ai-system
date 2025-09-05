@@ -84,7 +84,7 @@ class TenantManager:
             }
         return None
 
-    async def update_tenant(self, tenant_id: str, updates: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def update_tenant(self, tenant_id: str, updates: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Update tenant information."""
         if updates is None:
             updates = {}
@@ -136,7 +136,7 @@ class TenantManager:
         return []
 
     async def check_quota(
-        self, tenant_id: str, resource: str = None, amount: int = 1, requested: int = None
+        self, tenant_id: str, resource: Optional[str] = None, amount: int = 1, requested: Optional[int] = None
     ) -> Dict[str, Any]:
         """Check if tenant has available quota."""
         # Ensure tenant exists
@@ -176,7 +176,7 @@ class TenantManager:
         return tenant.features.get(feature, False)
 
     async def track_usage(
-        self, tenant_id: str, resource: str = None, resource_type: str = None, amount: int = 1
+        self, tenant_id: str, resource: Optional[str] = None, resource_type: Optional[str] = None, amount: int = 1
     ) -> None:
         """Track resource usage for tenant."""
         resource_key = resource or resource_type or "api_calls"
@@ -232,7 +232,7 @@ class TenantManager:
         }
 
     async def migrate_tenant(
-        self, tenant_id: str, from_tier: str = None, to_tier: str = None
+        self, tenant_id: str, from_tier: Optional[str] = None, to_tier: Optional[str] = None
     ) -> Dict[str, bool]:
         """Migrate tenant to new tier."""
         # Ensure tenant exists

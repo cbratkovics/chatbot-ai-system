@@ -1,6 +1,7 @@
 """Distributed tracing with OpenTelemetry."""
 
 import logging
+from typing import Optional, Dict, Any
 
 from opentelemetry import trace
 from opentelemetry.exporter.jaeger import JaegerExporter
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 class TracingManager:
     """Manages distributed tracing with OpenTelemetry."""
 
-    def __init__(self, service_name: str = None, jaeger_endpoint: str = None):
+    def __init__(self, service_name: Optional[str] = None, jaeger_endpoint: Optional[str] = None):
         self.service_name = service_name or settings.app_name
         self.jaeger_endpoint = jaeger_endpoint or settings.jaeger_endpoint
         self.tracer = None
@@ -86,7 +87,7 @@ class TracingManager:
 
         return self.tracer or trace.get_tracer(__name__)
 
-    def create_span(self, name: str, attributes: dict = None):
+    def create_span(self, name: str, attributes: Optional[Dict[Any, Any]] = None):
         """Create a new span."""
         tracer = self.get_tracer()
         span = tracer.start_span(name)

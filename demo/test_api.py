@@ -6,24 +6,25 @@ import json
 import sys
 import time
 
+
 def test_api():
     """Test the API endpoints."""
     base_url = "http://localhost:8000"
-    
+
     print("Testing AI Chatbot System API")
     print("-" * 40)
-    
+
     tests = [
         ("Health Check", "/health"),
         ("Root Endpoint", "/"),
         ("API Docs", "/docs"),
         ("Models List", "/api/v1/models"),
     ]
-    
+
     all_passed = True
     passed = 0
     failed = 0
-    
+
     for name, endpoint in tests:
         try:
             response = requests.get(f"{base_url}{endpoint}", timeout=5)
@@ -47,15 +48,16 @@ def test_api():
             print(f"[FAIL] {name} - Error: {str(e)[:50]}")
             failed += 1
             all_passed = False
-    
+
     print("-" * 40)
     print(f"Results: {passed} passed, {failed} failed")
-    
+
     if all_passed:
         print("All API tests passed!")
         return 0
     else:
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(test_api())

@@ -4,9 +4,9 @@ import logging
 import time
 from uuid import UUID
 
-from ..providers.base import CompletionRequest, CompletionResponse
-from ..orchestrator.provider_orchestrator import ProviderOrchestrator
-from .semantic_cache import SemanticCache
+from chatbot_ai_system.cache.semantic_cache import SemanticCache
+from chatbot_ai_system.providers.orchestrator import ProviderOrchestrator
+from chatbot_ai_system.providers.base import CompletionRequest, CompletionResponse
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +26,10 @@ class CacheManager:
 
         logger.info(f"Cache manager initialized (enabled: {cache_enabled})")
 
-    async def complete_with_cache(self, request: CompletionRequest) -> CompletionResponse:
+    async def complete_with_cache(
+        self, request: CompletionRequest
+    ) -> CompletionResponse:
         """Complete request with caching support."""
-        start_time = time.time()
-
         # Extract query from messages
         query = self._extract_query(request)
 
@@ -53,9 +53,10 @@ class CacheManager:
                 model=cached_response.model,
                 usage=None,  # Would need to store usage in cache
                 cached=True,
-                cache_key=cache_key,
                 similarity_score=(
-                    cached_response.embedding.vector[0] if cached_response.embedding else None
+                    cached_response.embedding.vector[0]
+                    if cached_response.embedding
+                    else None
                 ),
             )
 

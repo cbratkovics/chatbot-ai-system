@@ -53,7 +53,6 @@ async def get_async_session():
 
 
 # Alias Chat to match expected import
-Chat = Conversation
 
 
 async def get_async_engine():

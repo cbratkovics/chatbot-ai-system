@@ -57,6 +57,7 @@ class TestSemanticCache:
     async def test_cache_hit(self, mock_redis, cache_config, sample_chat_response):
         """Test cache hit scenario."""
         from unittest.mock import AsyncMock
+
         from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
         # Mock redis get to return the cached response
@@ -76,19 +77,11 @@ class TestSemanticCache:
 
         mock_redis.zrange.return_value = []
 
-        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
-
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
-        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
-        cache = SemanticCache(redis_client=mock_redis, config=cache_config)
-        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
-
-        cache = SemanticCache(redis_client=mock_redis, config=cache_config)
         with patch.object(cache, "_generate_embedding") as mock_embed:
             mock_embed.return_value = np.random.rand(1536).tolist()
 
-            cache = SemanticCache(redis_client=mock_redis, config=cache_config)
             result = await cache.get("What is the weather?")
 
             assert result is None
@@ -98,19 +91,11 @@ class TestSemanticCache:
         """Test setting cache entry."""
         from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
-        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
-
         cache = SemanticCache(redis_client=mock_redis, config=cache_config)
-        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
 
-        cache = SemanticCache(redis_client=mock_redis, config=cache_config)
-        from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
-
-        cache = SemanticCache(redis_client=mock_redis, config=cache_config)
         with patch.object(cache, "_generate_embedding") as mock_embed:
             mock_embed.return_value = np.random.rand(1536).tolist()
 
-            cache = SemanticCache(redis_client=mock_redis, config=cache_config)
             await cache.set("What is the weather?", sample_chat_response)
 
             mock_redis.zadd.assert_called()

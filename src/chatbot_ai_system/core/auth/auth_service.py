@@ -405,7 +405,7 @@ class AuthService:
         return {"id": "oauth_user_123", "email": "user@example.com", "name": "OAuth User"}
 
         if self.redis_client:
-            data = await self.redis_client.get(f"session:{session_id}")
+            data = await self.redis_client.get(f"session:{self.session_id}")
             return json.loads(data) if data else None
         return None
 

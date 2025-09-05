@@ -227,7 +227,7 @@ def auth_headers():
 
 
 @pytest_asyncio.fixture
-async def test_server():
+async def test_server_websocket():
     """Start test server for integration tests."""
     import uvicorn
     from chatbot_ai_system.server.main import app

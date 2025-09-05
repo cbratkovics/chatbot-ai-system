@@ -96,6 +96,9 @@ class FallbackHandler:
                 wait_time = 2**attempt
                 logger.warning(f"Retry {attempt + 1}/{self.retry_count} after {wait_time}s")
                 await asyncio.sleep(wait_time)
+        
+        # This should never be reached due to the raise in the except block
+        raise RuntimeError("Retry loop completed without returning")
 
     def _is_circuit_open(self) -> bool:
         """Check if circuit breaker is open.

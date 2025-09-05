@@ -158,7 +158,7 @@ class FallbackManager:
                 self._trigger_circuit_breaker(breaker_key, FallbackReason.TIMEOUT)
 
             except Exception as e:
-                last_error = e
+                last_error = str(e)
                 logger.error(f"Error with {provider}:{model}: {e}")
                 self._update_provider_health(provider, False)
 

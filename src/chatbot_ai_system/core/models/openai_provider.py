@@ -128,6 +128,9 @@ class OpenAIProvider:
                 wait_time = 2**attempt
                 logger.warning(f"Retry {attempt + 1}/{self.max_retries} after {wait_time}s")
                 await asyncio.sleep(wait_time)
+        
+        # This should never be reached due to the raise in the except block
+        raise RuntimeError("Retry loop completed without returning")
 
     def count_tokens(self, text: str, model: str = "gpt-3.5-turbo") -> int:
         """Count tokens in text.

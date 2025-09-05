@@ -75,6 +75,9 @@ class RetryHandler:
                         raise
         except RetryError as e:
             raise e.last_attempt.exception() from None
+        
+        # This should never be reached
+        raise RuntimeError("Retry loop completed without returning")
 
     @staticmethod
     def with_exponential_backoff(

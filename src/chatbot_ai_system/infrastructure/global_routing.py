@@ -371,7 +371,7 @@ def lambda_handler(event, context):
             if region.health_status == HealthStatus.UNHEALTHY:
                 continue
 
-            score = 0
+            score = 0.0
 
             # Geographic proximity (40% weight)
             if client_location:

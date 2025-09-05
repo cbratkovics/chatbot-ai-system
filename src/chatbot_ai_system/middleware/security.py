@@ -200,7 +200,7 @@ class InputSanitizer:
         if max_depth <= 0:
             raise ValueError("Maximum recursion depth exceeded")
 
-        sanitized = {}
+        sanitized: Dict[str, Any] = {}
         for key, value in data.items():
             # Sanitize key
             if not isinstance(key, str) or len(key) > 100:
@@ -352,7 +352,7 @@ class APIKeyValidator:
         self.secret_key = secret_key
         self.api_keys: Dict[str, Dict[str, Any]] = {}
 
-    def generate_api_key(self, user_id: str, scopes: List[str] = None) -> str:
+    def generate_api_key(self, user_id: str, scopes: List[str] | None = None) -> str:
         """Generate a new API key for a user."""
         # Generate random key
         key_id = secrets.token_urlsafe(24)

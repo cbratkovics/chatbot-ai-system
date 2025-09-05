@@ -99,7 +99,7 @@ class ErrorResponse(BaseModel):
 class MessageHandler:
     """WebSocket message handler."""
 
-    def __init__(self, settings: Settings = None):
+    def __init__(self, settings: Settings | None = None):
         """
         Initialize message handler.
 

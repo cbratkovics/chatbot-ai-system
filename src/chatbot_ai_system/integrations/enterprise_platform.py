@@ -25,7 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text, create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -139,7 +139,9 @@ class WebhookDelivery:
 
 
 # SQLAlchemy models
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+    pass
 
 
 class IntegrationConfig(Base):

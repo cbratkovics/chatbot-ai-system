@@ -232,7 +232,7 @@ class AuthRequestEvent(WebSocketEvent):
 class AuthSuccessEvent(WebSocketEvent):
     """Authentication success event."""
 
-    def __init__(self, user_id: str, tenant_id: UUID, permissions: list = None, **kwargs):
+    def __init__(self, user_id: str, tenant_id: UUID, permissions: list | None = None, **kwargs):
         super().__init__(
             type=EventType.AUTH_SUCCESS,
             data={

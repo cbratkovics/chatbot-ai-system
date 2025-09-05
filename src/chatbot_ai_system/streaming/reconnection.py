@@ -60,7 +60,7 @@ class ReconnectionManager:
         self.config = config or ReconnectionConfig()
         self.sessions: dict[str, ReconnectionInfo] = {}
         self.reconnect_tasks: dict[str, asyncio.Task] = {}
-        self.callbacks: dict[str, dict[str, Callable]] = {}
+        self.callbacks: dict[str, dict[str, Callable | None]] = {}
 
     def register_session(
         self,
@@ -128,7 +128,7 @@ class ReconnectionManager:
             info.error_count = 0
 
             # Call callback
-            if self.callbacks[session_id]["on_connect"]:
+            if self.callbacks[session_id]["on_connect"] is not None:
                 await self.callbacks[session_id]["on_connect"](session_id)
 
             logger.info(f"Session {session_id} connected successfully")
@@ -165,7 +165,7 @@ class ReconnectionManager:
         info.state = ReconnectionState.RECONNECTING if reconnect else ReconnectionState.FAILED
 
         # Call callback
-        if self.callbacks[session_id]["on_disconnect"]:
+        if self.callbacks[session_id]["on_disconnect"] is not None:
             await self.callbacks[session_id]["on_disconnect"](session_id, reason)
 
         if reconnect:
@@ -247,7 +247,7 @@ class ReconnectionManager:
         info.last_failure = datetime.utcnow()
 
         # Call failure callback
-        if self.callbacks[session_id]["on_failure"]:
+        if self.callbacks[session_id]["on_failure"] is not None:
             await self.callbacks[session_id]["on_failure"](
                 session_id, f"Max reconnection attempts ({self.config.max_attempts}) reached"
             )

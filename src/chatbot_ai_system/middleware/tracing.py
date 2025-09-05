@@ -294,7 +294,7 @@ def get_current_span() -> trace.Span | None:
     return trace.get_current_span()
 
 
-def add_span_event(name: str, attributes: dict[str, Any] = None):
+def add_span_event(name: str, attributes: dict[str, Any] | None = None):
     """Add an event to the current span"""
     span = get_current_span()
     if span and span.is_recording():

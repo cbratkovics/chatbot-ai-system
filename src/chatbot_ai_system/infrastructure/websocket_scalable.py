@@ -518,7 +518,7 @@ class ScalableWebSocketManager:
             logger.error(f"WebRTC signaling error: {e}")
 
     async def _update_user_presence(
-        self, user_id: str, status: str, device_info: dict[str, Any] = None
+        self, user_id: str, status: str, device_info: dict[str, Any] | None = None
     ):
         """Update user presence information"""
         try:

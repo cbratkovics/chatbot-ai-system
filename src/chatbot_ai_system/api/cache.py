@@ -66,7 +66,7 @@ async def delete_cache_entry(key: str):
 
 
 @cache_router.post("/warm")
-async def warm_cache(keys: list[str] = None):
+async def warm_cache(keys: list[str] | None = None):
     """Warm cache with specific keys."""
     # Mock cache warming
     return {

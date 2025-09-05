@@ -287,7 +287,7 @@ class BackpressureController:
             True if can send
         """
         # Simple throttling based on buffer usage
-        buffer_usage = 0
+        buffer_usage = 0.0
         if session_id in self.message_buffers:
             buffer_usage = len(self.message_buffers[session_id]) / self.max_buffer_size
 

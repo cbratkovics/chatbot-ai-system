@@ -141,7 +141,7 @@ class SemanticCache:
 
     def __init__(
         self,
-        redis_url: str = None,
+        redis_url: str | None = None,
         embedding_generator: EmbeddingGenerator | None = None,
         similarity_calculator: SimilarityCalculator | None = None,
         similarity_threshold: float = 0.85,

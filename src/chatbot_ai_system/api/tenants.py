@@ -69,7 +69,7 @@ async def create_tenant(name: str, rate_limit: int = 100, rate_period: int = 60)
 
 
 @tenant_router.put("/{tenant_id}", response_model=TenantInfo)
-async def update_tenant(tenant_id: str, name: str = None, rate_limit: int = None, rate_period: int = None):
+async def update_tenant(tenant_id: str, name: str | None = None, rate_limit: int | None = None, rate_period: int | None = None):
     """Update tenant."""
     if tenant_id not in ["tenant-1", "tenant-2"]:
         raise HTTPException(

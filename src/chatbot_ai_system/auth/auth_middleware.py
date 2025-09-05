@@ -18,7 +18,7 @@ security = HTTPBearer()
 class AuthMiddleware:
     """Authentication middleware for FastAPI."""
 
-    def __init__(self, exclude_paths: list[str] = None):
+    def __init__(self, exclude_paths: list[str] | None = None):
         self.exclude_paths = exclude_paths or [
             "/",
             "/docs",

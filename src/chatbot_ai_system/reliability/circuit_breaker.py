@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ class CircuitMetrics:
     consecutive_failures: int = 0
     last_failure_time: datetime | None = None
     last_success_time: datetime | None = None
-    response_times: deque = None
-    error_percentages: deque = None
+    response_times: Optional[deque] = None
+    error_percentages: Optional[deque] = None
 
     def __post_init__(self):
         if self.response_times is None:
@@ -361,7 +361,7 @@ class HystrixCircuitBreaker:
         Returns:
             Metrics dictionary
         """
-        success_rate = 0
+        success_rate = 0.0
         if self.metrics.total_requests > 0:
             success_rate = (self.metrics.successful_requests / self.metrics.total_requests) * 100
 

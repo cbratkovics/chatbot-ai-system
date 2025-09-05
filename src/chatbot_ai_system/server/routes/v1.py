@@ -44,9 +44,9 @@ class ChatCompletionResponse(BaseModel):
 
 async def get_orchestrator(request: Request) -> ProviderOrchestrator:
     """Get provider orchestrator with tenant context."""
-    # TODO: Initialize with tenant-specific configuration
-    tenant_id = getattr(request.state, "tenant_id", "default")
-    return ProviderOrchestrator(tenant_id=tenant_id)
+    # TODO: Initialize with tenant-specific configuration and providers
+    # For now, return an empty orchestrator - providers should be configured elsewhere
+    return ProviderOrchestrator(providers=[])
 
 
 @router.post("/chat/completions", response_model=ChatCompletionResponse)

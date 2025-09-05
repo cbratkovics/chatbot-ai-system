@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class ProviderInstance:
     last_error_time: datetime | None = None
     health_score: float = 1.0
     available: bool = True
-    metadata: dict[str, Any] = None
+    metadata: Optional[dict[str, Any]] = None
 
 
 class LoadBalancer:
@@ -62,7 +62,7 @@ class LoadBalancer:
         self.round_robin_index = 0
         self.consistent_hash_ring: Dict[int, str] = {}
         self.health_check_interval = 30  # seconds
-        self.health_check_task = None
+        self.health_check_task: Optional[asyncio.Task] = None
 
     def add_instance(self, instance: ProviderInstance):
         """Add provider instance to pool.
@@ -209,7 +209,7 @@ class LoadBalancer:
             return top_candidates[0][0]
 
         rand_value = random.uniform(0, total_score)
-        cumulative = 0
+        cumulative = 0.0
 
         for inst, score in top_candidates:
             cumulative += score
@@ -445,7 +445,7 @@ class LoadBalancer:
         total_requests = sum(i.total_requests for i in self.instances.values())
         total_errors = sum(i.total_errors for i in self.instances.values())
 
-        avg_health = 0
+        avg_health = 0.0
         if total_instances > 0:
             avg_health = sum(i.health_score for i in self.instances.values()) / total_instances
 

@@ -6,6 +6,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -43,7 +44,7 @@ class WebSocketConnection:
     """Represents a WebSocket connection with metadata."""
 
     id: str = field(default_factory=lambda: str(uuid4()))
-    websocket: WebSocket = None
+    websocket: Optional[WebSocket] = None
     tenant_id: UUID | None = None
     user_id: str | None = None
     conversation_id: UUID | None = None

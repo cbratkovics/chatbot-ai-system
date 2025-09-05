@@ -49,20 +49,14 @@ class CacheManager:
 
             # Create response from cache
             response = CompletionResponse(
-                id=UUID(cached_response.id),
                 content=cached_response.response,
                 model=cached_response.model,
                 usage=None,  # Would need to store usage in cache
-                provider="cache",
-                latency_ms=(time.time() - start_time) * 1000,
                 cached=True,
-                metadata={
-                    "cache_hit": True,
-                    "cache_entry_id": cached_response.id,
-                    "similarity_score": (
-                        cached_response.embedding.vector[0] if cached_response.embedding else 0
-                    ),
-                },
+                cache_key=cache_key,
+                similarity_score=(
+                    cached_response.embedding.vector[0] if cached_response.embedding else None
+                ),
             )
 
             return response

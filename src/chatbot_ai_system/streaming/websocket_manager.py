@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -72,8 +72,8 @@ class WebSocketManager:
         self.rooms: dict[str, set[str]] = {}  # room_id -> session_ids
 
         # Background tasks
-        self.heartbeat_task = None
-        self.cleanup_task = None
+        self.heartbeat_task: Optional[asyncio.Task] = None
+        self.cleanup_task: Optional[asyncio.Task] = None
 
         # Statistics
         self.stats = {

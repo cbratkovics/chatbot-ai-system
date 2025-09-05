@@ -245,7 +245,7 @@ class MetricsCollector:
         DB_QUERY_DURATION.labels(operation=operation).observe(duration)
 
 
-def track_time(metric: Histogram = None):
+def track_time(metric: Histogram | None = None):
     """Decorator to track function execution time."""
 
     def decorator(func: Callable):

@@ -5,7 +5,7 @@ OpenAI provider implementation with retry logic, error handling, and streaming s
 import asyncio
 import logging
 import time
-from typing import List, Optional
+from typing import AsyncIterator, List, Optional
 
 from openai import APIConnectionError, APIError, APITimeoutError, AsyncOpenAI
 from openai import AuthenticationError as OpenAIAuthError
@@ -20,6 +20,7 @@ from .base import (
     ModelNotFoundError,
     ProviderError,
     RateLimitError,
+    StreamChunk,
     TimeoutError,
 )
 from .streaming_mixin import StreamingOpenAIMixin
@@ -40,7 +41,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         "gpt-4-0125-preview",
     ]
 
-    def __init__(self, api_key: str, timeout: int = 30, max_retries: int = 3):
+    def __init__(self, api_key: str, timeout: int = 30, max_retries: int = 3) -> None:
         """
         Initialize OpenAI provider.
 
@@ -183,8 +184,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
                     raise RateLimitError(
                         "OpenAI rate limit exceeded",
                         provider="openai",
-                        status_code=429,
-                        details={"retry_after": getattr(e, "retry_after", None)},
+                        retry_after=getattr(e, "retry_after", None),
                     )
 
             except APITimeoutError as e:
@@ -250,6 +250,31 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         # If we get here, all retries failed
         if last_error:
             raise ProviderError(f"All retry attempts failed: {str(last_error)}", provider="openai")
+
+    async def stream(
+        self,
+        messages: List[ChatMessage],
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> AsyncIterator[StreamChunk]:
+        """
+        Stream chat completion from OpenAI.
+
+        Args:
+            messages: List of chat messages
+            model: Model identifier
+            temperature: Temperature for sampling
+            max_tokens: Maximum tokens in response
+            **kwargs: Additional parameters
+
+        Returns:
+            AsyncIterator[StreamChunk]: Stream of response chunks
+        """
+        # Delegate to the mixin's stream_chat method
+        async for chunk in self.stream_chat(messages, model, temperature, max_tokens, **kwargs):
+            yield chunk
 
     async def validate_model(self, model: str) -> bool:
         """

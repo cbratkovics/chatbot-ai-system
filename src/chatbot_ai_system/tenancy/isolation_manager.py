@@ -199,7 +199,7 @@ class IsolationManager:
                 },
             }
 
-            boundaries = tier_boundaries.get(tenant.tier, tier_boundaries["basic"])
+            boundaries: dict[str, Any] = tier_boundaries.get(tenant.tier, tier_boundaries["basic"]).copy()
             boundaries["tenant_id"] = tenant_id
             boundaries["tier"] = tenant.tier
 

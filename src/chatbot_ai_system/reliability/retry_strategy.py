@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ class RetryConfig:
     backoff_multiplier: float = 2.0
     jitter: bool = True
     jitter_factor: float = 0.1
-    retryable_exceptions: set[type[Exception]] = None
-    non_retryable_exceptions: set[type[Exception]] = None
+    retryable_exceptions: Optional[set[type[Exception]]] = None
+    non_retryable_exceptions: Optional[set[type[Exception]]] = None
     retry_on_timeout: bool = True
 
     def __post_init__(self):

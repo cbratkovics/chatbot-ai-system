@@ -1,4 +1,4 @@
-from api.models.chat import ChatSession
+from chatbot_ai_system.api.models.chat import ChatSession
 
 
 class CostCalculator:

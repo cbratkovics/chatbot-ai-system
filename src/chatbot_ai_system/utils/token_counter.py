@@ -1,5 +1,5 @@
 import tiktoken
-from api.models.chat import Message
+from chatbot_ai_system.api.models.chat import Message
 
 
 class TokenCounter:

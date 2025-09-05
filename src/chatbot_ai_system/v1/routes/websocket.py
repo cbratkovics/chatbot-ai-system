@@ -2,7 +2,7 @@
 
 import logging
 
-from api.core.config import settings
+from chatbot_ai_system.api.core.config import settings
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 

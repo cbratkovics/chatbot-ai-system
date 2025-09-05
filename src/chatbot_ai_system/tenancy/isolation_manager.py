@@ -101,7 +101,7 @@ class IsolationManager:
 
             # In production, this would create actual database schemas
             # For now, we'll track in metadata
-            from api.models import TenantNamespace
+            from chatbot_ai_system.api.models import TenantNamespace
 
             ns = TenantNamespace(
                 tenant_id=tenant_id,
@@ -166,7 +166,7 @@ class IsolationManager:
             Boundary configuration
         """
         try:
-            from api.models import Tenant
+            from chatbot_ai_system.api.models import Tenant
 
             result = await self.db.execute(select(Tenant).where(Tenant.id == tenant_id))
             tenant = result.scalar_one_or_none()
@@ -279,7 +279,7 @@ class IsolationManager:
             metadata: Additional metadata
         """
         try:
-            from api.models import AuditLog
+            from chatbot_ai_system.api.models import AuditLog
 
             audit = AuditLog(
                 tenant_id=tenant_id,
@@ -331,7 +331,7 @@ class IsolationManager:
             }
 
             # Track migration in database
-            from api.models import DataMigration
+            from chatbot_ai_system.api.models import DataMigration
 
             migration = DataMigration(
                 tenant_id=tenant_id,

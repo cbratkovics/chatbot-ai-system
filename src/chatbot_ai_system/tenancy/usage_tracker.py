@@ -511,7 +511,7 @@ class UsageTracker:
             return
 
         try:
-            from api.models import ApiUsage
+            from chatbot_ai_system.api.models import ApiUsage
 
             usage = ApiUsage(**usage_data)
             self.db.add(usage)
@@ -525,7 +525,7 @@ class UsageTracker:
             return
 
         try:
-            from api.models import TokenUsage
+            from chatbot_ai_system.api.models import TokenUsage
 
             usage = TokenUsage(**usage_data)
             self.db.add(usage)
@@ -539,7 +539,7 @@ class UsageTracker:
             return
 
         try:
-            from api.models import WebSocketUsage
+            from chatbot_ai_system.api.models import WebSocketUsage
 
             usage = WebSocketUsage(**usage_data)
             self.db.add(usage)
@@ -561,7 +561,7 @@ class UsageTracker:
             return
 
         try:
-            from api.models import StorageEvent
+            from chatbot_ai_system.api.models import StorageEvent
 
             event = StorageEvent(
                 tenant_id=tenant_id,

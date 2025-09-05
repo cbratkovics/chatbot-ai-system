@@ -1,7 +1,7 @@
 """API v1 module."""
 
 
-from api.v1.routes import health, websocket
+from chatbot_ai_system.api.v1.routes import health, websocket
 from fastapi import APIRouter
 
 # Create placeholder routers for missing modules

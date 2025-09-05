@@ -12,9 +12,9 @@ import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 try:
-    from api.models.cost import CostReport
-    from api.models.provider import ProviderConfig
-    from api.models.tenant import TenantConfig
+    from chatbot_ai_system.api.models.cost import CostReport
+    from chatbot_ai_system.api.models.provider import ProviderConfig
+    from chatbot_ai_system.api.models.tenant import TenantConfig
 except ImportError:
     # Fallback for testing
     TenantConfig = dict
@@ -161,7 +161,7 @@ class AuthService:
 
         if self.db:
             try:
-                from api.models import APIKey
+                from chatbot_ai_system.api.models import APIKey
             except ImportError:
                 # Fallback for testing
                 APIKey = dict
@@ -205,7 +205,7 @@ class AuthService:
                 from sqlalchemy import select
 
                 try:
-                    from api.models import APIKey
+                    from chatbot_ai_system.api.models import APIKey
                 except ImportError:
                     # Fallback for testing
                     APIKey = dict

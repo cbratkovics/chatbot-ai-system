@@ -91,13 +91,13 @@ jobs:
         run: poetry install --no-interaction --no-root
       
       - name: Run unit tests
-        run: poetry run pytest tests/unit -v --tb=short || true
+        run: poetry run pytest tests/unit -v --tb=short
         env:
           REDIS_URL: redis://localhost:6379/0
       
       - name: Generate coverage report
         run: |
-          poetry run pytest tests/unit --cov=chatbot_ai_system --cov-report=xml --cov-report=term || true
+          poetry run pytest tests/unit --cov=chatbot_ai_system --cov-report=xml --cov-report=term
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

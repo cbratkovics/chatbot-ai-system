@@ -3,7 +3,7 @@
 
 import sys
 
-from api.core.config import settings
+from chatbot_ai_system.api.core.config import settings
 
 
 def test_settings():

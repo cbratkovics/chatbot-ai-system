@@ -4,9 +4,9 @@ import logging
 import time
 from uuid import UUID, uuid4
 
-from api.providers import CompletionRequest
-from api.providers import Message as ProviderMessage
-from api.providers import ProviderError, ProviderOrchestrator
+from chatbot_ai_system.api.providers import CompletionRequest
+from chatbot_ai_system.api.providers import Message as ProviderMessage
+from chatbot_ai_system.api.providers import ProviderError, ProviderOrchestrator
 
 from .events import (
     AuthFailedEvent,

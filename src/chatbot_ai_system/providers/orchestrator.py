@@ -149,7 +149,7 @@ class ProviderOrchestrator:
             return random.choice(providers)
 
         rand = random.uniform(0, total_weight)
-        cumulative = 0
+        cumulative = 0.0
 
         for i, weight in enumerate(weights):
             cumulative += weight
@@ -229,7 +229,7 @@ class ProviderOrchestrator:
 
             except ProviderError as e:
                 logger.warning(f"Provider {provider.name} failed: {e.message}")
-                last_error = e
+                last_error = e  # type: ignore[assignment]
 
                 # Don't retry non-retryable errors with the same provider
                 if not e.retryable:
@@ -239,10 +239,10 @@ class ProviderOrchestrator:
 
             except Exception as e:
                 logger.error(f"Unexpected error from provider {provider.name}: {str(e)}")
-                last_error = ProviderError(
+                last_error = ProviderError(  # type: ignore[assignment]
                     f"Unexpected provider error: {str(e)}",
                     error_code="unexpected_error",
-                    provider_name=provider.name,
+                    provider=provider.name,
                 )
 
             # Brief delay before retry to avoid overwhelming providers

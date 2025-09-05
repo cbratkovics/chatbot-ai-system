@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import aiohttp
@@ -11,10 +12,9 @@ import aiohttp
 from .base import (
     AuthenticationError,
     BaseProvider,
-    CompletionRequest,
-    CompletionResponse,
+    ChatMessage,
+    ChatResponse,
     ContentFilterError,
-    Message,
     ModelNotFoundError,
     ProviderError,
     QuotaExceededError,
@@ -28,11 +28,20 @@ logger = logging.getLogger(__name__)
 
 class ProviderATokenUsage(TokenUsage):
     """Provider A specific token usage with cost calculation."""
-
-    def __init__(self, prompt_tokens: int, completion_tokens: int, model: str, config):
-        super().__init__(prompt_tokens, completion_tokens, prompt_tokens + completion_tokens)
-        self.model = model
-        self.config = config
+    
+    model: str
+    config: Any
+    
+    def __init__(self, prompt_tokens: int, completion_tokens: int, model: str, config: Any):
+        # Initialize as Pydantic model
+        super().__init__(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens
+        )
+        # Store additional attributes after initialization
+        object.__setattr__(self, 'model', model)
+        object.__setattr__(self, 'config', config)
 
     @property
     def prompt_cost(self) -> float:
@@ -65,10 +74,21 @@ class ProviderATokenUsage(TokenUsage):
 
 class ProviderA(BaseProvider):
     """Provider A implementation with HTTP API integration."""
+    
+    name: str = "provider_a"
+    config: Any
+    base_url: str
+    session: Optional[aiohttp.ClientSession]
+    model_mappings: Dict[str, str]
 
-    def __init__(self, config):
-        super().__init__(config)
-        self.base_url = config.base_url or "https://api.providerA.com/v1"
+    def __init__(self, config: Any):
+        # Initialize base provider with required parameters
+        api_key = getattr(config, 'api_key', '')
+        timeout = getattr(config, 'timeout', 30)
+        max_retries = getattr(config, 'max_retries', 3)
+        super().__init__(api_key=api_key, timeout=timeout, max_retries=max_retries)
+        self.config = config
+        self.base_url = getattr(config, 'base_url', None) or "https://api.providerA.com/v1"
         self.session = None
 
         # Model mappings
@@ -101,11 +121,11 @@ class ProviderA(BaseProvider):
         """Map internal model names to provider-specific names."""
         return self.model_mappings.get(model, model)
 
-    def _convert_messages(self, messages: list[Message]) -> list[dict]:
+    def _convert_messages(self, messages: List[ChatMessage]) -> List[Dict[str, str]]:
         """Convert internal message format to provider format."""
         return [{"role": msg.role, "content": msg.content} for msg in messages]
 
-    def _handle_error_response(self, status: int, response_data: dict) -> None:
+    def _handle_error_response(self, status: int, response_data: Dict[str, Any]) -> None:
         """Handle error responses from Provider A API."""
         error = response_data.get("error", {})
         error_type = error.get("type", "unknown")
@@ -114,7 +134,7 @@ class ProviderA(BaseProvider):
 
         if status == 401:
             raise AuthenticationError(
-                f"Authentication failed: {error_message}", provider_name=self.name
+                f"Authentication failed: {error_message}", provider=self.name
             )
 
         elif status == 429:
@@ -125,56 +145,58 @@ class ProviderA(BaseProvider):
 
             raise RateLimitError(
                 f"Rate limit exceeded: {error_message}",
-                retry_after=retry_after,
-                provider_name=self.name,
+                provider=self.name
             )
 
         elif status == 402:
-            raise QuotaExceededError(f"Quota exceeded: {error_message}", provider_name=self.name)
+            raise QuotaExceededError(f"Quota exceeded: {error_message}", provider=self.name)
 
         elif status == 400 and error_code == "model_not_found":
             raise ModelNotFoundError(
                 f"Model not found: {error_message}",
-                model=error.get("param", "unknown"),
-                provider_name=self.name,
+                provider=self.name
             )
 
         elif status == 400 and error_type == "policy_violation":
             raise ContentFilterError(
-                f"Content policy violation: {error_message}", provider_name=self.name
+                f"Content policy violation: {error_message}", provider=self.name
             )
 
         else:
             # Generic provider error
             raise ProviderError(
                 f"Provider A API error: {error_message}",
-                error_code=error_code or f"http_{status}",
-                retryable=status >= 500,  # Server errors are retryable
-                provider_name=self.name,
+                provider=self.name,
+                status_code=status
             )
 
-    async def _make_request(self, request: CompletionRequest) -> CompletionResponse:
-        """Make completion request to Provider A."""
+    async def chat(
+        self,
+        messages: List[ChatMessage],
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> ChatResponse:
+        """Generate a chat completion."""
         session = await self._get_session()
 
         # Prepare request payload
         payload = {
-            "model": self._map_model(request.model),
-            "messages": self._convert_messages(request.messages),
-            "temperature": request.temperature,
-            "max_tokens": request.max_tokens,
-            "top_p": request.top_p,
-            "frequency_penalty": request.frequency_penalty,
-            "presence_penalty": request.presence_penalty,
+            "model": self._map_model(model),
+            "messages": self._convert_messages(messages),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            # Note: top_p, frequency_penalty, presence_penalty are provider-specific
+            # and not part of base CompletionRequest
             "stream": False,
         }
 
-        if request.stop:
-            payload["stop"] = request.stop
-
-        # Add request metadata
-        if request.user_id:
-            payload["user"] = request.user_id
+        # Add provider-specific parameters from kwargs
+        if "stop" in kwargs:
+            payload["stop"] = kwargs["stop"]
+        if "user_id" in kwargs:
+            payload["user"] = kwargs["user_id"]
 
         logger.debug(f"Making request to Provider A: {payload['model']}")
 
@@ -189,75 +211,65 @@ class ProviderA(BaseProvider):
                 choice = response_data["choices"][0]
                 usage_data = response_data.get("usage", {})
 
-                # Create token usage with cost calculation
-                usage = ProviderATokenUsage(
-                    prompt_tokens=usage_data.get("prompt_tokens", 0),
-                    completion_tokens=usage_data.get("completion_tokens", 0),
-                    model=request.model,
-                    config=self.config,
-                )
-
                 # Create response
-                return CompletionResponse(
-                    id=uuid4(),
+                return ChatResponse(
                     content=choice["message"]["content"],
-                    model=request.model,
-                    usage=usage,
-                    provider=self.name,
-                    latency_ms=0,  # Will be set by base class
-                    finish_reason=choice.get("finish_reason"),
-                    metadata={
-                        "provider_response_id": response_data.get("id"),
-                        "provider_model": response_data.get("model"),
-                        "system_fingerprint": response_data.get("system_fingerprint"),
+                    model=model,
+                    provider="provider_a",
+                    cached=False,
+                    usage={
+                        "prompt_tokens": usage_data.get("prompt_tokens", 0),
+                        "completion_tokens": usage_data.get("completion_tokens", 0),
+                        "total_tokens": usage_data.get("total_tokens", 0),
                     },
+                    finish_reason=choice.get("finish_reason")
                 )
 
         except aiohttp.ClientError as e:
             raise ProviderError(
                 f"HTTP client error: {str(e)}",
-                error_code="client_error",
-                retryable=True,
-                provider_name=self.name,
+                provider=self.name
             ) from e
 
         except TimeoutError:
             raise ProviderError(
-                f"Request timeout after {self.config.timeout}s",
-                error_code="timeout",
-                retryable=True,
-                provider_name=self.name,
+                f"Request timeout after {getattr(self.config, 'timeout', 30)}s",
+                provider=self.name
             ) from None
 
         except json.JSONDecodeError as e:
             raise ProviderError(
                 f"Invalid JSON response: {str(e)}",
-                error_code="invalid_response",
-                retryable=True,
-                provider_name=self.name,
+                provider=self.name
             ) from e
 
-    async def _make_stream_request(self, request: CompletionRequest) -> AsyncIterator[StreamChunk]:
-        """Make streaming completion request to Provider A."""
+    async def stream(  # type: ignore[override]
+        self,
+        messages: List[ChatMessage],
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[StreamChunk]:
+        """Stream a chat completion."""
         session = await self._get_session()
 
         # Prepare streaming request payload
         payload = {
-            "model": self._map_model(request.model),
-            "messages": self._convert_messages(request.messages),
-            "temperature": request.temperature,
-            "max_tokens": request.max_tokens,
-            "top_p": request.top_p,
-            "frequency_penalty": request.frequency_penalty,
-            "presence_penalty": request.presence_penalty,
+            "model": self._map_model(model),
+            "messages": self._convert_messages(messages),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            # Note: top_p, frequency_penalty, presence_penalty are provider-specific
+            # and not part of base CompletionRequest
             "stream": True,
         }
 
-        if request.stop:
-            payload["stop"] = request.stop
-
-        if request.user_id:
-            payload["user"] = request.user_id
+        # Add provider-specific parameters from kwargs
+        if "stop" in kwargs:
+            payload["stop"] = kwargs["stop"]
+        if "user_id" in kwargs:
+            payload["user"] = kwargs["user_id"]
 
         logger.debug(f"Making streaming request to Provider A: {payload['model']}")
 
@@ -293,14 +305,9 @@ class ProviderA(BaseProvider):
 
                         if content or finish_reason:
                             yield StreamChunk(
-                                id=request_id,
-                                delta=content,
-                                finish_reason=finish_reason,
-                                chunk_index=chunk_index,
-                                metadata={
-                                    "provider_chunk_id": chunk_data.get("id"),
-                                    "provider_model": chunk_data.get("model"),
-                                },
+                                content=content,
+                                is_final=bool(finish_reason),
+                                usage=None
                             )
 
                             chunk_index += 1
@@ -312,18 +319,22 @@ class ProviderA(BaseProvider):
         except aiohttp.ClientError as e:
             raise ProviderError(
                 f"Streaming client error: {str(e)}",
-                error_code="streaming_error",
-                retryable=True,
-                provider_name=self.name,
+                provider=self.name
             ) from e
 
         except TimeoutError:
             raise ProviderError(
-                f"Streaming timeout after {self.config.timeout}s",
-                error_code="streaming_timeout",
-                retryable=True,
-                provider_name=self.name,
+                f"Streaming timeout after {getattr(self.config, 'timeout', 30)}s",
+                provider=self.name
             ) from None
+                        
+    async def validate_model(self, model: str) -> bool:
+        """Validate if a model is supported."""
+        return model in self.get_supported_models()
+        
+    def get_supported_models(self) -> List[str]:
+        """Get list of supported models."""
+        return list(self.model_mappings.keys())
 
     async def __aenter__(self):
         """Async context manager entry."""

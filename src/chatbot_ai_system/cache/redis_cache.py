@@ -221,6 +221,10 @@ class RedisCache:
         start_time = time.time()
 
         try:
+            if not self.client:
+                logger.warning("Redis client not connected")
+                return None
+            
             # Try exact match first
             data = await self.client.get(key)
 
@@ -317,6 +321,10 @@ class RedisCache:
             compressed_data, is_compressed = self._compress_data(data)
 
             # Store data
+            if not self.client:
+                logger.warning("Redis client not connected")
+                return False
+            
             ttl = ttl or self.ttl_seconds
             await self.client.setex(key, ttl, compressed_data)
 
@@ -384,6 +392,10 @@ class RedisCache:
             return 0
 
         try:
+            if not self.client:
+                logger.warning("Redis client not connected")
+                return 0
+            
             count = 0
 
             # Invalidate specific key
@@ -461,7 +473,7 @@ class RedisCache:
         self.stats.calculate_hit_rate()
 
         # Get Redis info if connected
-        if self._connected:
+        if self._connected and self.client:
             try:
                 info = await self.client.info("memory")
                 self.stats.cache_size_bytes = info.get("used_memory", 0)
@@ -481,6 +493,10 @@ class RedisCache:
             return False
 
         try:
+            if not self.client:
+                logger.warning("Redis client not connected")
+                return False
+            
             await self.client.flushdb()
             logger.info("Cleared all cache entries")
 
@@ -495,7 +511,7 @@ class RedisCache:
 
     async def health_check(self) -> Dict[str, Any]:
         """Check cache health."""
-        health = {
+        health: Dict[str, Any] = {
             "connected": self._connected,
             "circuit_breaker_state": None,
             "stats": None,
@@ -505,7 +521,7 @@ class RedisCache:
         if self.circuit_breaker:
             health["circuit_breaker_state"] = self.circuit_breaker.state
 
-        if self._connected:
+        if self._connected and self.client:
             try:
                 start = time.time()
                 await self.client.ping()

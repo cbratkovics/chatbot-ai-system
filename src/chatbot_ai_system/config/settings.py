@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     """Application settings with complete configuration"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=False
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=False,
+        validate_assignment=True
     )
 
     # Application
@@ -23,8 +24,8 @@ class Settings(BaseSettings):
 
     # Server
     host: str = Field(default="0.0.0.0", validation_alias="HOST")
-    port: int = Field(default=8000, validation_alias="PORT")
-    workers: int = Field(default=1, validation_alias="WORKERS")
+    port: int = Field(default=8000, validation_alias="PORT", ge=1, le=65535)
+    workers: int = Field(default=1, validation_alias="WORKERS", ge=1)
     reload: bool = Field(default=False, validation_alias="RELOAD")
 
     # API Keys

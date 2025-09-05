@@ -4,9 +4,11 @@ Base provider abstract class and common models for AI providers.
 
 import logging
 import uuid
+import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
+from enum import Enum
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -67,7 +69,13 @@ class ProviderError(Exception):
     """Base exception for provider-related errors."""
 
     def __init__(
-        self, message: str, provider: Optional[str] = None, status_code: Optional[int] = None, details: Optional[Dict] = None
+        self, 
+        message: str, 
+        provider: Optional[str] = None, 
+        status_code: Optional[int] = None, 
+        details: Optional[Dict] = None,
+        error_code: Optional[str] = None,
+        retryable: bool = True
     ):
         """
         Initialize provider error.
@@ -77,18 +85,25 @@ class ProviderError(Exception):
             provider: Provider name
             status_code: HTTP status code if applicable
             details: Additional error details
+            error_code: Error code for categorization
+            retryable: Whether the error is retryable
         """
         super().__init__(message)
+        self.message = message
         self.provider = provider
         self.status_code = status_code
         self.details = details or {}
+        self.error_code = error_code
+        self.retryable = retryable
         self.timestamp = datetime.utcnow()
 
 
 class RateLimitError(ProviderError):
     """Rate limit exceeded error."""
-
-    pass
+    
+    def __init__(self, message: str, provider: Optional[str] = None, retry_after: Optional[int] = None):
+        super().__init__(message, provider=provider, error_code="rate_limit", retryable=True)
+        self.retry_after = retry_after
 
 
 class AuthenticationError(ProviderError):
@@ -134,6 +149,7 @@ class TokenUsage(BaseModel):
     prompt_tokens: int = Field(..., description="Number of tokens in the prompt")
     completion_tokens: int = Field(..., description="Number of tokens in the completion")
     total_tokens: int = Field(..., description="Total number of tokens")
+    total_cost: Optional[float] = Field(default=None, description="Total cost in USD")
 
 
 class CompletionRequest(BaseModel):
@@ -144,6 +160,8 @@ class CompletionRequest(BaseModel):
     temperature: float = Field(default=0.7, description="Temperature for sampling")
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens in response")
     stream: bool = Field(default=False, description="Whether to stream the response")
+    tenant_id: Optional[uuid.UUID] = Field(default=None, description="Tenant ID for multi-tenancy")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
 
 
 class CompletionResponse(BaseModel):
@@ -153,6 +171,9 @@ class CompletionResponse(BaseModel):
     model: str = Field(..., description="Model used for generation")
     usage: Optional[TokenUsage] = Field(default=None, description="Token usage statistics")
     finish_reason: Optional[str] = Field(default=None, description="Reason for completion")
+    cached: bool = Field(default=False, description="Whether response was cached")
+    cache_key: Optional[str] = Field(default=None, description="Cache key if cached")
+    similarity_score: Optional[float] = Field(default=None, description="Semantic similarity score")
 
 
 class StreamChunk(BaseModel):
@@ -197,6 +218,22 @@ class ErrorResponse(BaseModel):
     details: Optional[Dict[str, Any]] = Field(default=None, description="Additional details")
 
 
+class ProviderStatus(str, Enum):
+    """Provider status enum."""
+    HEALTHY = "healthy"
+    UNHEALTHY = "unhealthy"
+    DEGRADED = "degraded"
+    
+
+class ProviderMetrics(BaseModel):
+    """Provider metrics."""
+    success_rate: float = Field(default=1.0, description="Success rate (0-1)")
+    average_latency: float = Field(default=0.0, description="Average latency in milliseconds")
+    total_requests: int = Field(default=0, description="Total requests made")
+    successful_requests: int = Field(default=0, description="Successful requests")
+    failed_requests: int = Field(default=0, description="Failed requests")
+
+
 class BaseProvider(ABC):
     """Abstract base class for AI providers."""
 
@@ -213,6 +250,10 @@ class BaseProvider(ABC):
         self.timeout = timeout
         self.max_retries = max_retries
         self.provider_name = self.__class__.__name__.replace("Provider", "").lower()
+        self.name = self.provider_name  # Alias for compatibility
+        self.status = ProviderStatus.HEALTHY
+        self.metrics = ProviderMetrics()
+        self._semaphore = asyncio.Semaphore(10)  # Default concurrency limit
 
     @abstractmethod
     async def chat(
@@ -240,6 +281,32 @@ class BaseProvider(ABC):
             ProviderError: If an error occurs during generation
         """
         pass
+        
+    async def complete(self, request: CompletionRequest) -> CompletionResponse:
+        """Complete a request using the provider."""
+        # Convert ChatMessages to Messages
+        chat_messages = [ChatMessage(role=msg.role, content=msg.content) for msg in request.messages]
+        
+        # Call the chat method
+        response = await self.chat(
+            messages=chat_messages,
+            model=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens
+        )
+        
+        # Convert ChatResponse to CompletionResponse
+        return CompletionResponse(
+            content=response.content,
+            model=response.model,
+            usage=TokenUsage(
+                prompt_tokens=response.usage.get("prompt_tokens", 0) if response.usage else 0,
+                completion_tokens=response.usage.get("completion_tokens", 0) if response.usage else 0,
+                total_tokens=response.usage.get("total_tokens", 0) if response.usage else 0
+            ) if response.usage else None,
+            finish_reason=response.finish_reason,
+            cached=response.cached
+        )
 
     @abstractmethod
     async def stream(
@@ -267,6 +334,20 @@ class BaseProvider(ABC):
             ProviderError: If an error occurs during streaming
         """
         pass
+        
+    async def complete_stream(self, request: CompletionRequest) -> AsyncIterator[StreamChunk]:
+        """Stream completion for a request."""
+        # Convert Messages to ChatMessages
+        chat_messages = [ChatMessage(role=msg.role, content=msg.content) for msg in request.messages]
+        
+        # Stream using the provider's stream method  
+        async for chunk in self.stream(
+            messages=chat_messages,
+            model=request.model,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens
+        ):
+            yield chunk
 
     @abstractmethod
     async def validate_model(self, model: str) -> bool:
@@ -290,6 +371,29 @@ class BaseProvider(ABC):
             List[str]: List of supported model identifiers
         """
         pass
+        
+    def supports_model(self, model: str) -> bool:
+        """Check if the provider supports a specific model."""
+        return model in self.get_supported_models()
+        
+    def is_healthy(self) -> bool:
+        """Check if the provider is healthy."""
+        return self.status == ProviderStatus.HEALTHY
+        
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform a health check on the provider."""
+        return {
+            "status": self.status.value,
+            "name": self.name,
+            "healthy": self.is_healthy(),
+            "metrics": {
+                "success_rate": self.metrics.success_rate,
+                "average_latency": self.metrics.average_latency,
+                "total_requests": self.metrics.total_requests,
+                "successful_requests": self.metrics.successful_requests,
+                "failed_requests": self.metrics.failed_requests
+            }
+        }
 
     def _log_request(self, model: str, messages: List[ChatMessage], **kwargs) -> None:
         """

@@ -7,7 +7,8 @@ import logging
 import time
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
+from asyncio import Task
 
 from .base import ChatMessage
 
@@ -46,7 +47,7 @@ class StreamingMixin:
         }
 
     @abstractmethod
-    async def stream_chat(
+    def stream_chat(
         self,
         messages: List[ChatMessage],
         model: str,
@@ -167,39 +168,39 @@ class StreamingMixin:
         Yields:
             StreamChunk: Merged stream chunks
         """
-        # Create tasks for all streams
-        tasks = [
-            asyncio.create_task(self._consume_stream(stream, i)) for i, stream in enumerate(streams)
-        ]
-
         # Use asyncio.Queue for merging
-        queue = asyncio.Queue()
-
-        async def producer(stream_task, stream_id):
-            try:
-                async for chunk in stream_task:
-                    await queue.put((stream_id, chunk))
-            finally:
-                await queue.put((stream_id, None))  # Sentinel
-
-        # Start producers
-        producers = [asyncio.create_task(producer(task, i)) for i, task in enumerate(tasks)]
+        queue: asyncio.Queue[Tuple[int, Optional[StreamChunk]]] = asyncio.Queue()
+        
+        # Create tasks for all streams - we'll handle them differently
+        # since we can't directly create tasks from async iterators
+        async def stream_wrapper(stream: AsyncIterator[StreamChunk], stream_id: int) -> None:
+            async for chunk in stream:
+                await queue.put((stream_id, chunk))
+            await queue.put((stream_id, None))  # Sentinel
+            
+        tasks: List[Task[None]] = [
+            asyncio.create_task(stream_wrapper(stream, i)) for i, stream in enumerate(streams)
+        ]
 
         # Consume merged stream
         active_streams = len(streams)
-        while active_streams > 0:
-            stream_id, chunk = await queue.get()
+        try:
+            while active_streams > 0:
+                stream_id, chunk = await queue.get()
 
-            if chunk is None:
-                active_streams -= 1
-            else:
-                yield chunk
-
-        # Clean up
-        for task in tasks:
-            task.cancel()
-        for producer in producers:
-            producer.cancel()
+                if chunk is None:
+                    active_streams -= 1
+                else:
+                    yield chunk
+        finally:
+            # Clean up
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
 
     async def _consume_stream(
         self, stream: AsyncIterator[StreamChunk], stream_id: int
@@ -269,7 +270,10 @@ class StreamingOpenAIMixin(StreamingMixin):
             request_params.update(kwargs)
 
             # Make streaming request
-            stream = await self.client.chat.completions.create(**request_params)
+            client = getattr(self, 'client', None)
+            if not client:
+                raise ValueError("OpenAI client not initialized")
+            stream = await client.chat.completions.create(**request_params)
 
             # Process stream
             async for chunk in stream:
@@ -369,7 +373,10 @@ class StreamingAnthropicMixin(StreamingMixin):
             request_params.update(kwargs)
 
             # Make streaming request
-            async with self.client.messages.stream(**request_params) as stream:
+            client = getattr(self, 'client', None)
+            if not client:
+                raise ValueError("Anthropic client not initialized")
+            async with client.messages.stream(**request_params) as stream:
                 async for event in stream:
                     if event.type == "content_block_delta":
                         content = event.delta.text

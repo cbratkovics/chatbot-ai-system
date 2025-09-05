@@ -7,7 +7,7 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +284,7 @@ class TimeoutManager:
         ]
 
         # Operation-specific stats
-        operation_stats = {}
+        operation_stats: Dict[str, Dict[str, Any]] = {}
         for event in self.timeout_events:
             if event.operation not in operation_stats:
                 operation_stats[event.operation] = {"total": 0, "timeouts": 0, "durations": []}

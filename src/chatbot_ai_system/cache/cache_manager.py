@@ -4,7 +4,8 @@ import logging
 import time
 from uuid import UUID
 
-from ..providers import CompletionRequest, CompletionResponse, ProviderOrchestrator
+from ..providers.base import CompletionRequest, CompletionResponse
+from ..orchestrator.provider_orchestrator import ProviderOrchestrator
 from .semantic_cache import SemanticCache
 
 logger = logging.getLogger(__name__)

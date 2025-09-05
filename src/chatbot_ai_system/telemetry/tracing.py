@@ -4,7 +4,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from opentelemetry import trace
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
@@ -24,42 +24,43 @@ class SpanContext:
 
     trace_id: str
     span_id: str
-    parent_span_id: str | None = None
+    parent_span_id: Optional[str] = None
     operation: str = ""
     start_time: float = field(default_factory=time.time)
-    end_time: float | None = None
-    tags: dict[str, Any] = field(default_factory=dict)
-    logs: list[dict[str, Any]] = field(default_factory=list)
+    end_time: Optional[float] = None
+    tags: Dict[str, Any] = field(default_factory=dict)
+    logs: List[Dict[str, Any]] = field(default_factory=list)
     status: str = "ok"
+    span: Any = None  # OpenTelemetry span object
 
 
 class TracingManager:
     """Manager for distributed tracing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize tracing manager."""
-        self.enabled = settings.JAEGER_ENABLED
+        self.enabled = getattr(settings, 'JAEGER_ENABLED', False)
         self.tracer = None
-        self._active_spans: dict[str, SpanContext] = {}
+        self._active_spans: Dict[str, SpanContext] = {}
 
         if self.enabled:
             self._setup_tracing()
 
-    def _setup_tracing(self):
+    def _setup_tracing(self) -> None:
         """Set up OpenTelemetry tracing."""
         try:
             resource = Resource.create(
                 {
-                    "service.name": settings.JAEGER_SERVICE_NAME,
-                    "service.version": settings.VERSION,
+                    "service.name": getattr(settings, 'JAEGER_SERVICE_NAME', 'chatbot-ai-system'),
+                    "service.version": getattr(settings, 'VERSION', '1.0.0'),
                 }
             )
 
             provider = TracerProvider(resource=resource)
 
             jaeger_exporter = JaegerExporter(
-                agent_host_name=settings.JAEGER_AGENT_HOST,
-                agent_port=settings.JAEGER_AGENT_PORT,
+                agent_host_name=getattr(settings, 'JAEGER_AGENT_HOST', 'localhost'),
+                agent_port=getattr(settings, 'JAEGER_AGENT_PORT', 6831),
             )
 
             provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
@@ -68,8 +69,8 @@ class TracingManager:
             self.tracer = trace.get_tracer(__name__)
             logger.info(
                 "Tracing initialized",
-                host=settings.JAEGER_AGENT_HOST,
-                port=settings.JAEGER_AGENT_PORT,
+                host=getattr(settings, 'JAEGER_AGENT_HOST', 'localhost'),
+                port=getattr(settings, 'JAEGER_AGENT_PORT', 6831),
             )
         except Exception as e:
             logger.error("Failed to initialize tracing", error=str(e))
@@ -79,8 +80,8 @@ class TracingManager:
     def span(
         self,
         operation: str,
-        tags: dict[str, Any] | None = None,
-        parent_span: SpanContext | None = None,
+        tags: Optional[Dict[str, Any]] = None,
+        parent_span: Optional[SpanContext] = None,
     ):
         """Create a new tracing span."""
         if not self.enabled:
@@ -104,7 +105,8 @@ class TracingManager:
                         for key, value in tags.items():
                             span.set_attribute(key, str(value))
 
-                    span_context.span = span
+                    if hasattr(span_context, 'span'):
+                        span_context.span = span
                     yield span_context
             else:
                 yield span_context
@@ -123,12 +125,12 @@ class TracingManager:
             if span_context.span_id in self._active_spans:
                 del self._active_spans[span_context.span_id]
 
-    def add_tags(self, span_id: str, tags: dict[str, Any]):
+    def add_tags(self, span_id: str, tags: Dict[str, Any]) -> None:
         """Add tags to an active span."""
         if span_id in self._active_spans:
             self._active_spans[span_id].tags.update(tags)
 
-    def add_log(self, span_id: str, message: str, level: str = "info"):
+    def add_log(self, span_id: str, message: str, level: str = "info") -> None:
         """Add log to an active span."""
         if span_id in self._active_spans:
             self._active_spans[span_id].logs.append(
@@ -139,13 +141,13 @@ class TracingManager:
                 }
             )
 
-    def get_active_trace_id(self) -> str | None:
+    def get_active_trace_id(self) -> Optional[str]:
         """Get current active trace ID."""
         if self._active_spans:
             return next(iter(self._active_spans.values())).trace_id
         return None
 
-    def inject_headers(self, headers: dict[str, str]) -> dict[str, str]:
+    def inject_headers(self, headers: Dict[str, str]) -> Dict[str, str]:
         """Inject tracing headers for propagation."""
         trace_id = self.get_active_trace_id()
         if trace_id:

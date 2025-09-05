@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class UsageTracker:
         method: str,
         response_time_ms: float,
         status_code: int,
-        metadata: dict | None = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """Track API call for billing and analytics.
 
@@ -64,7 +64,7 @@ class UsageTracker:
         output_tokens: int,
         total_tokens: int,
         cost: float,
-        metadata: dict | None = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """Track token usage for LLM calls.
 
@@ -109,7 +109,7 @@ class UsageTracker:
         messages_sent: int,
         messages_received: int,
         duration_seconds: float,
-        metadata: dict | None = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """Track WebSocket connection usage.
 
@@ -151,7 +151,7 @@ class UsageTracker:
         storage_type: str,
         size_bytes: int,
         operation: str,
-        metadata: dict | None = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """Track storage usage.
 
@@ -181,7 +181,7 @@ class UsageTracker:
 
     async def get_usage_summary(
         self, tenant_id: str, start_date: datetime, end_date: datetime
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Get comprehensive usage summary for billing period.
 
         Args:
@@ -192,7 +192,7 @@ class UsageTracker:
         Returns:
             Usage summary with costs
         """
-        summary = {
+        summary: Dict[str, Any] = {
             "tenant_id": tenant_id,
             "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
             "usage": {},
@@ -268,7 +268,7 @@ class UsageTracker:
         end_date = datetime.utcnow().date()
         start_date = end_date - timedelta(days=days - 1)
 
-        trends = {"tenant_id": tenant_id, "period_days": days, "daily_usage": []}
+        trends: Dict[str, Any] = {"tenant_id": tenant_id, "period_days": days, "daily_usage": []}
 
         current_date = start_date
         while current_date <= end_date:

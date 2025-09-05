@@ -73,8 +73,8 @@ class TokenBucketRateLimiter(RateLimiter):
         self.capacity = capacity
         self.refill_rate = refill_rate
         self.burst_size = burst_size or capacity
-        self.buckets = {}
-        self.last_refill = {}
+        self.buckets: Dict[str, int] = {}
+        self.last_refill: Dict[str, float] = {}
 
     async def get_available_tokens(self, key: str) -> int:
         """Get the number of available tokens for a key."""
@@ -164,7 +164,10 @@ class TokenBucketRateLimiter(RateLimiter):
                 return True
             return False
 
-    async def allow_request(self, key: str, tokens: int = 1) -> bool:
+    async def allow_request(self, key: str, tokens: int = 1, bypass: bool = False) -> bool:
+        # Check bypass first
+        if bypass or key in self.bypass_keys:
+            return True
         # Check Redis for stored tokens first
         if self.redis_client:
             stored_tokens = await self.redis_client.hget(f"rate_limit:{key}", "tokens")
@@ -215,7 +218,10 @@ class SlidingWindowRateLimiter(RateLimiter):
         self.window_seconds = window_seconds
         self.max_requests = max_requests
 
-    async def allow_request(self, key: str) -> bool:
+    async def allow_request(self, key: str, tokens: int = 1, bypass: bool = False) -> bool:
+        # Check bypass first
+        if bypass or key in self.bypass_keys:
+            return True
         now = datetime.utcnow().timestamp()
         window_start = now - self.window_seconds
 
@@ -257,7 +263,10 @@ class DistributedRateLimiter(RateLimiter):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
 
-    async def allow_request(self, key: str) -> bool:
+    async def allow_request(self, key: str, tokens: int = 1, bypass: bool = False) -> bool:
+        # Check bypass first
+        if bypass or key in self.bypass_keys:
+            return True
         if self.redis_client:
             # Use Redis EVAL for atomic distributed rate limiting
             result = await self.redis_client.eval(

@@ -2,7 +2,7 @@
 
 
 from .error_handler import GlobalErrorHandler
-from .rate_limiter import RateLimitMiddleware
+from .rate_limit import RateLimitMiddleware
 from .tenant_middleware import TenantMiddleware
 
 __all__ = [

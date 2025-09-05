@@ -39,8 +39,8 @@ class CacheKeyGenerator:
 
         # TF-IDF vectorizer for semantic similarity
         self.vectorizer = None
-        self.message_vectors = {}
-        self.message_cache = {}
+        self.message_vectors: Dict[str, Any] = {}
+        self.message_cache: Dict[str, Any] = {}
 
         if semantic_cache_enabled:
             self._initialize_vectorizer()
@@ -318,7 +318,7 @@ class CacheKeyGenerator:
 
         return ":".join(pattern_parts)
 
-    def extract_metadata_from_key(self, key: str) -> Dict[str, str]:
+    def extract_metadata_from_key(self, key: str) -> Dict[str, Optional[str]]:
         """
         Extract metadata from cache key.
 

@@ -102,7 +102,7 @@ class TracingManager:
         """Get current active span."""
         return trace.get_current_span()
 
-    def add_event(self, name: str, attributes: dict = None):
+    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None):
         """Add event to current span."""
         span = self.get_current_span()
         if span:

@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -19,7 +19,7 @@ class JWTHandler:
     """Handles JWT token creation and verification."""
 
     def __init__(
-        self, secret_key: str = None, algorithm: str = None, access_token_expire_minutes: int = None
+        self, secret_key: Optional[str] = None, algorithm: Optional[str] = None, access_token_expire_minutes: Optional[int] = None
     ):
         self.secret_key = secret_key or settings.jwt_secret_key
         self.algorithm = algorithm or settings.jwt_algorithm
@@ -28,7 +28,7 @@ class JWTHandler:
         )
 
     def create_access_token(
-        self, data: dict[str, Any], expires_delta: timedelta | None = None
+        self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None
     ) -> str:
         """Create JWT access token."""
         to_encode = data.copy()
@@ -44,7 +44,7 @@ class JWTHandler:
         return encoded_jwt
 
     def create_refresh_token(
-        self, data: dict[str, Any], expires_delta: timedelta | None = None
+        self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None
     ) -> str:
         """Create JWT refresh token."""
         to_encode = data.copy()
@@ -59,7 +59,7 @@ class JWTHandler:
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
         return encoded_jwt
 
-    def verify_token(self, token: str) -> dict[str, Any] | None:
+    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Verify JWT token and return payload."""
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
@@ -68,7 +68,7 @@ class JWTHandler:
             logger.warning(f"JWT verification failed: {e}")
             return None
 
-    def verify_access_token(self, token: str) -> dict[str, Any] | None:
+    def verify_access_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Verify access token specifically."""
         payload = self.verify_token(token)
 
@@ -77,7 +77,7 @@ class JWTHandler:
 
         return None
 
-    def verify_refresh_token(self, token: str) -> dict[str, Any] | None:
+    def verify_refresh_token(self, token: str) -> Optional[Dict[str, Any]]:
         """Verify refresh token specifically."""
         payload = self.verify_token(token)
 
@@ -102,7 +102,7 @@ jwt_handler = JWTHandler()
 
 
 def create_access_token(
-    user_id: str, tenant_id: str, roles: list = None, permissions: list = None, **kwargs
+    user_id: str, tenant_id: str, roles: Optional[List[str]] = None, permissions: Optional[List[str]] = None, **kwargs
 ) -> str:
     """Create access token with user data."""
     data = {
@@ -116,6 +116,6 @@ def create_access_token(
     return jwt_handler.create_access_token(data)
 
 
-def verify_token(token: str) -> dict[str, Any] | None:
+def verify_token(token: str) -> Optional[Dict[str, Any]]:
     """Verify token and return payload."""
     return jwt_handler.verify_access_token(token)

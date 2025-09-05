@@ -6,9 +6,9 @@ import logging
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +22,15 @@ class ChatMessage(BaseModel):
         default_factory=datetime.utcnow, description="Message timestamp"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "role": "user",
                 "content": "Hello, how can you help me today?",
                 "timestamp": "2024-01-15T10:00:00Z",
             }
         }
+    )
 
 
 class ChatResponse(BaseModel):
@@ -46,8 +47,8 @@ class ChatResponse(BaseModel):
     provider: str = Field(..., description="Provider name (openai, anthropic)")
     finish_reason: Optional[str] = Field(None, description="Completion finish reason")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "content": "I can help you with various tasks...",
                 "model": "gpt-3.5-turbo",
@@ -59,6 +60,7 @@ class ChatResponse(BaseModel):
                 "finish_reason": "stop",
             }
         }
+    )
 
 
 class ProviderError(Exception):
@@ -161,6 +163,40 @@ class StreamChunk(BaseModel):
     usage: Optional[TokenUsage] = Field(default=None, description="Token usage (if final)")
 
 
+class StreamResponse:
+    """Represents a streaming response."""
+    
+    def __init__(
+        self,
+        chunks: AsyncIterator[StreamChunk],
+        model: str,
+        request_id: Optional[str] = None
+    ):
+        self.chunks = chunks
+        self.model = model
+        self.request_id = request_id or str(uuid.uuid4())
+
+
+class ProviderConfig(BaseModel):
+    """Provider configuration."""
+    
+    api_key: str = Field(..., description="API key for the provider")
+    timeout: int = Field(default=30, description="Request timeout in seconds")
+    max_retries: int = Field(default=3, description="Maximum number of retry attempts")
+    base_url: Optional[str] = Field(default=None, description="Base URL for the provider API")
+    headers: Optional[Dict[str, str]] = Field(default=None, description="Additional headers")
+
+
+class ErrorResponse(BaseModel):
+    """Error response from provider."""
+    
+    error_type: str = Field(..., description="Error type")
+    message: str = Field(..., description="Error message")
+    provider: Optional[str] = Field(default=None, description="Provider name")
+    status_code: Optional[int] = Field(default=None, description="HTTP status code")
+    details: Optional[Dict[str, Any]] = Field(default=None, description="Additional details")
+
+
 class BaseProvider(ABC):
     """Abstract base class for AI providers."""
 
@@ -206,6 +242,33 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
+    async def stream(
+        self,
+        messages: List[ChatMessage],
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> AsyncIterator[StreamChunk]:
+        """
+        Stream a chat completion.
+
+        Args:
+            messages: List of chat messages
+            model: Model identifier
+            temperature: Temperature for sampling
+            max_tokens: Maximum tokens in response
+            **kwargs: Additional provider-specific parameters
+
+        Yields:
+            StreamChunk: Chunks of the streamed response
+
+        Raises:
+            ProviderError: If an error occurs during streaming
+        """
+        pass
+
+    @abstractmethod
     async def validate_model(self, model: str) -> bool:
         """
         Validate if a model is supported by this provider.
@@ -228,7 +291,7 @@ class BaseProvider(ABC):
         """
         pass
 
-    def _log_request(self, model: str, messages: List[ChatMessage], **kwargs):
+    def _log_request(self, model: str, messages: List[ChatMessage], **kwargs) -> None:
         """
         Log request details.
 
@@ -248,7 +311,7 @@ class BaseProvider(ABC):
             },
         )
 
-    def _log_response(self, response: ChatResponse, duration: Optional[float] = None):
+    def _log_response(self, response: ChatResponse, duration: Optional[float] = None) -> None:
         """
         Log response details.
 
@@ -268,7 +331,7 @@ class BaseProvider(ABC):
             },
         )
 
-    def _log_error(self, error: Exception, model: Optional[str] = None):
+    def _log_error(self, error: Exception, model: Optional[str] = None) -> None:
         """
         Log error details.
 

@@ -2,10 +2,26 @@
 
 import time
 from collections import defaultdict
+from typing import Callable
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from chatbot_ai_system.config.settings import settings
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Rate limiting middleware using token bucket algorithm."""
+    
+    def __init__(self, app):
+        super().__init__(app)
+        self.rate_limiter = RateLimiter()
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Process request with rate limiting."""
+        await self.rate_limiter.check(request)
+        response = await call_next(request)
+        return response
 
 
 class RateLimiter:

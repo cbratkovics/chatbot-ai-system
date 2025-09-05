@@ -109,7 +109,7 @@ class TestProviderFailover:
             messages = [ChatMessage(role="user", content="Test")]
             try:
                 await orchestrator.chat(messages=messages, model="gpt-3.5-turbo")
-            except:
+            except ProviderError:
                 pass
 
         # Circuit breaker should be open for provider A

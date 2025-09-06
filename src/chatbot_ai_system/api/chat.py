@@ -284,7 +284,7 @@ async def chat_completion(
         response = await provider.chat(
             messages=messages,
             model=model_name,
-            temperature=request.temperature,
+            temperature=request.temperature or 0.7,
             max_tokens=request.max_tokens,
         )
 
@@ -306,6 +306,8 @@ async def chat_completion(
             }],
             usage=response.usage,
             cached=response.cached,
+            cache_key=getattr(response, 'cache_key', None),
+            similarity_score=getattr(response, 'similarity_score', None),
         )
 
         logger.info(
@@ -368,9 +370,10 @@ async def get_supported_models(settings: Settings = Depends(get_settings)) -> Di
     models_by_provider: Dict[str, List[str]] = {}
     for model in models:
         provider = ProviderFactory.get_provider_for_model(model)
-        if provider not in models_by_provider:
-            models_by_provider[provider] = []
-        models_by_provider[provider].append(model)
+        if provider:
+            if provider not in models_by_provider:
+                models_by_provider[provider] = []
+            models_by_provider[provider].append(model)
 
     # Check which providers are configured
     configured_providers = []
@@ -388,7 +391,7 @@ async def get_supported_models(settings: Settings = Depends(get_settings)) -> Di
 
 
 @router.get("/health")
-async def health_check(settings: Settings = Depends(get_settings)) -> Dict[str, str]:
+async def health_check(settings: Settings = Depends(get_settings)) -> Dict[str, Any]:
     """
     Health check endpoint for the chat service.
 

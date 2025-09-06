@@ -3,7 +3,7 @@
 import logging
 from functools import wraps
 
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .jwt_handler import jwt_handler
@@ -110,7 +110,7 @@ def require_auth(permissions: list[Permission] | None = None, any_permission: bo
     return decorator
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = security):
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Get current user from JWT token."""
     token = credentials.credentials
     payload = jwt_handler.verify_access_token(token)
@@ -133,7 +133,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = security)
 def require_permission(permission: Permission):
     """Dependency to require specific permission."""
 
-    async def permission_checker(current_user: dict = get_current_user):
+    async def permission_checker(current_user: dict = Depends(get_current_user)):
         user_permissions = current_user.get("permissions", [])
 
         if not check_permission(user_permissions, permission):

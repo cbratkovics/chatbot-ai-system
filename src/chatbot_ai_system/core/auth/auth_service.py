@@ -198,6 +198,7 @@ class AuthService:
             key_hash = hashlib.sha256(api_key.encode()).hexdigest()
 
             # Special handling for testing
+            result: Any
             if hasattr(self.db, "_is_mock") and hasattr(self.db, "execute"):
                 # This is a mock database with execute method (unit test)
                 from sqlalchemy import text
@@ -212,10 +213,11 @@ class AuthService:
                     else:
                         result = self.db.get_api_key(key_hash)
                 else:
-                    # Create a mock result object
-                    from types import SimpleNamespace
-                    result = SimpleNamespace()
-                    result.scalar_one_or_none = lambda: None
+                    # Create a mock result object that matches SQLAlchemy Result interface
+                    class MockResult:
+                        def scalar_one_or_none(self):
+                            return None
+                    result = MockResult()
             else:
                 from sqlalchemy import select
 

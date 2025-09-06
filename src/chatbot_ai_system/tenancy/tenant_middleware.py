@@ -38,11 +38,15 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 request.state.tenant_preferences = tenant_context.get("preferences", {})
 
                 # Validate tenant quotas
-                quota_check = await self._validate_quota(
-                    tenant_context.get("tenant_id"),
-                    request.url.path,
-                    tenant_context.get("tier", "basic"),
-                )
+                tenant_id = tenant_context.get("tenant_id")
+                if tenant_id is not None:
+                    quota_check = await self._validate_quota(
+                        tenant_id,
+                        request.url.path,
+                        tenant_context.get("tier", "basic"),
+                    )
+                else:
+                    quota_check = {"allowed": True}  # Allow if no tenant_id
 
                 if not quota_check["allowed"]:
                     return JSONResponse(
@@ -55,9 +59,11 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     )
 
                 # Track usage for billing
-                await self._track_request(
-                    tenant_context.get("tenant_id"), request.url.path, request.method
-                )
+                tenant_id = tenant_context.get("tenant_id")
+                if tenant_id is not None:
+                    await self._track_request(
+                        tenant_id, request.url.path, request.method
+                    )
 
             # Process request
             response = await call_next(request)

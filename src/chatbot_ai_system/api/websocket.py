@@ -53,8 +53,11 @@ class ProviderFactory:
             # Import streaming-enhanced provider
             from ..providers.openai_provider import OpenAIProvider
 
+            if not settings.openai_api_key:
+                raise ValueError("OpenAI API key not configured")
+            
             return OpenAIProvider(
-                api_key=settings.openai_api_key,
+                api_key=settings.openai_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
                 max_retries=settings.max_retries,
             )
@@ -64,8 +67,11 @@ class ProviderFactory:
                 raise ValueError("Anthropic API key not configured")
             from ..providers.anthropic_provider import AnthropicProvider
 
+            if not settings.anthropic_api_key:
+                raise ValueError("Anthropic API key not configured")
+            
             return AnthropicProvider(
-                api_key=settings.anthropic_api_key,
+                api_key=settings.anthropic_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
                 max_retries=settings.max_retries,
             )

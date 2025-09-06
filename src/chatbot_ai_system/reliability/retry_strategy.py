@@ -286,14 +286,16 @@ class RetryExecutor:
             return False
 
         # Check non-retryable exceptions
-        for exc_type in self.config.non_retryable_exceptions:
-            if isinstance(exception, exc_type):
-                return False
+        if self.config.non_retryable_exceptions:
+            for exc_type in self.config.non_retryable_exceptions:
+                if isinstance(exception, exc_type):
+                    return False
 
         # Check retryable exceptions
-        for exc_type in self.config.retryable_exceptions:
-            if isinstance(exception, exc_type):
-                return True
+        if self.config.retryable_exceptions:
+            for exc_type in self.config.retryable_exceptions:
+                if isinstance(exception, exc_type):
+                    return True
 
         # Check timeout specifically
         if isinstance(exception, asyncio.TimeoutError):

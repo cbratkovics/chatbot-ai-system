@@ -1,11 +1,15 @@
 """Database session management."""
 
+from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from ..config.settings import settings
 
-# Create engine
+# Create engine with None check
+if not settings.database_url:
+    raise ValueError("DATABASE_URL is required but not set")
+
 engine = create_engine(
     settings.database_url,
     echo=settings.is_development,  # Use development flag for echo
@@ -19,7 +23,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """Get database session."""
     db = SessionLocal()
     try:

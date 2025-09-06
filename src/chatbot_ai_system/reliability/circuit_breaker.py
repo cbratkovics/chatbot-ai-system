@@ -81,7 +81,7 @@ class HystrixCircuitBreaker:
         self.state = CircuitState.CLOSED
         self.metrics = CircuitMetrics()
         self.state_changed_at = datetime.utcnow()
-        self.rolling_window = deque(maxlen=1000)  # Store recent requests
+        self.rolling_window: deque[Any] = deque(maxlen=1000)  # Store recent requests
 
         # Callbacks
         self.on_open_callback = None
@@ -224,7 +224,8 @@ class HystrixCircuitBreaker:
         self.metrics.successful_requests += 1
         self.metrics.consecutive_failures = 0
         self.metrics.last_success_time = datetime.utcnow()
-        self.metrics.response_times.append(response_time_ms)
+        if self.metrics.response_times is not None:
+            self.metrics.response_times.append(response_time_ms)
 
         # Add to rolling window
         self.rolling_window.append(

@@ -10,7 +10,7 @@ from collections.abc import Callable
 from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, List, Tuple
 
 import aiohttp
 import aioredis
@@ -60,7 +60,7 @@ class CircuitBreaker:
         self.failures = 0
         self.successes = 0
         self.last_failure_time = 0
-        self.calls = []
+        self.calls: List[Tuple[float, bool]] = []
 
     def record_success(self):
         """Record successful call"""
@@ -153,7 +153,10 @@ class ConnectionPool(Generic[T]):
     async def _create_connection(self) -> T:
         """Create a new connection"""
         try:
-            conn = await asyncio.wait_for(self.factory(), timeout=self.config.connection_timeout)
+            if asyncio.iscoroutinefunction(self.factory):
+                conn: T = await asyncio.wait_for(self.factory(), timeout=self.config.connection_timeout)
+            else:
+                conn = self.factory()
             self.active_connections += 1
             return conn
         except Exception as e:
@@ -171,7 +174,13 @@ class ConnectionPool(Generic[T]):
 
             # Health check if provided
             if self.health_check:
-                if not await self.health_check(conn):
+                health_result = self.health_check(conn)
+                # Handle both sync and async health checks
+                if asyncio.iscoroutine(health_result):
+                    health_ok = await health_result
+                else:
+                    health_ok = health_result
+                if not health_ok:
                     await self._close_connection(conn)
                     return await self.acquire()  # Retry with new connection
 
@@ -274,6 +283,8 @@ class RetryableHTTPClient:
             raise Exception("Circuit breaker is open")
 
         try:
+            if self.session is None:
+                raise RuntimeError("Session not initialized")
             response = await self.session.request(method, url, **kwargs)
             response.raise_for_status()
             self.circuit_breaker.record_success()
@@ -326,7 +337,7 @@ class DatabaseConnectionPool:
 
     def __init__(self, write_url: str, read_urls: list[str], config: PoolConfig):
         self.write_pool = None  # Initialize with your DB library
-        self.read_pools = []  # Initialize read replicas
+        self.read_pools: List[ConnectionPool] = []  # Initialize read replicas
         self.config = config
         self.read_index = 0
 

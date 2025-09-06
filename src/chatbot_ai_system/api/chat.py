@@ -183,8 +183,11 @@ class ProviderFactory:
                     provider="openai",
                     status_code=401,
                 )
+            if not settings.openai_api_key:
+                raise ValueError("OpenAI API key not configured")
+            
             return OpenAIProvider(
-                api_key=settings.openai_api_key,
+                api_key=settings.openai_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
                 max_retries=settings.max_retries,
             )
@@ -196,8 +199,11 @@ class ProviderFactory:
                     provider="anthropic",
                     status_code=401,
                 )
+            if not settings.anthropic_api_key:
+                raise ValueError("Anthropic API key not configured")
+            
             return AnthropicProvider(
-                api_key=settings.anthropic_api_key,
+                api_key=settings.anthropic_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
                 max_retries=settings.max_retries,
             )
@@ -359,7 +365,7 @@ async def get_supported_models(settings: Settings = Depends(get_settings)) -> Di
     models = ProviderFactory.get_supported_models()
 
     # Group by provider
-    models_by_provider = {}
+    models_by_provider: Dict[str, List[str]] = {}
     for model in models:
         provider = ProviderFactory.get_provider_for_model(model)
         if provider not in models_by_provider:

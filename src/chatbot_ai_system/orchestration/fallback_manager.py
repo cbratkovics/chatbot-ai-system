@@ -169,8 +169,8 @@ class FallbackManager:
         # All attempts failed
         event = FallbackEvent(
             timestamp=datetime.utcnow(),
-            from_provider=models_to_try[-1][0] if models_to_try else None,
-            from_model=models_to_try[-1][1] if models_to_try else None,
+            from_provider=models_to_try[-1][0] if models_to_try else "unknown",
+            from_model=models_to_try[-1][1] if models_to_try else "unknown",
             to_provider=None,
             to_model=None,
             reason=self._determine_fallback_reason(last_error),

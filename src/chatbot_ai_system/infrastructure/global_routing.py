@@ -9,7 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Dict, List
 
 import aiohttp
 import boto3
@@ -414,7 +414,7 @@ def lambda_handler(event, context):
         if not region_scores:
             raise Exception("No healthy regions available")
 
-        best_region_name = max(region_scores, key=region_scores.get)
+        best_region_name = max(region_scores, key=lambda k: region_scores[k])
         best_region = self.regions[best_region_name]
 
         logger.info(
@@ -562,7 +562,7 @@ class BlueGreenDeploymentManager:
 
     def __init__(self, routing_manager: GlobalRoutingManager):
         self.routing_manager = routing_manager
-        self.deployment_states = {}
+        self.deployment_states: Dict[str, str] = {}
 
     async def deploy_new_version(
         self, version: str, regions: list[str], strategy: str = "rolling"
@@ -645,7 +645,7 @@ class BlueGreenDeploymentManager:
             # Check metrics
             if not await self._validate_canary_metrics(regions):
                 logger.error("Canary metrics validation failed")
-                await self._rollback_canary(regions)
+                await self._rollback_canary(deployment_id, regions)
                 raise Exception("Canary deployment failed validation")
 
         return {"deployment_id": deployment_id, "strategy": "canary", "status": "success"}
@@ -692,6 +692,96 @@ class BlueGreenDeploymentManager:
         # Restore previous version
         # Clean up failed resources
 
+    async def _rolling_deployment(
+        self, deployment_id: str, version: str, regions: list[str]
+    ) -> dict[str, Any]:
+        """Rolling deployment implementation"""
+        logger.info(f"Starting rolling deployment {deployment_id} for version {version}")
+        
+        results: dict[str, Any] = {"deployment_id": deployment_id, "version": version, "regions": []}
+        
+        for region in regions:
+            try:
+                # Deploy to region incrementally
+                self.deployment_states[f"{deployment_id}_{region}"] = "deploying"
+                await asyncio.sleep(1)  # Simulate deployment time
+                self.deployment_states[f"{deployment_id}_{region}"] = "deployed"
+                results["regions"].append({"region": region, "status": "success"})
+                logger.info(f"Rolling deployment completed for region {region}")
+            except Exception as e:
+                results["regions"].append({"region": region, "status": "failed", "error": str(e)})
+                logger.error(f"Rolling deployment failed for region {region}: {e}")
+        
+        return results
+
+    async def _deploy_canary_version(
+        self, region: str, version: str, percentage: float
+    ) -> dict[str, Any]:
+        """Deploy canary version to a percentage of traffic"""
+        logger.info(f"Deploying canary version {version} to {region} with {percentage}% traffic")
+        
+        try:
+            # Simulate canary deployment
+            await asyncio.sleep(0.5)
+            self.deployment_states[f"canary_{region}_{version}"] = "active"
+            
+            return {
+                "region": region,
+                "version": version,
+                "percentage": percentage,
+                "status": "deployed",
+                "timestamp": time.time()
+            }
+        except Exception as e:
+            logger.error(f"Canary deployment failed for {region}: {e}")
+            raise
+
+    async def _validate_canary_metrics(self, regions: list[str]) -> bool:
+        """Validate canary deployment metrics"""
+        logger.info("Validating canary metrics across regions")
+        
+        try:
+            for region in regions:
+                # Simulate metric validation
+                await asyncio.sleep(0.5)
+                
+                # Mock metrics check (in real implementation, check error rates, latency, etc.)
+                error_rate = 0.001  # Simulate low error rate
+                avg_latency = 120   # Simulate reasonable latency
+                
+                if error_rate > 0.01 or avg_latency > 1000:
+                    logger.warning(f"Canary metrics validation failed for region {region}")
+                    return False
+                    
+                logger.info(f"Canary metrics validated for region {region}")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Canary metrics validation error: {e}")
+            return False
+
+    async def _rollback_canary(self, deployment_id: str, regions: list[str]) -> dict[str, Any]:
+        """Rollback canary deployment"""
+        logger.info(f"Rolling back canary deployment {deployment_id}")
+        
+        results: dict[str, Any] = {"deployment_id": deployment_id, "rollback_status": []}
+        
+        for region in regions:
+            try:
+                # Remove canary deployment
+                canary_keys = [key for key in self.deployment_states.keys() 
+                              if key.startswith(f"canary_{region}")]
+                for key in canary_keys:
+                    del self.deployment_states[key]
+                
+                results["rollback_status"].append({"region": region, "status": "rolled_back"})
+                logger.info(f"Canary rollback completed for region {region}")
+            except Exception as e:
+                results["rollback_status"].append({"region": region, "status": "rollback_failed", "error": str(e)})
+                logger.error(f"Canary rollback failed for region {region}: {e}")
+        
+        return results
+
 
 class ChaosEngineeringFramework:
     """
@@ -700,7 +790,7 @@ class ChaosEngineeringFramework:
 
     def __init__(self, routing_manager: GlobalRoutingManager):
         self.routing_manager = routing_manager
-        self.chaos_experiments = []
+        self.chaos_experiments: List[Dict[str, Any]] = []
 
     async def run_chaos_experiment(
         self, experiment_type: str, target_region: str, duration: int = 300
@@ -786,7 +876,7 @@ class ChaosEngineeringFramework:
 
         return metrics
 
-    async def _monitor_during_experiment(self, duration: int) -> dict[str, Any]:
+    async def _monitor_during_experiment(self, duration: int) -> list[dict[str, Any]]:
         """Monitor system during chaos experiment"""
 
         monitoring_data = []
@@ -859,3 +949,95 @@ class ChaosEngineeringFramework:
             recommendations.append("Implement better error handling and retries")
 
         return recommendations
+
+    async def _simulate_cpu_stress(self, target_region: str, duration: int) -> None:
+        """Simulate CPU stress in target region"""
+        logger.info(f"Simulating CPU stress in region {target_region} for {duration}s")
+        
+        # In a real implementation, this would use Gremlin or similar tools
+        # to actually create CPU stress on target instances
+        await asyncio.sleep(0.1)  # Simulate setup time
+        logger.info(f"CPU stress simulation active for {target_region}")
+
+    async def _simulate_memory_pressure(self, target_region: str, duration: int) -> None:
+        """Simulate memory pressure in target region"""
+        logger.info(f"Simulating memory pressure in region {target_region} for {duration}s")
+        
+        # In a real implementation, this would use Gremlin or similar tools
+        # to create memory pressure on target instances
+        await asyncio.sleep(0.1)  # Simulate setup time
+        logger.info(f"Memory pressure simulation active for {target_region}")
+
+    async def _stop_experiment(self, experiment_id: str) -> None:
+        """Stop running chaos experiment"""
+        logger.info(f"Stopping chaos experiment {experiment_id}")
+        
+        # Remove experiment from active experiments list
+        self.chaos_experiments = [
+            exp for exp in self.chaos_experiments 
+            if exp.get("experiment_id") != experiment_id
+        ]
+        
+        # In a real implementation, this would stop all chaos engineering
+        # processes and clean up resources
+        await asyncio.sleep(0.1)  # Simulate cleanup time
+        logger.info(f"Chaos experiment {experiment_id} stopped")
+
+    def _check_sla_violations(self, experiment_data: list) -> list[dict[str, Any]]:
+        """Check for SLA violations during experiment"""
+        violations = []
+        
+        for entry in experiment_data:
+            timestamp = entry.get("timestamp", 0)
+            metrics = entry.get("metrics", {})
+            
+            for region, region_metrics in metrics.items():
+                # Check response time SLA (assume 500ms SLA)
+                response_time = region_metrics.get("response_time", 0)
+                if response_time > 500:
+                    violations.append({
+                        "region": region,
+                        "violation_type": "response_time",
+                        "threshold": 500,
+                        "actual": response_time,
+                        "timestamp": timestamp
+                    })
+                
+                # Check error rate SLA (assume 1% SLA)
+                error_rate = region_metrics.get("error_rate", 0)
+                if error_rate > 0.01:
+                    violations.append({
+                        "region": region,
+                        "violation_type": "error_rate",
+                        "threshold": 0.01,
+                        "actual": error_rate,
+                        "timestamp": timestamp
+                    })
+        
+        return violations
+
+    def _measure_failover_success(self, experiment_data: list) -> dict[str, Any]:
+        """Measure failover success metrics"""
+        if not experiment_data:
+            return {"success": False, "reason": "No data available"}
+        
+        # Calculate average recovery time
+        recovery_times = []
+        for entry in experiment_data:
+            # Look for recovery indicators in metrics
+            metrics = entry.get("metrics", {})
+            for region_metrics in metrics.values():
+                if region_metrics.get("recovered", False):
+                    recovery_times.append(region_metrics.get("recovery_time", 0))
+        
+        avg_recovery_time = sum(recovery_times) / len(recovery_times) if recovery_times else float('inf')
+        
+        # Check if failover was successful (recovery time < 60 seconds)
+        success = avg_recovery_time < 60 and len(recovery_times) > 0
+        
+        return {
+            "success": success,
+            "average_recovery_time": avg_recovery_time,
+            "recovery_count": len(recovery_times),
+            "details": recovery_times
+        }

@@ -197,6 +197,8 @@ class MessageHandler:
         """
         try:
             # Validate chat request
+            if message.data is None:
+                raise ValueError("Message data is required for chat requests")
             chat_request = ChatRequest(**message.data)
 
             # Cancel any existing stream for this connection

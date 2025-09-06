@@ -354,7 +354,7 @@ class MetricsCollector:
         self.set_gauge("sli_availability", availability)
 
         # Latency
-        if endpoint in self._summaries.get("sli_latency", {}):
+        if "sli_latency" in self._summaries:
             self._summaries["sli_latency"].labels(endpoint=endpoint).observe(duration)
 
         # Error rate

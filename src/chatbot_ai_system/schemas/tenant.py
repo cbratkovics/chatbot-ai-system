@@ -10,25 +10,25 @@ from pydantic import BaseModel, Field
 class TenantQuota(BaseModel):
     """Tenant quota configuration."""
 
-    monthly_requests: int = Field(100000, description="Monthly request limit")
-    monthly_tokens: int = Field(10000000, description="Monthly token limit")
-    max_conversation_length: int = Field(100, description="Maximum conversation length")
-    max_message_length: int = Field(4000, description="Maximum message length")
-    max_concurrent_requests: int = Field(10, description="Maximum concurrent requests")
+    monthly_requests: int = Field(default=100000, description="Monthly request limit")
+    monthly_tokens: int = Field(default=10000000, description="Monthly token limit")
+    max_conversation_length: int = Field(default=100, description="Maximum conversation length")
+    max_message_length: int = Field(default=4000, description="Maximum message length")
+    max_concurrent_requests: int = Field(default=10, description="Maximum concurrent requests")
 
     # Rate limits
-    requests_per_minute: int = Field(100, description="Requests per minute")
-    requests_per_hour: int = Field(5000, description="Requests per hour")
-    tokens_per_minute: int = Field(10000, description="Tokens per minute")
-    tokens_per_hour: int = Field(500000, description="Tokens per hour")
+    requests_per_minute: int = Field(default=100, description="Requests per minute")
+    requests_per_hour: int = Field(default=5000, description="Requests per hour")
+    tokens_per_minute: int = Field(default=10000, description="Tokens per minute")
+    tokens_per_hour: int = Field(default=500000, description="Tokens per hour")
 
     # Feature access
-    allowed_models: list[str] | None = Field(None, description="Allowed models")
-    allowed_providers: list[str] | None = Field(None, description="Allowed providers")
-    enable_streaming: bool = Field(True, description="Enable streaming responses")
-    enable_function_calling: bool = Field(False, description="Enable function calling")
-    enable_vision: bool = Field(False, description="Enable vision capabilities")
-    enable_voice: bool = Field(False, description="Enable voice capabilities")
+    allowed_models: list[str] | None = Field(default=None, description="Allowed models")
+    allowed_providers: list[str] | None = Field(default=None, description="Allowed providers")
+    enable_streaming: bool = Field(default=True, description="Enable streaming responses")
+    enable_function_calling: bool = Field(default=False, description="Enable function calling")
+    enable_vision: bool = Field(default=False, description="Enable vision capabilities")
+    enable_voice: bool = Field(default=False, description="Enable voice capabilities")
 
 
 class TenantUsage(BaseModel):
@@ -79,7 +79,7 @@ class Tenant(BaseModel):
     tier: str = Field("free", description="Subscription tier")
 
     # Configuration
-    quota: TenantQuota = Field(default_factory=TenantQuota, description="Tenant quota")
+    quota: TenantQuota = Field(default_factory=lambda: TenantQuota(), description="Tenant quota")
     settings: dict[str, Any] = Field(default_factory=dict, description="Tenant settings")
 
     # API keys

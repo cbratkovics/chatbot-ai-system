@@ -141,6 +141,9 @@ class TracingMiddleware:
     ) -> Response:
         """Process request with detailed sub-spans"""
 
+        if not self.tracer:
+            return await call_next(request)
+
         # Authentication span
         with self.tracer.start_as_current_span("authentication") as auth_span:
             auth_start = time.time()

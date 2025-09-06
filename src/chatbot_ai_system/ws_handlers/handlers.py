@@ -2,6 +2,7 @@
 
 import logging
 import time
+from typing import Callable
 from uuid import UUID, uuid4
 
 from chatbot_ai_system.api.providers import CompletionRequest
@@ -36,7 +37,7 @@ class WebSocketHandler:
         self.provider_orchestrator = provider_orchestrator
 
         # Event handlers mapping
-        self.handlers: dict[EventType, callable] = {
+        self.handlers: dict[EventType, Callable] = {
             EventType.AUTH_REQUEST: self._handle_auth_request,
             EventType.CHAT_MESSAGE: self._handle_chat_message,
             EventType.HEARTBEAT: self._handle_heartbeat,

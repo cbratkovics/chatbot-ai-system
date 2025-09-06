@@ -12,10 +12,10 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 import jwt
-import redis.asyncio as redis
+import redis.asyncio as async_redis
 import socketio
 from aiohttp import web
 
@@ -90,10 +90,10 @@ class ScalableWebSocketManager:
         self.config = config
 
         # Redis for pub/sub and session management
-        self.redis_pool = redis.ConnectionPool.from_url(
+        self.redis_pool: Optional[async_redis.ConnectionPool] = async_redis.ConnectionPool.from_url(
             config["redis_url"], max_connections=100, retry_on_timeout=True
         )
-        self.redis = redis.Redis(connection_pool=self.redis_pool)
+        self.redis = async_redis.Redis(connection_pool=self.redis_pool)
 
         # Socket.IO server with Redis adapter
         self.sio = socketio.AsyncServer(
@@ -401,8 +401,20 @@ class ScalableWebSocketManager:
             rate_info = await self.redis.hgetall(rate_key)
 
             if rate_info:
-                window_start = float(rate_info.get("window_start", 0))
-                connection_count = int(rate_info.get("count", 0))
+                # Handle bytes/string conversion from Redis
+                is_bytes_keys = rate_info and isinstance(next(iter(rate_info.keys()), None), bytes)
+                
+                if is_bytes_keys:
+                    window_start_val = rate_info.get(b"window_start", b"0")
+                    count_val = rate_info.get(b"count", b"0")
+                    window_start = float(window_start_val.decode() if isinstance(window_start_val, bytes) else window_start_val)
+                    connection_count = int(count_val.decode() if isinstance(count_val, bytes) else count_val)
+                else:
+                    # Handle string keys with proper default bytes values
+                    window_start_val = rate_info.get(b"window_start", b"0")
+                    count_val = rate_info.get(b"count", b"0")
+                    window_start = float(window_start_val.decode() if isinstance(window_start_val, bytes) else window_start_val)
+                    connection_count = int(count_val.decode() if isinstance(count_val, bytes) else count_val)
 
                 # Check if we're in the same window
                 if current_time - window_start < window_size:
@@ -883,7 +895,7 @@ class ConsistentHashingManager:
     def __init__(self, servers: list[str], replicas: int = 3):
         self.servers = servers
         self.replicas = replicas
-        self.ring = {}
+        self.ring: dict[int, str] = {}
         self._build_ring()
 
     def _build_ring(self):

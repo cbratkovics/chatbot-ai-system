@@ -4,15 +4,18 @@ import asyncio
 import logging
 import random
 from collections.abc import AsyncIterator
+from typing import Any
 
 from .base import (
     BaseProvider,
     CompletionRequest,
     CompletionResponse,
+    Message,
     ProviderError,
     RateLimitError,
     StreamChunk,
 )
+from ..schemas.chat import ChatRequest
 from .circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger(__name__)
@@ -360,3 +363,75 @@ class ProviderOrchestrator:
             },
             "providers": provider_health,
         }
+
+    async def process_request(self, request: ChatRequest) -> CompletionResponse:
+        """Process a completion request through the orchestrator."""
+        try:
+            # Convert ChatRequest to CompletionRequest
+            completion_request = CompletionRequest(
+                messages=[Message(role=msg["role"], content=msg["content"]) for msg in request.messages],
+                model=request.model or "gpt-3.5-turbo",  # Default model
+                temperature=request.temperature or 0.7,
+                max_tokens=request.max_tokens,
+                stream=request.stream or False,
+            )
+            
+            # Use the existing complete method which handles provider selection,
+            # failover, and error handling
+            return await self.complete(completion_request)
+        except Exception as e:
+            logger.error(f"Error processing request: {e}")
+            raise ProviderError(f"Failed to process request: {str(e)}")
+
+    async def list_available_models(self) -> list[str]:
+        """List all available models from healthy providers."""
+        available_models = set()
+        
+        # Get models from all healthy providers
+        healthy_providers = self.get_healthy_providers()
+        
+        for provider in healthy_providers:
+            try:
+                models = provider.get_supported_models()
+                available_models.update(models)
+            except Exception as e:
+                logger.warning(f"Failed to get models from provider {provider.name}: {e}")
+        
+        return sorted(list(available_models))
+
+    async def get_provider_status(self) -> dict[str, Any]:
+        """Get detailed status information for all providers."""
+        provider_status = {}
+        
+        for name, provider in self.providers.items():
+            try:
+                # Get basic health status
+                health_info = await provider.health_check()
+                is_healthy = provider.is_healthy()
+                
+                # Get circuit breaker status if enabled
+                circuit_breaker_status = None
+                if self.enable_circuit_breaker and name in self.circuit_breakers:
+                    cb = self.circuit_breakers[name]
+                    circuit_breaker_status = {
+                        "state": "closed" if cb.is_closed else "open" if cb.is_open else "half_open",
+                        "failure_count": cb.failure_count,
+                        "success_count": cb.success_count,
+                        "last_failure_time": cb.last_failure_time,
+                    }
+                
+                provider_status[name] = {
+                    "healthy": is_healthy,
+                    "health_info": health_info,
+                    "supported_models": provider.get_supported_models(),
+                    "circuit_breaker": circuit_breaker_status,
+                    "provider_type": type(provider).__name__,
+                }
+            except Exception as e:
+                provider_status[name] = {
+                    "healthy": False,
+                    "error": str(e),
+                    "provider_type": type(provider).__name__,
+                }
+        
+        return provider_status

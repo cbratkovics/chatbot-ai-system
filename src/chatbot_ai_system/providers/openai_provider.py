@@ -272,9 +272,15 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         Returns:
             AsyncIterator[StreamChunk]: Stream of response chunks
         """
-        # Delegate to the mixin's stream_chat method
-        async for chunk in self.stream_chat(messages, model, temperature, max_tokens, **kwargs):
-            yield chunk
+        # Delegate to the mixin's stream_chat method and convert chunk types
+        async for mixin_chunk in self.stream_chat(messages, model, temperature, max_tokens, **kwargs):
+            # Convert streaming_mixin.StreamChunk to base.StreamChunk
+            base_chunk = StreamChunk(
+                content=mixin_chunk.content,
+                is_final=mixin_chunk.is_final,
+                usage=None  # Usage handled separately if needed
+            )
+            yield base_chunk
 
     async def validate_model(self, model: str) -> bool:
         """

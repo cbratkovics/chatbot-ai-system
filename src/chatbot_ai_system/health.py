@@ -42,7 +42,11 @@ async def readiness_check() -> Dict[str, Any]:
     checks = {"redis": await check_redis(), "providers": await check_providers()}
 
     # System is ready if Redis is available and at least one provider is available
-    all_ready = checks["redis"] and any(checks["providers"].values())
+    providers_check = checks["providers"]
+    if isinstance(providers_check, dict):
+        all_ready = checks["redis"] and any(providers_check.values())
+    else:
+        all_ready = checks["redis"] and bool(providers_check)
 
     return {"ready": all_ready, "checks": checks, "timestamp": datetime.utcnow().isoformat()}
 

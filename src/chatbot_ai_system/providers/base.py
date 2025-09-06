@@ -309,7 +309,7 @@ class BaseProvider(ABC):
         )
 
     @abstractmethod
-    async def stream(
+    def stream(
         self,
         messages: List[ChatMessage],
         model: str,

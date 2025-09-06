@@ -147,7 +147,8 @@ class WebSocketManager:
 
         # Store connection
         self.connections[session_id] = conn_info
-        self.reconnect_tokens[conn_info.reconnect_token] = session_id
+        if conn_info.reconnect_token is not None:
+            self.reconnect_tokens[conn_info.reconnect_token] = session_id
 
         # Send connection confirmation
         await self.send_message(
@@ -202,9 +203,10 @@ class WebSocketManager:
         del self.connections[session_id]
 
         # Keep reconnect token for a while
-        asyncio.create_task(
-            self._cleanup_reconnect_token(conn_info.reconnect_token, delay=300)  # 5 minutes
-        )
+        if conn_info.reconnect_token is not None:
+            asyncio.create_task(
+                self._cleanup_reconnect_token(conn_info.reconnect_token, delay=300)  # 5 minutes
+            )
 
         self.stats["total_disconnections"] += 1
         logger.info(f"WebSocket disconnected: {session_id}")

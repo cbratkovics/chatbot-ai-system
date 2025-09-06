@@ -238,9 +238,7 @@ class CacheMiddleware(BaseHTTPMiddleware):
                 return
 
             # Read response body
-            body = b""
-            async for chunk in response.body_iterator:
-                body += chunk
+            body = response.body
 
             # Parse response
             response_data = json.loads(body) if body else {}
@@ -253,8 +251,8 @@ class CacheMiddleware(BaseHTTPMiddleware):
             # Add to semantic index
             self.key_generator.add_to_similarity_index(cache_key, cache_data.get("messages", []))
 
-            # Recreate response body for client
-            response._body = body
+            # Update response body for client
+            response.body = body
 
         except Exception as e:
             logger.error(f"Error caching response: {e}")

@@ -179,12 +179,17 @@ class GlobalErrorHandler:
 
         # Add specific handling for certain error types
         if exc.status_code == 429:  # Rate limit
-            error_response["retry_after"] = exc.headers.get("retry-after", 60)
+            error_response["retry_after"] = (exc.headers or {}).get("retry-after", 60)
 
+        # Prepare headers, ensuring exc.headers is not None
+        response_headers = {"x-correlation-id": correlation_id, "x-error-type": error_type}
+        if exc.headers:
+            response_headers.update(exc.headers)
+            
         return JSONResponse(
             status_code=exc.status_code,
             content=error_response,
-            headers={"x-correlation-id": correlation_id, "x-error-type": error_type, **exc.headers},
+            headers=response_headers,
         )
 
     @staticmethod
@@ -219,7 +224,7 @@ class GlobalErrorHandler:
             "timeout": 504,
         }
 
-        status_code = status_mapping.get(error_code, 500)
+        status_code = status_mapping.get(error_code or "unknown", 500)
 
         error_response = {
             "error": "Provider error",

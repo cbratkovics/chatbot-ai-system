@@ -2,7 +2,7 @@
 
 import logging
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid5, NAMESPACE_DNS
 
 from fastapi import Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -91,8 +91,9 @@ class TenantMiddleware(BaseHTTPMiddleware):
                     "cost_center": "default",
                 }
 
-            # Create tenant context
-            tenant_context = TenantContext(tenant_id, tenant_config)
+            # Create tenant context - convert string tenant_id to UUID
+            tenant_uuid = uuid5(NAMESPACE_DNS, tenant_id)
+            tenant_context = TenantContext(tenant_uuid, tenant_config)
 
             # Inject into request state
             request.state.tenant = tenant_context

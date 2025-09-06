@@ -60,7 +60,7 @@ class LoadBalancer:
         self.strategy = strategy
         self.instances: dict[str, ProviderInstance] = {}
         self.round_robin_index = 0
-        self.consistent_hash_ring: Dict[int, str] = {}
+        self.consistent_hash_ring: Dict[int, ProviderInstance] = {}
         self.health_check_interval = 30  # seconds
         self.health_check_task: Optional[asyncio.Task] = None
 
@@ -255,7 +255,7 @@ class LoadBalancer:
 
     def _update_hash_ring(self):
         """Update consistent hash ring."""
-        self.consistent_hash_ring: Dict[int, str] = {}
+        self.consistent_hash_ring: Dict[int, ProviderInstance] = {}
 
         for inst in self.instances.values():
             # Add multiple virtual nodes for better distribution

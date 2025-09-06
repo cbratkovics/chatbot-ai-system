@@ -4,7 +4,7 @@ import logging
 import re
 import sys
 from contextvars import ContextVar
-from typing import Any
+from typing import Any, List
 from uuid import uuid4
 
 import orjson
@@ -84,7 +84,8 @@ def setup_logging(
     log_level = level or settings.LOG_LEVEL
 
     # Configure structlog processors
-    processors = [
+    from typing import List, Any, Callable
+    processors: List[Callable[..., Any]] = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -177,7 +178,7 @@ class RequestContext:
         self.request_id = request_id or str(uuid4())
         self.tenant_id = tenant_id
         self.user_id = user_id
-        self.tokens = []
+        self.tokens: List[str] = []
 
     def __enter__(self):
         """Enter context."""

@@ -94,7 +94,7 @@ class TestSchemas:
         )
 
         assert status.status == "healthy"
-        assert status.service == "ai-chatbot-system"
+        assert status.service == "chatbot-ai-system"
 
 
 @pytest.mark.unit

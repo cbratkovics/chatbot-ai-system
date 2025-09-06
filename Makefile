@@ -3,7 +3,7 @@
 # Variables
 PYTHON := python3
 POETRY := poetry
-PROJECT_NAME := ai-chatbot-system
+PROJECT_NAME := chatbot-ai-system
 VERSION := $(shell poetry version -s)
 DOCKER_IMAGE := $(PROJECT_NAME):$(VERSION)
 

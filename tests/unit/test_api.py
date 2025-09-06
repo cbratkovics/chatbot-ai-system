@@ -18,7 +18,7 @@ class TestHealthEndpoint:
         data = response.json()
         assert data["status"] == "healthy"
         assert data["version"] == "1.0.0"
-        assert data["service"] == "ai-chatbot-system"
+        assert data["service"] == "chatbot-ai-system"
 
     def test_root_endpoint(self, client: TestClient):
         """Test root endpoint."""

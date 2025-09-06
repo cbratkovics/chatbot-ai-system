@@ -98,7 +98,7 @@ async def health():
     """Health check endpoint."""
     return JSONResponse(
         status_code=200,
-        content={"status": "healthy", "service": "ai-chatbot-system"}
+        content={"status": "healthy", "service": "chatbot-ai-system"}
     )
 
 if __name__ == "__main__":

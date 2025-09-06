@@ -40,7 +40,7 @@ GET /health
 {
   "status": "healthy",
   "version": "1.0.0",
-  "service": "ai-chatbot-system",
+  "service": "chatbot-ai-system",
   "timestamp": "2024-01-01T00:00:00Z",
   "environment": "production",
   "providers_configured": {

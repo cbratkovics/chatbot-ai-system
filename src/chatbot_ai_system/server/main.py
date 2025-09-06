@@ -264,7 +264,7 @@ def create_app() -> FastAPI:
             content={
                 "status": "healthy",
                 "version": __version__,
-                "service": "ai-chatbot-system",
+                "service": "chatbot-ai-system",
                 "timestamp": datetime.utcnow().isoformat(),
                 "environment": settings.environment,
                 "providers_configured": {

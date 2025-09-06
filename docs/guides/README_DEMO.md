@@ -10,8 +10,8 @@
 
 1. **Clone and checkout demo:**
 ```bash
-git clone https://github.com/cbratkovics/ai-chatbot-system.git
-cd ai-chatbot-system
+git clone https://github.com/cbratkovics/chatbot-ai-system.git
+cd chatbot-ai-system
 git checkout demo
 ```
 

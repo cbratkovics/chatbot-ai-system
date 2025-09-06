@@ -18,9 +18,9 @@ This is the **demo release** of the AI Chatbot System - a streamlined, productio
 
 ```bash
 # Download the release
-wget https://github.com/cbratkovics/ai-chatbot-system/archive/refs/tags/v1.0.0-demo.tar.gz
+wget https://github.com/cbratkovics/chatbot-ai-system/archive/refs/tags/v1.0.0-demo.tar.gz
 tar -xzf v1.0.0-demo.tar.gz
-cd ai-chatbot-system-1.0.0-demo
+cd chatbot-ai-system-1.0.0-demo
 ```
 
 ### 2. Configure
@@ -134,7 +134,7 @@ MIT License - See LICENSE file for details
 
 ---
 
-**Download Now:** [v1.0.0-demo.tar.gz](https://github.com/cbratkovics/ai-chatbot-system/releases/download/v1.0.0-demo/v1.0.0-demo.tar.gz)
+**Download Now:** [v1.0.0-demo.tar.gz](https://github.com/cbratkovics/chatbot-ai-system/releases/download/v1.0.0-demo/v1.0.0-demo.tar.gz)
 
 **Docker Images:** Available on Docker Hub
 

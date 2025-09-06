@@ -5,66 +5,90 @@
 | Version | Supported          |
 | ------- | ------------------ |
 | 1.0.x   | :white_check_mark: |
-| 0.1.x   | :warning: Limited  |
-| < 0.1   | :x:                |
+| < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
-We take the security of AI Chatbot System seriously. If you have discovered a security vulnerability, please follow these steps:
+We take the security of our AI Chatbot System seriously. If you believe you have found a security vulnerability, please report it to us as described below.
 
-### 1. Do NOT Create a Public Issue
+### Please do NOT:
+- Open a public GitHub issue for security vulnerabilities
+- Post details in public forums or social media
 
-Security vulnerabilities should **never** be reported through public GitHub issues.
+### Please DO:
+- Email security concerns to: cbratkovics@gmail.com
+- Include "SECURITY" in the subject line
+- Provide detailed steps to reproduce the issue
+- Allow reasonable time for us to address the issue before public disclosure
 
-### 2. Email Security Report
+## What to Include
 
-Please email your findings to: **cbratkovics@gmail.com**
+When reporting a vulnerability, please include:
 
-Include the following information:
-- Type of vulnerability
-- Full paths of source files related to the vulnerability
-- Step-by-step instructions to reproduce
-- Proof-of-concept or exploit code (if possible)
-- Impact of the vulnerability
+1. **Description**: Clear description of the vulnerability
+2. **Impact**: Potential impact of the vulnerability
+3. **Steps to Reproduce**: Detailed steps to reproduce the issue
+4. **Affected Versions**: Which versions are affected
+5. **Possible Fix**: If you have a suggestion for fixing the issue
 
-### 3. Response Timeline
+## Response Timeline
 
 - **Initial Response**: Within 48 hours
-- **Vulnerability Confirmation**: Within 7 days
-- **Fix Timeline**: Depends on severity
-  - Critical: 24-48 hours
-  - High: 3-5 days
-  - Medium: 1-2 weeks
-  - Low: Next release
-
-### 4. Disclosure Policy
-
-- Security issues are fixed in private
-- Once fixed, a security advisory will be published
-- Credit will be given to reporters (unless anonymity is requested)
+- **Status Update**: Within 7 days
+- **Resolution Target**: Within 30 days for critical issues
 
 ## Security Best Practices
 
-When using AI Chatbot System:
+### For Developers
 
-1. **API Keys**: Never commit API keys to version control
-2. **Environment Variables**: Use `.env` files and keep them in `.gitignore`
-3. **JWT Secrets**: Use strong, unique secrets in production
-4. **Rate Limiting**: Configure appropriate rate limits for your use case
-5. **HTTPS**: Always use HTTPS in production
-6. **Updates**: Keep dependencies up to date
+1. **API Keys**: Never commit API keys or secrets to the repository
+2. **Environment Variables**: Use `.env` files for sensitive configuration
+3. **Dependencies**: Regularly update dependencies to patch known vulnerabilities
+4. **Input Validation**: Always validate and sanitize user inputs
+5. **Authentication**: Use JWT tokens with appropriate expiration times
 
-## Dependencies
+### For Users
 
-We use automated tools to monitor dependencies:
-- Dependabot for dependency updates
-- Safety for security vulnerability scanning
-- Bandit for code security analysis
+1. **API Keys**: Keep your API keys secure and rotate them regularly
+2. **HTTPS**: Always use HTTPS in production environments
+3. **Updates**: Keep the system updated to the latest version
+4. **Access Control**: Implement proper access controls for multi-tenant deployments
+5. **Monitoring**: Enable logging and monitoring for security events
 
-## Compliance
+## Security Features
 
-This project aims to comply with:
-- OWASP Top 10 security practices
-- CWE/SANS Top 25 Most Dangerous Software Errors
+Our system implements several security measures:
 
-Thank you for helping keep AI Chatbot System secure!
+- **JWT Authentication**: Secure token-based authentication
+- **Rate Limiting**: Protection against abuse and DDoS
+- **Input Validation**: Pydantic models for strict validation
+- **CORS Protection**: Configurable origin restrictions
+- **Secret Management**: Environment-based configuration
+- **Audit Logging**: Comprehensive logging for security events
+- **TLS/SSL**: Support for encrypted communications
+
+## Compliance Considerations
+
+While our system implements security best practices, users are responsible for:
+
+- Ensuring compliance with relevant regulations (GDPR, CCPA, etc.)
+- Implementing appropriate data retention policies
+- Securing their deployment environment
+- Managing user access and permissions
+- Encrypting sensitive data at rest
+
+## Security Updates
+
+Security updates will be released as:
+- **Patch releases** for critical vulnerabilities
+- **Minor releases** for moderate security improvements
+- **Advisory notices** for configuration recommendations
+
+Subscribe to our GitHub repository to receive security update notifications.
+
+## Contact
+
+For security concerns: cbratkovics@gmail.com
+For general questions: Create a GitHub issue
+
+Thank you for helping keep our AI Chatbot System secure!

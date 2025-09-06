@@ -1,4 +1,34 @@
-"""Basic unit tests to ensure the test suite runs."""
+"""Basic unit tests for core functionality."""
+import pytest
+from chatbot_ai_system import __version__
+
+
+def test_version():
+    """Test version is set correctly."""
+    assert __version__ == "1.0.0"
+
+
+def test_imports():
+    """Test core imports work."""
+    from chatbot_ai_system import ChatbotClient, Settings
+    assert ChatbotClient is not None
+    assert Settings is not None
+
+
+def test_settings_defaults():
+    """Test settings have proper defaults."""
+    from chatbot_ai_system import Settings
+    settings = Settings()
+    assert settings.environment in ["development", "production", "test"]
+    assert settings.api_prefix == "/api/v1"
+
+
+def test_client_initialization():
+    """Test client can be initialized."""
+    from chatbot_ai_system import ChatbotClient, Settings
+    settings = Settings()
+    client = ChatbotClient()
+    assert client is not None
 
 
 def test_basic_math():

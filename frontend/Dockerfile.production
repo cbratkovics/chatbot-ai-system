@@ -61,7 +61,7 @@ USER nextjs
 EXPOSE 3000
 
 # Labels for GitHub Container Registry
-LABEL org.opencontainers.image.source="https://github.com/your-username/ai-chatbot-system"
+LABEL org.opencontainers.image.source="https://github.com/cbratkovics/chatbot-ai-system"
 LABEL org.opencontainers.image.description="AI Chatbot System Frontend"
 LABEL org.opencontainers.image.licenses="MIT"
 

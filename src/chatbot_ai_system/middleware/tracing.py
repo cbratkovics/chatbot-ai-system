@@ -33,7 +33,7 @@ class TracingMiddleware:
 
     def __init__(
         self,
-        service_name: str = "ai-chatbot-system",
+        service_name: str = "chatbot-ai-system",
         jaeger_host: str = "localhost",
         jaeger_port: int = 6831,
         enabled: bool = True,
@@ -316,7 +316,7 @@ tracing_middleware = None
 
 
 def initialize_tracing(
-    service_name: str = "ai-chatbot-system",
+    service_name: str = "chatbot-ai-system",
     jaeger_host: str = "localhost",
     jaeger_port: int = 6831,
     enabled: bool = True,

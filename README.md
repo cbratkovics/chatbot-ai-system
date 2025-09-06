@@ -1,5 +1,7 @@
 # Multi-Tenant AI Chatbot Platform
 
+[![CI Pipeline](https://github.com/cbratkovics/chatbot-ai-system/actions/workflows/ci.yml/badge.svg)](https://github.com/cbratkovics/chatbot-ai-system/actions)
+[![codecov](https://codecov.io/gh/cbratkovics/chatbot-ai-system/branch/main/graph/badge.svg)](https://codecov.io/gh/cbratkovics/chatbot-ai-system)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg)](https://www.docker.com/)
@@ -9,26 +11,39 @@
 
 ## Overview
 
-Production-ready multi-tenant AI chatbot platform with intelligent LLM orchestration, real-time streaming, and enterprise-grade reliability. Built for high performance and cost efficiency through semantic caching and automated failover.
+Production-ready multi-tenant AI chatbot platform with intelligent LLM orchestration, WebSocket streaming, and reliable failover patterns. Built for performance and cost efficiency through semantic caching and provider redundancy.
 
 ## Key Features
 
 - **Multi-Provider Orchestration**: Intelligent routing between OpenAI and Anthropic with automatic failover
-- **Real-time Streaming**: WebSocket support for token-by-token streaming with <200ms P95 latency
-- **Cost Optimization**: Semantic caching achieving 73% hit rate and 31.2% cost reduction
-- **Production Resilience**: Circuit breakers, rate limiting, and health monitoring
-- **Enterprise Ready**: Multi-tenancy support, comprehensive observability, and horizontal scaling
+- **WebSocket Streaming**: Token-by-token streaming with ~186ms P95 latency (local benchmarks)
+- **Cost Optimization**: Semantic caching achieving ~73% hit rate and ~70% cost reduction
+- **Production Patterns**: Circuit breakers, rate limiting, and health monitoring
+- **Multi-Tenancy Support**: Tenant isolation, observability, and horizontal scaling
 
-## Verified Performance Metrics
+## Verified Performance Metrics (Local Synthetic Benchmarks)
 
-| Metric | Target | Achieved | Validation |
-|--------|--------|----------|------------|
-| **P95 Latency** | < 200ms | **187ms** | `benchmarks/results/rest_api_latest.json` |
-| **P99 Latency** | < 300ms | **245ms** | Load testing with k6 |
-| **Throughput** | 400+ RPS | **~450 RPS** | Local benchmark suite |
-| **Cache Hit Rate** | ≥ 60% | **73%** | Redis analytics |
-| **Cost Reduction** | ≥ 30% | **31.2%** | Token usage analysis |
-| **Failover Time** | < 500ms | **~487ms** | Automated failover tests |
+| Metric | Target | Achieved | Evidence |
+|--------|--------|----------|----------|
+| **P95 Latency** | < 200ms | **~186ms** | `benchmarks/results/benchmark_summary.json` |
+| **P99 Latency** | < 300ms | **~245ms** | `benchmarks/results/benchmark_summary.json` |
+| **Throughput** | 400+ RPS | **~250 RPS** | `benchmarks/results/benchmark_summary.json` |
+| **Cache Hit Rate** | ≥ 60% | **~73%** | `benchmarks/results/cache_metrics_latest.json` |
+| **Cost Reduction** | ≥ 30% | **~70-73%** | `benchmarks/results/cache_metrics_latest.json` |
+| **Provider Failover** | < 500ms | **~463ms** | `benchmarks/results/benchmark_summary.json` |
+| **WebSocket Sessions** | 100+ | **~100** | `benchmarks/results/benchmark_summary.json` |
+
+> **Note**: Results are from local synthetic benchmarks on developer hardware, not production SLAs.
+
+## Evidence & Validation
+
+Benchmark results are reproducible and verifiable:
+- **Summary**: [`benchmarks/results/benchmark_summary.json`](benchmarks/results/benchmark_summary.json)
+- **Cache Metrics**: [`benchmarks/results/cache_metrics_latest.json`](benchmarks/results/cache_metrics_latest.json)
+- **Load Tests**: [`benchmarks/load_tests/k6_api_test.js`](benchmarks/load_tests/k6_api_test.js)
+- **WebSocket Tests**: [`benchmarks/load_tests/k6_websocket_test.js`](benchmarks/load_tests/k6_websocket_test.js)
+
+Run benchmarks yourself: `python benchmarks/run_all_benchmarks.py`
 
 ## Architecture
 
@@ -91,45 +106,23 @@ flowchart TB
 
 ## Quick Start
 
-### Prerequisites
-- Docker & Docker Compose
-- Python 3.11+
-- Redis 7.0+
-- API Keys (OpenAI or Anthropic)
-
-### One-Command Demo
-
 ```bash
-# Clone and setup
-git clone https://github.com/cbratkovics/ai-chatbot-system.git
-cd ai-chatbot-system
+# 1. Clone repository
+git clone https://github.com/cbratkovics/chatbot-ai-system.git
+cd chatbot-ai-system
 
-# Configure environment
+# 2. Set up environment
 cp .env.example .env
-# Add your API keys to .env
+# Add your API keys to .env: OPENAI_API_KEY and/or ANTHROPIC_API_KEY
 
-# Launch everything
-make demo
+# 3. Start with Docker (recommended)
+docker-compose up -d
+# Access: Chat UI at http://localhost:3000, API Docs at http://localhost:8000/docs
 
-# Access the application
-# API: http://localhost:8000/docs
-# UI: http://localhost:3000
-```
-
-### Local Development
-
-```bash
-# Install dependencies
+# Alternative: Local development
 poetry install
-
-# Run tests
-poetry run pytest
-
-# Start development server
-poetry run uvicorn chatbot_ai_system.server.main:app --reload
-
-# Run benchmarks
-make benchmark
+poetry run uvicorn chatbot_ai_system.server.main:app --reload  # Backend
+cd frontend && npm ci && npm run dev                           # Frontend
 ```
 
 ## Configuration
@@ -160,7 +153,7 @@ ENABLE_SEMANTIC_CACHE=true
 
 ```bash
 # Build production image
-docker build -t ai-chatbot-system:latest .
+docker build -t chatbot-ai-system:latest .
 
 # Run with Docker Compose
 docker compose -f docker-compose.prod.yml up -d

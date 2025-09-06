@@ -4,7 +4,7 @@ version: '3.8'
 services:
   # Application under test
   api:
-    image: ${API_IMAGE:-ghcr.io/cbratkovics/ai-chatbot-system:latest}
+    image: ${API_IMAGE:-ghcr.io/cbratkovics/chatbot-ai-system:latest}
     environment:
       - ENVIRONMENT=test
       - REDIS_URL=redis://redis:6379
@@ -59,7 +59,7 @@ services:
 
   # Test runner container
   test-runner:
-    image: ${API_IMAGE:-ghcr.io/cbratkovics/ai-chatbot-system:latest}
+    image: ${API_IMAGE:-ghcr.io/cbratkovics/chatbot-ai-system:latest}
     command: ["pytest", "tests/", "-v", "--tb=short"]
     environment:
       - ENVIRONMENT=test

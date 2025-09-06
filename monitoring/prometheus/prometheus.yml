@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: 'ai-chatbot-system'
+    monitor: 'chatbot-ai-system'
     environment: 'production'
 
 alerting:

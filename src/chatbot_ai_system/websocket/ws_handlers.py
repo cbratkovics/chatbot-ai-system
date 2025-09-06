@@ -388,16 +388,20 @@ class MessageHandler:
     async def _handle_auth(
         self, websocket: WebSocket, message: WebSocketMessage, connection_id: str, **kwargs
     ) -> WebSocketMessage:
+        """Handle authentication request.
+        
+        Currently implements mock authentication for demo purposes.
+        Production implementation would validate JWT tokens.
         """
-        Handle authentication message.
-
-        Note: This is a placeholder for future authentication implementation.
-        """
-        # TODO: Implement actual authentication
+        # Mock authentication for demo - production would validate JWT
         return WebSocketMessage(
             type=MessageType.STATUS,
             id=message.id,
-            data={"status": "authenticated", "message": "Authentication successful (mock)"},
+            data={
+                "status": "authenticated",
+                "message": "Demo authentication successful",
+                "note": "Production would validate JWT tokens"
+            },
         )
 
     async def _handle_cancel(

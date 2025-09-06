@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_MINUTES: int = Field(default=30)
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
-    JWT_ISSUER: str = Field(default="ai-chatbot-system")
-    JWT_AUDIENCE: str = Field(default="ai-chatbot-api")
+    JWT_ISSUER: str = Field(default="chatbot-ai-system")
+    JWT_AUDIENCE: str = Field(default="chatbot-ai-api")
     ALLOWED_ORIGINS: list[str] = Field(default=["*"])
 
     # CORS Configuration
@@ -100,7 +100,7 @@ class Settings(BaseSettings):
     VECTOR_DB_PROVIDER: str = Field(default="pinecone")
     VECTOR_DB_URL: str = Field(default="")
     VECTOR_DB_API_KEY: str = Field(default="")
-    VECTOR_DB_INDEX_NAME: str = Field(default="ai-chatbot-system")
+    VECTOR_DB_INDEX_NAME: str = Field(default="chatbot-ai-system")
     VECTOR_DB_DIMENSION: int = Field(default=1024)
     VECTOR_DB_METRIC: str = Field(default="cosine")
 

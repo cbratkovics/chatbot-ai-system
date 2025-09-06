@@ -55,7 +55,7 @@ class HealthStatus(BaseModel):
 
     status: Literal["healthy", "degraded", "unhealthy"] = Field(..., description="Health status")
     version: str = Field(..., description="System version")
-    service: str = Field(default="ai-chatbot-system", description="Service name")
+    service: str = Field(default="chatbot-ai-system", description="Service name")
     checks: dict[str, bool] | None = Field(default=None, description="Component checks")
 
 

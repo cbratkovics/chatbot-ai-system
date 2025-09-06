@@ -112,32 +112,42 @@ class CacheManager:
         """Warmup cache with common queries."""
         common_queries = [
             "Hello, how are you?",
-            "What's the weather like?",
-            "Tell me a joke",
             "What can you help me with?",
             "How do I get started?",
             "What are your capabilities?",
             "Can you explain how this works?",
-            "What's new today?",
-            "Help me with a problem",
+            "Help me understand this better",
+            "What's the best way to approach this?",
+            "Can you provide an example?",
+            "How does this feature work?",
+            "What are the main benefits?",
+            "Can you summarize this for me?",
+            "What should I know about this?",
+            "How can I improve this?",
+            "What are the key considerations?",
             "Thank you for your help",
         ]
 
         common_responses = [
             "Hello! I'm doing well, thank you for asking. How can I assist you today?",
-            "I don't have access to real-time weather data, but I'd be happy to help you with other questions!",
-            "Why don't scientists trust atoms? Because they make up everything!",
-            "I can help you with a wide variety of tasks including answering questions, providing explanations, helping with analysis, and much more!",
+            "I can help you with a wide variety of tasks including answering questions, providing explanations, helping with analysis, coding assistance, and much more!",
             "To get started, simply ask me any question or describe what you'd like help with. I'm here to assist!",
-            "I can help with answering questions, providing information, assisting with analysis, creative tasks, problem-solving, and much more!",
+            "I can help with answering questions, providing information, assisting with analysis, creative tasks, problem-solving, coding, and much more!",
             "I'd be happy to explain! Could you please specify what particular aspect you'd like me to explain?",
-            "I'm ready to help you with whatever you need today! What would you like to know or discuss?",
-            "I'd be glad to help you solve a problem. Please describe the issue you're facing, and I'll do my best to assist!",
+            "I'll help you understand this better. Let me break it down into clear, manageable parts for you.",
+            "The best approach depends on your specific context. Let me help you evaluate the options and find the most suitable solution.",
+            "Certainly! Let me provide you with a clear, practical example to illustrate this concept.",
+            "This feature is designed to streamline your workflow. Let me explain how it works and its key components.",
+            "The main benefits include improved efficiency, better organization, enhanced reliability, and scalability for future growth.",
+            "I'll provide you with a concise summary of the key points to help you understand the essential information.",
+            "Here are the important things you should know about this topic, organized for clarity and quick reference.",
+            "I can suggest several ways to improve this. Let me analyze the current state and provide actionable recommendations.",
+            "The key considerations include performance requirements, scalability needs, security implications, and maintenance complexity.",
             "You're very welcome! I'm always here if you need any more assistance. Have a great day!",
         ]
 
         await self.semantic_cache.warmup(
-            queries=common_queries, responses=common_responses, model="model-3.5-turbo"
+            queries=common_queries, responses=common_responses, model="gpt-3.5-turbo"
         )
 
         logger.info("Cache warmed up with common queries")

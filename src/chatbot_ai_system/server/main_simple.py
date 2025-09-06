@@ -44,7 +44,7 @@ async def health():
         status_code=200,
         content={
             "status": "healthy",
-            "service": "ai-chatbot-system",
+            "service": "chatbot-ai-system",
             "version": "1.0.0",
             "environment": os.getenv("ENVIRONMENT", "development"),
             "checks": {

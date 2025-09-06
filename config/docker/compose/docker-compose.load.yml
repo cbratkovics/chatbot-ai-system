@@ -4,7 +4,7 @@ version: '3.8'
 services:
   # Application for load testing
   api:
-    image: ${API_IMAGE:-ghcr.io/cbratkovics/ai-chatbot-system:latest}
+    image: ${API_IMAGE:-ghcr.io/cbratkovics/chatbot-ai-system:latest}
     environment:
       - ENVIRONMENT=production
       - REDIS_URL=redis://redis:6379

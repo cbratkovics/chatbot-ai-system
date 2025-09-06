@@ -79,6 +79,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
+pythonpath = ["src"]
 addopts = "-v --strict-markers --tb=short"
 markers = [
     "unit: Unit tests (fast)",

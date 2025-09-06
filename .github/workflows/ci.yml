@@ -38,7 +38,11 @@ jobs:
       
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+        run: poetry install --no-interaction
+      
+      - name: Install project (if cache hit)
+        if: steps.cached-poetry-dependencies.outputs.cache-hit == 'true'
+        run: poetry install --no-interaction --only-root
       
       - name: Run Ruff
         run: poetry run ruff check .
@@ -88,7 +92,11 @@ jobs:
       
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+        run: poetry install --no-interaction
+      
+      - name: Install project (if cache hit)
+        if: steps.cached-poetry-dependencies.outputs.cache-hit == 'true'
+        run: poetry install --no-interaction --only-root
       
       - name: Run unit tests
         run: poetry run pytest tests/unit -v --tb=short

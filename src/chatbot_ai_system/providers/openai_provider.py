@@ -5,12 +5,13 @@ OpenAI provider implementation with retry logic, error handling, and streaming s
 import asyncio
 import logging
 import time
-from typing import AsyncIterator, List, Optional
+from typing import AsyncIterator, List, Optional, Any, cast
 
 from openai import APIConnectionError, APIError, APITimeoutError, AsyncOpenAI
 from openai import AuthenticationError as OpenAIAuthError
 from openai import NotFoundError
 from openai import RateLimitError as OpenAIRateLimitError
+from openai.types.chat import ChatCompletionMessageParam
 
 from .base import (
     AuthenticationError,
@@ -86,49 +87,53 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
                 f"Model '{model}' is not supported by OpenAI provider", provider="openai"
             )
 
-        # Convert messages to OpenAI format
-        openai_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
+        # Convert messages to OpenAI format with proper typing
+        openai_messages: List[ChatCompletionMessageParam] = []
+        for msg in messages:
+            message_dict: ChatCompletionMessageParam = {
+                "role": cast(Any, msg.role),  # Cast to satisfy type checker
+                "content": msg.content
+            }
+            openai_messages.append(message_dict)
 
         # Log request
         self._log_request(model, messages, temperature=temperature, max_tokens=max_tokens)
 
-        # Prepare request parameters
-        request_params = {
-            "model": model,
-            "messages": openai_messages,
-            "temperature": temperature,
-        }
-
-        if max_tokens:
-            request_params["max_tokens"] = max_tokens
-
-        # Add any additional OpenAI-specific parameters
-        for key, value in kwargs.items():
-            if key in [
-                "top_p",
-                "n",
-                "stream",
-                "stop",
-                "presence_penalty",
-                "frequency_penalty",
-                "logit_bias",
-                "user",
-                "functions",
-                "function_call",
-                "tools",
-                "tool_choice",
-                "seed",
-            ]:
-                request_params[key] = value
-
         # Attempt with retries
-        last_error = None
+        last_error: Optional[Exception] = None
         for attempt in range(self.max_retries):
             try:
                 start_time = time.time()
 
-                # Make API call
-                response = await self.client.chat.completions.create(**request_params)
+                # Make API call with explicit parameters
+                # Build kwargs to avoid passing None values
+                create_kwargs: dict[str, Any] = {
+                    "model": model,
+                    "messages": openai_messages,
+                    "temperature": temperature,
+                    "stream": kwargs.get("stream", False),
+                }
+                
+                if max_tokens:
+                    create_kwargs["max_tokens"] = max_tokens
+                if "top_p" in kwargs:
+                    create_kwargs["top_p"] = kwargs["top_p"]
+                if "n" in kwargs:
+                    create_kwargs["n"] = kwargs["n"]
+                if "stop" in kwargs:
+                    create_kwargs["stop"] = kwargs["stop"]
+                if "presence_penalty" in kwargs:
+                    create_kwargs["presence_penalty"] = kwargs["presence_penalty"]
+                if "frequency_penalty" in kwargs:
+                    create_kwargs["frequency_penalty"] = kwargs["frequency_penalty"]
+                if "logit_bias" in kwargs:
+                    create_kwargs["logit_bias"] = kwargs["logit_bias"]
+                if "user" in kwargs:
+                    create_kwargs["user"] = kwargs["user"]
+                if "seed" in kwargs:
+                    create_kwargs["seed"] = kwargs["seed"]
+                    
+                response = await self.client.chat.completions.create(**create_kwargs)
 
                 # Calculate duration
                 duration = time.time() - start_time
@@ -149,7 +154,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
 
                 # Create response object
                 chat_response = ChatResponse(
-                    content=content,
+                    content=content or "",  # Ensure content is never None
                     model=response.model,
                     provider="openai",
                     finish_reason=finish_reason,
@@ -226,10 +231,11 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
             except APIError as e:
                 last_error = e
                 # For general API errors, retry if it might be transient
-                if attempt < self.max_retries - 1 and e.status_code >= 500:
+                status_code = getattr(e, "status_code", 500)
+                if attempt < self.max_retries - 1 and status_code >= 500:
                     delay = self._calculate_backoff(attempt)
                     logger.warning(
-                        f"OpenAI API error {e.status_code}, retrying in {delay:.1f}s "
+                        f"OpenAI API error {status_code}, retrying in {delay:.1f}s "
                         f"(attempt {attempt + 1}/{self.max_retries})"
                     )
                     await asyncio.sleep(delay)
@@ -239,7 +245,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
                     raise ProviderError(
                         f"OpenAI API error: {str(e)}",
                         provider="openai",
-                        status_code=getattr(e, "status_code", None),
+                        status_code=status_code if status_code != 500 else None,
                     )
 
             except Exception as e:
@@ -250,6 +256,9 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         # If we get here, all retries failed
         if last_error:
             raise ProviderError(f"All retry attempts failed: {str(last_error)}", provider="openai")
+        
+        # This should never be reached, but satisfies type checker
+        raise ProviderError("Failed to get response from OpenAI", provider="openai")
 
     async def stream(
         self,

@@ -58,6 +58,9 @@ class OpenAIProvider:
             Chat response
         """
         try:
+            if self.client is None:
+                raise ValueError("OpenAI client not initialized")
+                
             model = request.get("model", "gpt-3.5-turbo")
             messages = request.get(
                 "messages", [{"role": "user", "content": request.get("message", "")}]
@@ -100,6 +103,13 @@ class OpenAIProvider:
         request["stream"] = True
         stream = await self.chat_completion(request)
 
+        # Check if stream is actually an async iterable
+        if not stream or isinstance(stream, dict):
+            # If it's a dict or None, yield it once and return
+            if stream:
+                yield stream
+            return
+            
         async for chunk in stream:
             # Check if chunk is already a dict (e.g., from mock)
             if isinstance(chunk, dict):
@@ -147,7 +157,7 @@ class OpenAIProvider:
             return len(encoding.encode(text))
         except Exception as e:
             logger.error(f"Token counting error: {e}")
-            return len(text.split()) * 1.3
+            return int(len(text.split()) * 1.3)
 
     def is_model_supported(self, model: str) -> bool:
         """Check if model is supported.
@@ -167,6 +177,8 @@ class OpenAIProvider:
             Health status
         """
         try:
+            if self.client is None:
+                return False
             response = await self.client.models.list()
             return bool(response.data)
         except Exception as e:

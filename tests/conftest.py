@@ -1,8 +1,17 @@
 """Pytest configuration and fixtures."""
 
-import asyncio
 import os
 import sys
+
+# Set test environment before any imports
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("DATABASE_URL", "postgresql://postgres:test123@localhost:5432/test_db")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
+os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key")
+
+import asyncio
 from typing import AsyncIterator, Iterator
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -11,6 +20,18 @@ import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_env():
+    """Ensure test environment is properly configured."""
+    os.environ["ENVIRONMENT"] = "test"
+    if "DATABASE_URL" not in os.environ:
+        os.environ["DATABASE_URL"] = "postgresql://postgres:test123@localhost:5432/test_db"
+    if "REDIS_URL" not in os.environ:
+        os.environ["REDIS_URL"] = "redis://localhost:6379/15"
+    yield
+    # Cleanup if needed
 
 
 @pytest.fixture(scope="session")
@@ -249,15 +270,6 @@ async def test_server_websocket():
     await task
 
 
-@pytest.fixture(autouse=True)
-def setup_test_env(monkeypatch):
-    """Set up test environment variables."""
-    monkeypatch.setenv("ENVIRONMENT", "test")
-    monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///test.db")
-    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
-    monkeypatch.setenv("JWT_SECRET_KEY", "test-secret-key-for-testing")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-anthropic-key")
 
 
 @pytest_asyncio.fixture

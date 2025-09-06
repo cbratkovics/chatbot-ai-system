@@ -1,14 +1,20 @@
 """Test CLI commands."""
 
+import os
 import json
 from unittest.mock import MagicMock, patch
 
+# Ensure test environment is set before imports
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("DATABASE_URL", "postgresql://postgres:test123@localhost:5432/test_db")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
+
 import pytest
-from chatbot_ai_system.cli import cli
-from click.testing import CliRunner  # Move import to top
+from click.testing import CliRunner
 
 # Skip all CLI tests if CLI module not available
 pytest.importorskip("chatbot_ai_system.cli")
+from chatbot_ai_system.cli import cli
 
 
 class TestCLICommands:

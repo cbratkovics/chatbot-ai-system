@@ -67,6 +67,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      
+      postgres:
+        image: postgres:15-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test123
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     
     steps:
       - uses: actions/checkout@v4
@@ -102,10 +116,16 @@ jobs:
         run: poetry run pytest tests/unit -v --tb=short
         env:
           REDIS_URL: redis://localhost:6379/0
+          DATABASE_URL: postgresql://postgres:test123@localhost:5432/test_db
+          ENVIRONMENT: test
       
       - name: Generate coverage report
         run: |
           poetry run pytest tests/unit --cov=chatbot_ai_system --cov-report=xml --cov-report=term
+        env:
+          REDIS_URL: redis://localhost:6379/0
+          DATABASE_URL: postgresql://postgres:test123@localhost:5432/test_db
+          ENVIRONMENT: test
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

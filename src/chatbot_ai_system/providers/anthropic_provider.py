@@ -88,7 +88,7 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
         # Convert messages to Anthropic format
         # Anthropic expects system messages to be separate
         system_message = None
-        anthropic_messages = []
+        anthropic_messages: List[Dict[str, str]] = []
 
         for msg in messages:
             if msg.role == "system":
@@ -112,43 +112,37 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
 
         # Ensure conversation alternates between user and assistant
         cleaned_messages: List[Dict[str, str]] = []
-        last_role = None
-        for msg in anthropic_messages:
-            if msg["role"] == last_role:
+        last_role: Optional[str] = None
+        for anthropic_msg in anthropic_messages:
+            if anthropic_msg["role"] == last_role:
                 # Merge consecutive messages with the same role
                 if cleaned_messages:
-                    cleaned_messages[-1]["content"] += "\n\n" + msg["content"]
+                    cleaned_messages[-1]["content"] += "\n\n" + anthropic_msg["content"]
             else:
-                cleaned_messages.append(msg)
-                last_role = msg["role"]
+                cleaned_messages.append(anthropic_msg)
+                last_role = anthropic_msg["role"]
 
         # Log request
         self._log_request(model, messages, temperature=temperature, max_tokens=max_tokens)
 
-        # Prepare request parameters
-        request_params = {
-            "model": model,
-            "messages": cleaned_messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens or 2048,  # Anthropic requires max_tokens
-        }
-
-        if system_message:
-            request_params["system"] = system_message
-
-        # Add any additional Anthropic-specific parameters
-        for key, value in kwargs.items():
-            if key in ["top_p", "top_k", "stop_sequences", "metadata"]:
-                request_params[key] = value
-
         # Attempt with retries
-        last_error = None
+        last_error: Optional[Exception] = None
         for attempt in range(self.max_retries):
             try:
                 start_time = time.time()
 
-                # Make API call
-                response = await self.client.messages.create(**request_params)
+                # Make API call with explicit parameters
+                response = await self.client.messages.create(  # type: ignore[attr-defined]
+                    model=model,
+                    messages=cleaned_messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens or 2048,  # Anthropic requires max_tokens
+                    system=system_message if system_message else None,
+                    top_p=kwargs.get("top_p", None),
+                    top_k=kwargs.get("top_k", None),
+                    stop_sequences=kwargs.get("stop_sequences", None),
+                    metadata=kwargs.get("metadata", None)
+                )
 
                 # Calculate duration
                 duration = time.time() - start_time
@@ -271,6 +265,9 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
             raise ProviderError(
                 f"All retry attempts failed: {str(last_error)}", provider="anthropic"
             )
+        
+        # This should never be reached, but satisfies type checker
+        raise ProviderError("Failed to get response from Anthropic", provider="anthropic")
 
     async def stream(
         self,

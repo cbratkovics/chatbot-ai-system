@@ -4,14 +4,14 @@ A modern, responsive frontend for the AI Chatbot System built with Next.js 14, T
 
 ## Features
 
-- 🚀 Real-time WebSocket streaming
-- 🤖 Multi-model support (OpenAI GPT-4, Claude)
-- 💬 Clean chat interface with message bubbles
-- 🎨 Syntax highlighting for code blocks
-- 🔧 Function calling visualization
-- 🎙️ Voice input support
-- 🌓 Dark/light mode
-- 📱 Fully responsive design
+- Real-time WebSocket streaming
+- Multi-model support (OpenAI GPT-4, Claude)
+- Clean chat interface with message bubbles
+- Syntax highlighting for code blocks
+- Function calling visualization
+- Voice input support
+- Dark/light mode
+- Fully responsive design
 
 ## Getting Started
 

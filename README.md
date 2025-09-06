@@ -1,4 +1,4 @@
-# Multi-Tenant AI Chatbot Platform
+# Multi-Tenant AI Chat Platform
 
 [![CI Pipeline](https://github.com/cbratkovics/chatbot-ai-system/actions/workflows/ci.yml/badge.svg)](https://github.com/cbratkovics/chatbot-ai-system/actions)
 [![codecov](https://codecov.io/gh/cbratkovics/chatbot-ai-system/branch/main/graph/badge.svg)](https://codecov.io/gh/cbratkovics/chatbot-ai-system)

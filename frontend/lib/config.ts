@@ -1,32 +1,42 @@
-const envVars = ['NEXT_PUBLIC_API_URL','NEXT_PUBLIC_WS_URL'] as const;
-type EnvVar = (typeof envVars)[number];
+const ENV = {
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? '',
+  NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL ?? '',
+};
 
-const DEFAULT_CONFIG = {
-  NEXT_PUBLIC_API_URL: 'https://chatbot-ai-system.onrender.com/api/v1',
-  NEXT_PUBLIC_WS_URL: 'wss://chatbot-ai-system.onrender.com/ws/chat',
-} as const;
+const DEFAULT_API = 'https://chatbot-ai-system.onrender.com/api/v1';
 
 function stripTrailingSlash(u: string) {
   return u.endsWith('/') ? u.slice(0, -1) : u;
 }
 
-function loadEnvConfig(): Record<string, string> {
-  const cfg: Record<string, string> = {} as Record<string, string>;
-  for (const k of envVars) {
-    const v = process.env[k];
-    cfg[k] = v && v.length ? v : DEFAULT_CONFIG[k];
+function normalizeApiUrl(urlStr: string) {
+  try {
+    if (!urlStr) return DEFAULT_API;
+    const u = new URL(urlStr);
+    let p = u.pathname.replace(/\/+$/, '');
+    if (!/^\/api\//.test(p)) p = (p === '' ? '/api/v1' : p + '/api/v1');
+    u.pathname = p; u.search = ''; u.hash = '';
+    return stripTrailingSlash(u.toString());
+  } catch {
+    return DEFAULT_API;
   }
-  return {
-    ...cfg,
-    NEXT_PUBLIC_API_URL: stripTrailingSlash(cfg.NEXT_PUBLIC_API_URL),
-    NEXT_PUBLIC_WS_URL: stripTrailingSlash(cfg.NEXT_PUBLIC_WS_URL),
-  };
 }
 
-export const config = loadEnvConfig();
-export const API_CONFIG = {
-  baseURL: config.NEXT_PUBLIC_API_URL,
-  wsURL: config.NEXT_PUBLIC_WS_URL,
-  timeout: 30000,
-  retries: 3,
-};
+function deriveWsUrl(apiUrl: string, explicit?: string) {
+  if (explicit) {
+    try {
+      const u = new URL(explicit);
+      if (!/\/ws\//.test(u.pathname)) u.pathname = '/ws/chat';
+      return stripTrailingSlash(u.toString());
+    } catch {}
+  }
+  const u = new URL(apiUrl);
+  const proto = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${u.host}/ws/chat`;
+}
+
+const baseURL = normalizeApiUrl(ENV.NEXT_PUBLIC_API_URL);
+const wsURL = deriveWsUrl(baseURL, ENV.NEXT_PUBLIC_WS_URL);
+
+export const config = { NEXT_PUBLIC_API_URL: baseURL, NEXT_PUBLIC_WS_URL: wsURL };
+export const API_CONFIG = { baseURL, wsURL, timeout: 30000, retries: 3 };

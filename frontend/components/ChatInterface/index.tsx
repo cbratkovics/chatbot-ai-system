@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { API_CONFIG } from '@/lib/config';
+import { API_CONFIG } from '../../lib/config';
 
 type Role = 'user' | 'assistant' | 'system';
 type Msg = { role: Role; content: string };

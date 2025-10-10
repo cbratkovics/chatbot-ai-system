@@ -74,6 +74,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Manage application lifecycle."""
     # Startup
+    app.state.start_time = time.time()
     logger.info(f"Starting AI Chatbot System v{__version__}")
 
     # Initialize database
@@ -258,21 +259,56 @@ def create_app() -> FastAPI:
     # Health check endpoint
     @app.get("/health")
     async def health():
-        """Health check endpoint."""
+        """Enhanced health check endpoint for production monitoring."""
+        health_status = {
+            "status": "healthy",
+            "version": __version__,
+            "service": "chatbot-ai-system",
+            "timestamp": datetime.utcnow().isoformat(),
+            "environment": settings.environment,
+            "checks": {},
+        }
+
+        # Check Redis connection
+        try:
+            from chatbot_ai_system.api.chat import redis_cache
+
+            if redis_cache:
+                await redis_cache.redis.ping()
+                health_status["checks"]["redis"] = "healthy"
+            else:
+                health_status["checks"]["redis"] = "not initialized"
+                health_status["status"] = "degraded"
+        except Exception as e:
+            health_status["checks"]["redis"] = f"unhealthy: {str(e)}"
+            health_status["status"] = "degraded"
+
+        # Check AI providers configuration
+        if not settings.has_openai_key and not settings.has_anthropic_key:
+            health_status["checks"]["ai_providers"] = "no API keys configured"
+            health_status["status"] = "unhealthy"
+        else:
+            providers = []
+            if settings.has_openai_key:
+                providers.append("openai")
+            if settings.has_anthropic_key:
+                providers.append("anthropic")
+            health_status["checks"]["ai_providers"] = f"configured: {', '.join(providers)}"
+
         return JSONResponse(
-            status_code=200,
-            content={
-                "status": "healthy",
-                "version": __version__,
-                "service": "chatbot-ai-system",
-                "timestamp": datetime.utcnow().isoformat(),
-                "environment": settings.environment,
-                "providers_configured": {
-                    "openai": settings.has_openai_key,
-                    "anthropic": settings.has_anthropic_key,
-                },
-            },
+            status_code=200 if health_status["status"] == "healthy" else 503,
+            content=health_status,
         )
+
+    @app.get("/metrics")
+    async def metrics():
+        """Basic metrics endpoint for monitoring."""
+        uptime = time.time() - app.state.start_time if hasattr(app.state, "start_time") else 0
+        return {
+            "uptime_seconds": uptime,
+            "environment": settings.environment,
+            "version": __version__,
+        }
 
     @app.get("/")
     async def root():

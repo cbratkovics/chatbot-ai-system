@@ -1,19 +1,24 @@
 // HTTP API client for the chatbot backend
 
 import { ChatRequest, ChatResponse, Model, Message, Conversation } from '@/types';
+import { API_CONFIG } from './config';
 
 // Re-export types for use by other modules
 export type { Message, Model };
 export type { Conversation as Session };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-
 export class APIClient {
   private baseURL: string;
+  private wsURL: string;
   private headers: HeadersInit;
+  private timeout: number;
+  private retries: number;
 
-  constructor(baseURL?: string) {
-    this.baseURL = baseURL || API_URL;
+  constructor() {
+    this.baseURL = API_CONFIG.baseURL;
+    this.wsURL = API_CONFIG.wsURL;
+    this.timeout = API_CONFIG.timeout;
+    this.retries = API_CONFIG.retries;
     this.headers = {
       'Content-Type': 'application/json',
     };
@@ -87,6 +92,12 @@ export class APIClient {
   // Health check
   async health(): Promise<{ status: string; timestamp: string }> {
     return this.request('/health');
+  }
+
+  // WebSocket creation
+  createWebSocket(path: string): WebSocket {
+    const wsUrl = `${this.wsURL}${path}`;
+    return new WebSocket(wsUrl);
   }
 }
 

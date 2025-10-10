@@ -149,7 +149,47 @@ ENABLE_SEMANTIC_CACHE=true
 
 ## Production Deployment
 
-### Docker Deployment
+This project is production-ready and can be deployed to Vercel + Render in under 30 minutes.
+
+### Quick Deploy to Vercel + Render (Recommended)
+
+Deploy your chatbot to production with minimal configuration:
+
+**Infrastructure**:
+- Vercel: Next.js frontend hosting (Free tier)
+- Render: FastAPI backend + Redis cache ($14/month)
+- Cost: $14/month + AI API usage
+
+**Steps**:
+
+1. **Deploy Backend to Render**:
+   - Connect your GitHub repository to Render
+   - Render will auto-detect `render.yaml` configuration
+   - Set environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY)
+   - Deploy Redis instance ($7/month)
+
+2. **Deploy Frontend to Vercel**:
+   ```bash
+   cd frontend
+   vercel --prod
+   ```
+   - Set environment variables in Vercel dashboard
+   - NEXT_PUBLIC_API_URL: Your Render backend URL
+   - NEXT_PUBLIC_WS_URL: Your Render WebSocket URL
+
+3. **Update CORS**:
+   - Add your Vercel domain to CORS_ORIGINS in Render dashboard
+
+**Documentation**:
+- Full guide: [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
+- Checklist: [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)
+
+**Production URLs** (after deployment):
+- Frontend: https://your-app.vercel.app
+- Backend API: https://your-backend.onrender.com
+- API Docs: https://your-backend.onrender.com/docs
+
+### Alternative: Docker Deployment
 
 ```bash
 # Build production image
@@ -159,7 +199,7 @@ docker build -t chatbot-ai-system:latest .
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-### Kubernetes Deployment
+### Alternative: Kubernetes Deployment
 
 ```bash
 # Apply configurations

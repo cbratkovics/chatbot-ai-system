@@ -88,7 +88,7 @@ async def websocket_chat_endpoint(
     settings: Settings = Depends(get_settings),
 ):
     """
-    WebSocket endpoint for streaming chat.
+    Production-ready WebSocket endpoint for streaming chat with heartbeat and error handling.
 
     Args:
         websocket: WebSocket connection
@@ -107,6 +107,11 @@ async def websocket_chat_endpoint(
                 "stream": true,
                 "temperature": 0.7
             }
+        }
+
+        Client -> Server (ping response):
+        {
+            "type": "pong"
         }
 
         Server -> Client (streaming):
@@ -132,7 +137,16 @@ async def websocket_chat_endpoint(
                 "duration_ms": 1234.5
             }
         }
+
+        Server -> Client (heartbeat):
+        {
+            "type": "ping"
+        }
     """
+    import asyncio
+    from datetime import datetime
+    from uuid import uuid4
+
     connection_id = None
 
     try:
@@ -156,14 +170,41 @@ async def websocket_chat_endpoint(
 
         logger.info(f"WebSocket connection established: {connection_id}")
 
+        # Send connection confirmation
+        await ws_manager.send_personal_message(
+            connection_id,
+            {
+                "type": "connected",
+                "connection_id": connection_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+        # Start heartbeat task
+        async def heartbeat():
+            while True:
+                try:
+                    await asyncio.sleep(getattr(settings, "ws_heartbeat_interval", 30))
+                    await ws_manager.send_personal_message(connection_id, {"type": "ping"})
+                except Exception:
+                    break
+
+        heartbeat_task = asyncio.create_task(heartbeat())
+
         # Message processing loop
         while True:
             try:
-                # Receive message
-                message = await ws_manager.receive_message(connection_id)
+                # Receive message with timeout
+                message = await asyncio.wait_for(
+                    ws_manager.receive_message(connection_id), timeout=300.0  # 5 minute timeout
+                )
 
                 if not message:
                     break
+
+                # Handle pong messages (heartbeat response)
+                if isinstance(message, dict) and message.get("type") == "pong":
+                    continue
 
                 # Handle message
                 response = await message_handler.handle_message(
@@ -178,8 +219,16 @@ async def websocket_chat_endpoint(
                 if response:
                     await ws_manager.send_personal_message(connection_id, response.dict())
 
+            except asyncio.TimeoutError:
+                logger.warning(f"WebSocket timeout: {connection_id}")
+                try:
+                    await websocket.close(code=1000, reason="Timeout")
+                except Exception:
+                    pass
+                break
+
             except WebSocketDisconnect:
-                logger.info(f"WebSocket disconnected: {connection_id}")
+                logger.info(f"WebSocket disconnected normally: {connection_id}")
                 break
 
             except json.JSONDecodeError as e:
@@ -200,6 +249,13 @@ async def websocket_chat_endpoint(
 
     finally:
         # Clean up
+        if "heartbeat_task" in locals():
+            heartbeat_task.cancel()
+            try:
+                await heartbeat_task
+            except asyncio.CancelledError:
+                pass
+
         if connection_id:
             message_handler.cleanup_connection(connection_id)
             await ws_manager.disconnect(connection_id)

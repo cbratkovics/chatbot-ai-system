@@ -144,6 +144,10 @@ export class WebSocketClient extends EventEmitter {
       case 'pong':
         this.log('Received pong');
         break;
+      case 'connected':
+        this.log('Connection confirmed by server');
+        this.emit('serverConnected', message);
+        break;
       case 'stream':
         this.emit('stream', message);
         break;

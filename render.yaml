@@ -1,0 +1,64 @@
+services:
+  # FastAPI Backend API
+  - type: web
+    name: chatbot-ai-backend
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: "pip install poetry && poetry install --only main"
+    startCommand: "poetry run uvicorn chatbot_ai_system.server.main:app --host 0.0.0.0 --port $PORT --workers 2"
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        fromGroup: web
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEBUG
+        value: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: chatbot-redis
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: '["https://your-app.vercel.app","http://localhost:3000"]'
+      - key: CORS_ALLOW_CREDENTIALS
+        value: true
+      - key: ENABLE_STREAMING
+        value: true
+      - key: CACHE_ENABLED
+        value: true
+      - key: CACHE_TTL
+        value: 300
+      - key: DEFAULT_MODEL
+        value: gpt-3.5-turbo
+      - key: DEFAULT_TEMPERATURE
+        value: 0.7
+      - key: DEFAULT_MAX_TOKENS
+        value: 2048
+      - key: RATE_LIMIT_REQUESTS
+        value: 100
+      - key: RATE_LIMIT_PERIOD
+        value: 60
+      - key: REQUEST_TIMEOUT
+        value: 30
+      - key: WS_HEARTBEAT_INTERVAL
+        value: 30
+      - key: WS_MAX_CONNECTIONS
+        value: 100
+    healthCheckPath: /health
+    autoDeploy: true
+
+  # Redis Cache
+  - type: redis
+    name: chatbot-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

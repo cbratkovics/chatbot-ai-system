@@ -48,7 +48,7 @@ export class APIClient {
 
   // Chat endpoints
   async chatCompletion(request: ChatRequest): Promise<ChatResponse> {
-    return this.request<ChatResponse>('/completions', {
+    return this.request<ChatResponse>('/chat/completions', {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -56,12 +56,12 @@ export class APIClient {
 
   // Model endpoints
   async getModels(): Promise<Model[]> {
-    const response = await this.request<{ models: Model[] }>('/models');
+    const response = await this.request<{ models: Model[] }>('/chat/models');
     return response.models || [];
   }
 
   async getModel(modelId: string): Promise<Model> {
-    return this.request<Model>(`/models/${modelId}`);
+    return this.request<Model>(`/chat/models/${modelId}`);
   }
 
   // Health check

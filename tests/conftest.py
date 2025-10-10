@@ -307,3 +307,52 @@ def mock_cache_manager():
     manager.invalidate = AsyncMock()
     manager.get_statistics = AsyncMock(return_value={"hit_rate": 0.7})
     return manager
+
+
+@pytest.fixture
+def mock_openai_provider():
+    """Mock OpenAI provider to avoid real API calls."""
+    with patch('chatbot_ai_system.providers.openai_provider.OpenAIProvider') as MockProvider:
+        instance = MockProvider.return_value
+
+        async def mock_generate(*args, **kwargs):
+            return {
+                "content": "This is a mocked OpenAI response",
+                "model": kwargs.get("model", "gpt-3.5-turbo"),
+                "provider": "openai",
+                "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+                "cached": False
+            }
+
+        instance.generate = AsyncMock(side_effect=mock_generate)
+        instance.generate_stream = AsyncMock()
+        yield instance
+
+
+@pytest.fixture
+def mock_anthropic_provider():
+    """Mock Anthropic provider to avoid real API calls."""
+    with patch('chatbot_ai_system.providers.anthropic_provider.AnthropicProvider') as MockProvider:
+        instance = MockProvider.return_value
+
+        async def mock_generate(*args, **kwargs):
+            return {
+                "content": "This is a mocked Claude response",
+                "model": kwargs.get("model", "claude-3-sonnet"),
+                "provider": "anthropic",
+                "usage": {"input_tokens": 10, "output_tokens": 20},
+                "cached": False
+            }
+
+        instance.generate = AsyncMock(side_effect=mock_generate)
+        instance.generate_stream = AsyncMock()
+        yield instance
+
+
+@pytest.fixture
+def mock_all_providers(mock_openai_provider, mock_anthropic_provider):
+    """Mock all AI providers for comprehensive testing."""
+    return {
+        "openai": mock_openai_provider,
+        "anthropic": mock_anthropic_provider
+    }

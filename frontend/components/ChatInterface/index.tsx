@@ -84,7 +84,9 @@ export function ChatInterface() {
                   <option key={i} value={modelId(m)}>{modelLabel(m)}</option>
                 ))}
               </select>
-              <div className="text-xs text-muted-foreground">{API_CONFIG.baseURL.replace(/^https?:\/\//,'')}</div>
+              <div className="text-xs text-muted-foreground">
+                {API_CONFIG.baseURL.replace(/^https?:\/\//,'')}
+              </div>
             </div>
           </div>
           {error && <div className="bg-destructive/10 px-4 py-2 text-sm text-destructive">{error}</div>}

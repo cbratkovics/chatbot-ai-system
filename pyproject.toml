@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "chatbot-ai-system"
-version = "1.0.0"
-description = "Production-ready AI chatbot orchestration platform with multi-provider support"
+version = "1.1.0"
+description = "Production-ready AI chatbot orchestration platform with multi-provider support and Pinecone vector search"
 authors = ["Christopher Bratkovics <cbratkovics@gmail.com>"]
 license = "MIT"
 readme = "README.md"
@@ -46,6 +46,7 @@ alembic = "^1.16.5"
 tiktoken = "^0.11.0"
 aiosqlite = "^0.21.0"
 asyncpg = "^0.29.0"
+pinecone = "^7.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"

@@ -10,8 +10,11 @@ class Settings(BaseSettings):
     """Application settings with complete configuration"""
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=False,
-        validate_assignment=True
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+        validate_assignment=True,
     )
 
     # Application
@@ -20,7 +23,9 @@ class Settings(BaseSettings):
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
     debug: bool = Field(default=False, validation_alias="DEBUG")
     api_prefix: str = Field(default="/api/v1", validation_alias="API_PREFIX")
-    api_base_url: Optional[str] = Field(default="http://localhost:8000", validation_alias="API_BASE_URL")
+    api_base_url: Optional[str] = Field(
+        default="http://localhost:8000", validation_alias="API_BASE_URL"
+    )
 
     # Server
     host: str = Field(default="0.0.0.0", validation_alias="HOST")
@@ -30,7 +35,9 @@ class Settings(BaseSettings):
 
     # API Keys
     openai_api_key: Optional[SecretStr] = Field(default=None, validation_alias="OPENAI_API_KEY")
-    anthropic_api_key: Optional[SecretStr] = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
+    anthropic_api_key: Optional[SecretStr] = Field(
+        default=None, validation_alias="ANTHROPIC_API_KEY"
+    )
 
     # Redis
     redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
@@ -45,11 +52,19 @@ class Settings(BaseSettings):
     # Cache
     cache_enabled: bool = Field(default=True, validation_alias="CACHE_ENABLED")
     cache_ttl_seconds: int = Field(default=3600, validation_alias="CACHE_TTL_SECONDS")
-    semantic_cache_threshold: float = Field(default=0.85, validation_alias="SEMANTIC_CACHE_THRESHOLD")
-    cache_compression_enabled: bool = Field(default=False, validation_alias="CACHE_COMPRESSION_ENABLED")
-    cache_compression_threshold: int = Field(default=1024, validation_alias="CACHE_COMPRESSION_THRESHOLD")
+    semantic_cache_threshold: float = Field(
+        default=0.85, validation_alias="SEMANTIC_CACHE_THRESHOLD"
+    )
+    cache_compression_enabled: bool = Field(
+        default=False, validation_alias="CACHE_COMPRESSION_ENABLED"
+    )
+    cache_compression_threshold: int = Field(
+        default=1024, validation_alias="CACHE_COMPRESSION_THRESHOLD"
+    )
     semantic_cache_enabled: bool = Field(default=True, validation_alias="SEMANTIC_CACHE_ENABLED")
-    cache_circuit_breaker_enabled: bool = Field(default=True, validation_alias="CACHE_CIRCUIT_BREAKER_ENABLED")
+    cache_circuit_breaker_enabled: bool = Field(
+        default=True, validation_alias="CACHE_CIRCUIT_BREAKER_ENABLED"
+    )
     cache_warming_enabled: bool = Field(default=False, validation_alias="CACHE_WARMING_ENABLED")
 
     # Model Defaults
@@ -57,7 +72,9 @@ class Settings(BaseSettings):
     default_temperature: float = Field(default=0.7, validation_alias="DEFAULT_TEMPERATURE")
     default_max_tokens: int = Field(default=2048, validation_alias="DEFAULT_MAX_TOKENS")
     openai_model: str = Field(default="gpt-3.5-turbo", validation_alias="OPENAI_MODEL")
-    anthropic_model: str = Field(default="claude-3-haiku-20240307", validation_alias="ANTHROPIC_MODEL")
+    anthropic_model: str = Field(
+        default="claude-3-haiku-20240307", validation_alias="ANTHROPIC_MODEL"
+    )
     default_provider: str = Field(default="openai", validation_alias="DEFAULT_PROVIDER")
     enable_fallback: bool = Field(default=True, validation_alias="ENABLE_FALLBACK")
     max_retries: int = Field(default=3, validation_alias="MAX_RETRIES")
@@ -85,6 +102,18 @@ class Settings(BaseSettings):
     request_timeout: int = Field(default=30, validation_alias="REQUEST_TIMEOUT")
     max_context_length: int = Field(default=8000, validation_alias="MAX_CONTEXT_LENGTH")
     max_tokens: int = Field(default=4000, validation_alias="MAX_TOKENS")
+
+    # Vector Database - Pinecone Configuration
+    pinecone_api_key: Optional[SecretStr] = Field(default=None, validation_alias="PINECONE_API_KEY")
+    pinecone_environment: str = Field(default="us-east-1", validation_alias="PINECONE_ENVIRONMENT")
+    pinecone_index_name: str = Field(
+        default="chatbot-ai-system", validation_alias="PINECONE_INDEX_NAME"
+    )
+    pinecone_dimension: int = Field(default=1536, validation_alias="PINECONE_DIMENSION")
+    pinecone_metric: str = Field(default="cosine", validation_alias="PINECONE_METRIC")
+    pinecone_namespace: str = Field(default="default", validation_alias="PINECONE_NAMESPACE")
+    enable_vector_search: bool = Field(default=False, validation_alias="ENABLE_VECTOR_SEARCH")
+    vector_search_top_k: int = Field(default=5, validation_alias="VECTOR_SEARCH_TOP_K")
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -142,6 +171,14 @@ class Settings(BaseSettings):
     @property
     def has_anthropic_key(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_pinecone_key(self) -> bool:
+        return bool(self.pinecone_api_key)
+
+    @property
+    def is_vector_search_enabled(self) -> bool:
+        return self.enable_vector_search and self.has_pinecone_key and self.has_openai_key
 
 
 @lru_cache()

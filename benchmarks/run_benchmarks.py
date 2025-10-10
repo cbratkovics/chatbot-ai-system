@@ -182,9 +182,7 @@ class BenchmarkRunner:
 
         try:
             # Run k6 test
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, env={**env_vars}
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, env={**env_vars})
 
             if result.returncode != 0:
                 logger.error(f"k6 test failed: {result.stderr}")
@@ -313,26 +311,18 @@ class BenchmarkRunner:
                 p95 = api_metrics["api_latency_p95"]
                 target = targets["p95_latency_ms"]
                 if p95 <= target:
-                    validation["passed"].append(
-                        f"P95 latency: {p95:.2f}ms <= {target}ms"
-                    )
+                    validation["passed"].append(f"P95 latency: {p95:.2f}ms <= {target}ms")
                 else:
-                    validation["failed"].append(
-                        f"P95 latency: {p95:.2f}ms > {target}ms"
-                    )
+                    validation["failed"].append(f"P95 latency: {p95:.2f}ms > {target}ms")
 
             # Check concurrent users
             if "vus_max_count" in api_metrics:
                 max_users = api_metrics["vus_max_count"]
                 target = targets["concurrent_users"]
                 if max_users >= target:
-                    validation["passed"].append(
-                        f"Concurrent users: {max_users} >= {target}"
-                    )
+                    validation["passed"].append(f"Concurrent users: {max_users} >= {target}")
                 else:
-                    validation["failed"].append(
-                        f"Concurrent users: {max_users} < {target}"
-                    )
+                    validation["failed"].append(f"Concurrent users: {max_users} < {target}")
 
         # Check cache performance
         if "locust" in results:
@@ -356,13 +346,9 @@ class BenchmarkRunner:
                 reduction = locust_metrics["cost_reduction_percentage"]
                 target = targets["cost_reduction"] * 100
                 if reduction >= target:
-                    validation["passed"].append(
-                        f"Cost reduction: {reduction:.1f}% >= {target}%"
-                    )
+                    validation["passed"].append(f"Cost reduction: {reduction:.1f}% >= {target}%")
                 else:
-                    validation["failed"].append(
-                        f"Cost reduction: {reduction:.1f}% < {target}%"
-                    )
+                    validation["failed"].append(f"Cost reduction: {reduction:.1f}% < {target}%")
 
         # Overall pass/fail
         validation["overall"] = len(validation["failed"]) == 0
@@ -441,9 +427,7 @@ class BenchmarkRunner:
 
         return comparison
 
-    def generate_html_report(
-        self, results: Dict, validation: Dict, comparison: Dict
-    ) -> str:
+    def generate_html_report(self, results: Dict, validation: Dict, comparison: Dict) -> str:
         """Generate HTML report"""
         html_template = """
 <!DOCTYPE html>
@@ -510,11 +494,7 @@ class BenchmarkRunner:
 
         # Build HTML content
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        duration = (
-            f"{(self.end_time - self.start_time):.2f} seconds"
-            if self.end_time
-            else "N/A"
-        )
+        duration = f"{(self.end_time - self.start_time):.2f} seconds" if self.end_time else "N/A"
 
         overall_status = "PASSED" if validation["overall"] else "FAILED"
         overall_class = "pass" if validation["overall"] else "fail"
@@ -608,9 +588,7 @@ class BenchmarkRunner:
             )
 
         if self.config["k6"]["api_test"]["enabled"]:
-            self.results["k6_api"] = self.run_k6_test(
-                "k6_api", self.config["k6"]["api_test"]
-            )
+            self.results["k6_api"] = self.run_k6_test("k6_api", self.config["k6"]["api_test"])
 
         # Run Locust test
         if self.config["locust"]["enabled"]:
@@ -638,8 +616,7 @@ class BenchmarkRunner:
         }
 
         results_file = (
-            self.results_dir
-            / f'benchmark_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            self.results_dir / f'benchmark_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         )
         with open(results_file, "w") as f:
             json.dump(complete_results, f, indent=2)

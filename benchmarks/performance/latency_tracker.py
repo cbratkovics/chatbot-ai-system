@@ -19,8 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from aiohttp import web
-from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Gauge, Histogram,
-                               generate_latest)
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 # Configure logging
 logging.basicConfig(
@@ -146,9 +145,7 @@ class LatencyTracker:
                 method=labels.get("method", "GET"),
                 model=labels.get("model", "unknown"),
                 status=labels.get("status", "200"),
-            ).observe(
-                latency_ms / 1000
-            )  # Convert to seconds
+            ).observe(latency_ms / 1000)  # Convert to seconds
         elif metric_type == "websocket":
             websocket_latency.labels(
                 message_type=labels.get("message_type", "unknown"),

@@ -125,16 +125,16 @@ async def test_server():
     import asyncio
     from uvicorn import Config, Server
     from chatbot_ai_system.server.main import app
-    
+
     config = Config(app=app, host="127.0.0.1", port=8001, log_level="error")
     server = Server(config)
-    
+
     # Create and start server task
     task = asyncio.create_task(server.serve())
     await asyncio.sleep(0.5)  # Let server start
-    
+
     yield "http://127.0.0.1:8001"
-    
+
     # Shutdown server
     server.should_exit = True
     task.cancel()
@@ -270,8 +270,6 @@ async def test_server_websocket():
     await task
 
 
-
-
 @pytest_asyncio.fixture
 async def db_session():
     """Database session for tests."""
@@ -312,7 +310,7 @@ def mock_cache_manager():
 @pytest.fixture
 def mock_openai_provider():
     """Mock OpenAI provider to avoid real API calls."""
-    with patch('chatbot_ai_system.providers.openai_provider.OpenAIProvider') as MockProvider:
+    with patch("chatbot_ai_system.providers.openai_provider.OpenAIProvider") as MockProvider:
         instance = MockProvider.return_value
 
         async def mock_generate(*args, **kwargs):
@@ -321,7 +319,7 @@ def mock_openai_provider():
                 "model": kwargs.get("model", "gpt-3.5-turbo"),
                 "provider": "openai",
                 "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-                "cached": False
+                "cached": False,
             }
 
         instance.generate = AsyncMock(side_effect=mock_generate)
@@ -332,7 +330,7 @@ def mock_openai_provider():
 @pytest.fixture
 def mock_anthropic_provider():
     """Mock Anthropic provider to avoid real API calls."""
-    with patch('chatbot_ai_system.providers.anthropic_provider.AnthropicProvider') as MockProvider:
+    with patch("chatbot_ai_system.providers.anthropic_provider.AnthropicProvider") as MockProvider:
         instance = MockProvider.return_value
 
         async def mock_generate(*args, **kwargs):
@@ -341,7 +339,7 @@ def mock_anthropic_provider():
                 "model": kwargs.get("model", "claude-3-sonnet"),
                 "provider": "anthropic",
                 "usage": {"input_tokens": 10, "output_tokens": 20},
-                "cached": False
+                "cached": False,
             }
 
         instance.generate = AsyncMock(side_effect=mock_generate)
@@ -352,7 +350,4 @@ def mock_anthropic_provider():
 @pytest.fixture
 def mock_all_providers(mock_openai_provider, mock_anthropic_provider):
     """Mock all AI providers for comprehensive testing."""
-    return {
-        "openai": mock_openai_provider,
-        "anthropic": mock_anthropic_provider
-    }
+    return {"openai": mock_openai_provider, "anthropic": mock_anthropic_provider}

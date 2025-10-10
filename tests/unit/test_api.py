@@ -17,7 +17,7 @@ class TestHealthEndpoint:
 
         data = response.json()
         assert data["status"] == "healthy"
-        assert data["version"] == "1.0.0"
+        assert data["version"] == "1.1.0"
         assert data["service"] == "chatbot-ai-system"
 
     def test_root_endpoint(self, client: TestClient):
@@ -28,7 +28,7 @@ class TestHealthEndpoint:
         data = response.json()
         assert "message" in data
         assert "version" in data
-        assert data["version"] == "1.0.0"
+        assert data["version"] == "1.1.0"
 
 
 @pytest.mark.unit
@@ -93,7 +93,7 @@ class TestSDK:
         # Create a mock response
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = lambda: {"status": "healthy", "version": "1.0.0"}
+        mock_response.json = lambda: {"status": "healthy", "version": "1.1.0"}
         mock_response.raise_for_status = MagicMock()
 
         # Patch the client's get method
@@ -102,6 +102,6 @@ class TestSDK:
 
             health = await chatbot_client.health_check()
             assert health["status"] == "healthy"
-            assert health["version"] == "1.0.0"
+            assert health["version"] == "1.1.0"
 
             mock_get.assert_called_once_with("/health")

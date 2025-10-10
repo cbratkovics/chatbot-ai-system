@@ -21,7 +21,7 @@ class TestPackageStructure:
 
         version = Version(__version__)
         assert version.major == 1
-        assert version.minor == 0
+        assert version.minor == 1
         assert version.micro == 0
 
     def test_public_api_exports(self):
@@ -46,7 +46,7 @@ class TestPackageStructure:
         """Test get_version utility."""
         from chatbot_ai_system import get_version
 
-        assert get_version() == "1.0.0"
+        assert get_version() == "1.1.0"
 
 
 @pytest.mark.unit
@@ -133,18 +133,18 @@ class TestConfiguration:
         assert isinstance(settings.port, int)
         # Port value is valid (within range)
         assert 1 <= settings.port <= 65535
-        
+
         # Test that settings have proper types
         assert isinstance(settings.workers, int)
         assert settings.workers >= 1
-        
+
         # Test that invalid strings fall back to default
         settings_invalid = Settings(port="not-a-number")
         assert isinstance(settings_invalid.port, int)
         assert settings_invalid.port == 8000  # Falls back to default
-        
+
         # Test that settings have proper configuration
-        assert hasattr(settings, 'model_config')
+        assert hasattr(settings, "model_config")
         assert settings.port >= 1  # Port is validated to be positive
 
 

@@ -62,9 +62,7 @@ class TestProviderFailover:
         return provider
 
     @pytest.mark.asyncio
-    async def test_automatic_failover_on_provider_error(
-        self, mock_provider_a, mock_provider_b
-    ):
+    async def test_automatic_failover_on_provider_error(self, mock_provider_a, mock_provider_b):
         """Test automatic failover when primary provider fails."""
         # Configure provider A to fail
         mock_provider_a.complete.side_effect = ProviderError(
@@ -89,9 +87,7 @@ class TestProviderFailover:
         assert orchestrator.failover_count == 1
 
     @pytest.mark.asyncio
-    async def test_circuit_breaker_activation(
-        self, mock_provider_a, mock_provider_b
-    ):
+    async def test_circuit_breaker_activation(self, mock_provider_a, mock_provider_b):
         """Test circuit breaker activates after multiple failures."""
         # Configure provider A to always fail
         mock_provider_a.complete.side_effect = ProviderError(
@@ -132,9 +128,7 @@ class TestProviderFailover:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise RateLimitError(
-                    "Rate limit exceeded", provider="provider_a"
-                )
+                raise RateLimitError("Rate limit exceeded", provider="provider_a")
             return ChatResponse(
                 content="Success after retry",
                 model="gpt-3.5-turbo",
@@ -158,9 +152,7 @@ class TestProviderFailover:
         assert call_count == 2  # Initial attempt + retry
 
     @pytest.mark.asyncio
-    async def test_load_balancing_strategies(
-        self, mock_provider_a, mock_provider_b
-    ):
+    async def test_load_balancing_strategies(self, mock_provider_a, mock_provider_b):
         """Test different load balancing strategies."""
         # Test Round Robin
         orchestrator = ProviderOrchestrator(
@@ -186,9 +178,7 @@ class TestProviderFailover:
         assert response3.provider == "provider_a"
 
     @pytest.mark.asyncio
-    async def test_all_providers_down_error(
-        self, mock_provider_a, mock_provider_b
-    ):
+    async def test_all_providers_down_error(self, mock_provider_a, mock_provider_b):
         """Test error when all providers are down."""
         # Configure both providers to fail
         mock_provider_a.is_healthy.return_value = False
@@ -211,13 +201,9 @@ class TestProviderFailover:
     async def test_model_specific_routing(self, mock_provider_a, mock_provider_b):
         """Test routing based on model support."""
         # Provider A supports GPT models
-        mock_provider_a.supports_model = MagicMock(
-            side_effect=lambda m: m.startswith("gpt")
-        )
+        mock_provider_a.supports_model = MagicMock(side_effect=lambda m: m.startswith("gpt"))
         # Provider B supports Claude models
-        mock_provider_b.supports_model = MagicMock(
-            side_effect=lambda m: m.startswith("claude")
-        )
+        mock_provider_b.supports_model = MagicMock(side_effect=lambda m: m.startswith("claude"))
 
         orchestrator = ProviderOrchestrator(
             providers=[mock_provider_a, mock_provider_b],
@@ -243,9 +229,7 @@ class TestProviderFailover:
         assert response2.provider == "provider_b"
 
     @pytest.mark.asyncio
-    async def test_concurrent_request_handling(
-        self, mock_provider_a, mock_provider_b
-    ):
+    async def test_concurrent_request_handling(self, mock_provider_a, mock_provider_b):
         """Test handling of concurrent requests."""
         orchestrator = ProviderOrchestrator(
             providers=[mock_provider_a, mock_provider_b],

@@ -90,9 +90,7 @@ class TestWebSocketIntegration:
         connection_id = await ws_manager.accept_connection(mock_websocket, user_id)
 
         # Simulate send error
-        mock_websocket.send_json.side_effect = websockets.exceptions.ConnectionClosed(
-            None, None
-        )
+        mock_websocket.send_json.side_effect = websockets.exceptions.ConnectionClosed(None, None)
 
         # Should handle error gracefully
         message = {"type": "chat", "content": "Test"}
@@ -110,9 +108,7 @@ class TestWebSocketIntegration:
         await ws_manager.connect(mock_websocket, client_id)
 
         # Start heartbeat
-        heartbeat_task = asyncio.create_task(
-            ws_manager.send_heartbeat(client_id)
-        )
+        heartbeat_task = asyncio.create_task(ws_manager.send_heartbeat(client_id))
 
         # Wait for heartbeat
         await asyncio.sleep(0.1)
@@ -146,10 +142,10 @@ class TestWebSocketIntegration:
         # Try to connect one more
         extra_ws = AsyncMock()
         extra_ws.close = AsyncMock()
-        
+
         with pytest.raises(ConnectionError) as exc_info:
             await ws_manager.connect(extra_ws, "extra_client")
-        
+
         assert "Maximum connections reached" in str(exc_info.value)
         extra_ws.close.assert_called_once()
 
@@ -178,7 +174,7 @@ class TestWebSocketIntegration:
 
         # Should have sent all chunks
         assert mock_websocket.send.call_count == 7
-        
+
         # Verify last chunk is marked as final
         last_call = mock_websocket.send.call_args_list[-1]
         last_message = json.loads(last_call[0][0])
@@ -190,14 +186,14 @@ class TestWebSocketIntegration:
         client_id = "auth_client"
 
         # Mock authentication
-        with patch("chatbot_ai_system.core.streaming.ws_handlers.authenticate_websocket") as mock_auth:
+        with patch(
+            "chatbot_ai_system.core.streaming.ws_handlers.authenticate_websocket"
+        ) as mock_auth:
             mock_auth.return_value = {"user_id": "user123", "authenticated": True}
 
             # Connect with auth token
             auth_token = "valid_token"
-            await ws_manager.connect_with_auth(
-                mock_websocket, client_id, auth_token
-            )
+            await ws_manager.connect_with_auth(mock_websocket, client_id, auth_token)
 
             mock_auth.assert_called_once_with(auth_token)
             assert client_id in ws_manager.authenticated_connections
@@ -236,7 +232,7 @@ class TestWebSocketIntegration:
     async def test_websocket_reconnection_handling(self, ws_manager):
         """Test WebSocket reconnection handling."""
         client_id = "reconnect_client"
-        
+
         # Initial connection
         ws1 = AsyncMock()
         ws1.send = AsyncMock()

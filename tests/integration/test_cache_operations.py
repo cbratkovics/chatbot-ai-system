@@ -68,21 +68,14 @@ class TestCacheOperations:
         response1 = "Python is a high-level programming language"
 
         await semantic_cache.put(
-            query=query1,
-            response=response1,
-            model="gpt-3.5-turbo",
-            tenant_id=None
+            query=query1, response=response1, model="gpt-3.5-turbo", tenant_id=None
         )
 
         # Query with similar meaning - should get cache hit with high similarity
         query2 = "Tell me about Python"
 
         # The semantic cache will calculate embeddings and find similar entries
-        result = await semantic_cache.get(
-            query=query2,
-            model="gpt-3.5-turbo",
-            tenant_id=None
-        )
+        result = await semantic_cache.get(query=query2, model="gpt-3.5-turbo", tenant_id=None)
 
         # For now, exact match needed since embeddings require real models
         # In a full test, this would test semantic similarity
@@ -91,11 +84,7 @@ class TestCacheOperations:
 
         # Query with very different meaning - should be cache miss
         query3 = "What is Java?"
-        result3 = await semantic_cache.get(
-            query=query3,
-            model="gpt-3.5-turbo",
-            tenant_id=None
-        )
+        result3 = await semantic_cache.get(query=query3, model="gpt-3.5-turbo", tenant_id=None)
         # Different query should miss (unless embeddings are very similar)
         # This is okay for integration test
 

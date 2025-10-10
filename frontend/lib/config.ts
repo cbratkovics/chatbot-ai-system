@@ -1,43 +1,29 @@
-// Environment configuration with fallback defaults
+const envVars = ['NEXT_PUBLIC_API_URL','NEXT_PUBLIC_WS_URL'] as const;
+type EnvVar = (typeof envVars)[number];
+
 const DEFAULT_CONFIG = {
-  NEXT_PUBLIC_API_URL: 'https://chatbot-ai-system.onrender.com',
-  NEXT_PUBLIC_WS_URL: 'wss://chatbot-ai-system.onrender.com',
+  NEXT_PUBLIC_API_URL: 'https://chatbot-ai-system.onrender.com/api/v1',
+  NEXT_PUBLIC_WS_URL: 'wss://chatbot-ai-system.onrender.com/ws/chat',
 } as const;
 
-const envVars = [
-  'NEXT_PUBLIC_API_URL',
-  'NEXT_PUBLIC_WS_URL',
-] as const;
+function stripTrailingSlash(u: string) {
+  return u.endsWith('/') ? u.slice(0, -1) : u;
+}
 
-type EnvVar = typeof envVars[number];
-
-function loadEnvConfig(): Record<EnvVar, string> {
-  const config: Record<EnvVar, string> = {} as Record<EnvVar, string>;
-  const usingDefaults: string[] = [];
-
-  for (const envVar of envVars) {
-    const value = process.env[envVar];
-    if (!value) {
-      config[envVar] = DEFAULT_CONFIG[envVar];
-      usingDefaults.push(envVar);
-    } else {
-      config[envVar] = value;
-    }
+function loadEnvConfig(): Record<string, string> {
+  const cfg: Record<string, string> = {} as Record<string, string>;
+  for (const k of envVars) {
+    const v = process.env[k];
+    cfg[k] = v && v.length ? v : DEFAULT_CONFIG[k];
   }
-
-  if (usingDefaults.length > 0) {
-    console.warn(
-      `[Config] Using default values for: ${usingDefaults.join(', ')}\n` +
-      `Default API URL: ${DEFAULT_CONFIG.NEXT_PUBLIC_API_URL}\n` +
-      `Default WS URL: ${DEFAULT_CONFIG.NEXT_PUBLIC_WS_URL}`
-    );
-  }
-
-  return config;
+  return {
+    ...cfg,
+    NEXT_PUBLIC_API_URL: stripTrailingSlash(cfg.NEXT_PUBLIC_API_URL),
+    NEXT_PUBLIC_WS_URL: stripTrailingSlash(cfg.NEXT_PUBLIC_WS_URL),
+  };
 }
 
 export const config = loadEnvConfig();
-
 export const API_CONFIG = {
   baseURL: config.NEXT_PUBLIC_API_URL,
   wsURL: config.NEXT_PUBLIC_WS_URL,

@@ -1,7 +1,5 @@
 "use client";
 
-// Main chat interface component
-
 import React, { useRef, useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 import { ChatMessage } from './ChatMessage';
@@ -32,19 +30,16 @@ export function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!input.trim() || isLoading) return;
 
     sendMessage(input.trim(), {
@@ -63,35 +58,27 @@ export function ChatInterface() {
   };
 
   const handleCopy = () => {
-    // Show a toast or notification
     console.log('Copied to clipboard');
   };
 
   return (
-    <div className="chat-interface flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="flex flex-col h-screen w-screen overflow-hidden">
+      <header className="glass-panel border-b border-white/10 px-6 py-4 flex-shrink-0">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              AI Chat System
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              AI Chat
             </h1>
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-green-500' : 'bg-red-500'
-                }`}
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {wsStatus}
-              </span>
-            </div>
+            <span className={`status-badge ${isConnected ? 'connected' : 'disconnected'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} animate-pulse`} />
+              {wsStatus}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              className="btn-icon"
               title="Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +89,7 @@ export function ChatInterface() {
 
             <button
               onClick={clearMessages}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              className="btn-icon"
               title="Clear chat"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,11 +100,10 @@ export function ChatInterface() {
         </div>
       </header>
 
-      {/* Settings Panel */}
       {showSettings && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="glass-panel border-b border-white/10 px-6 py-4 flex-shrink-0">
+          <div className="max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <ModelSelector
                 models={availableModels}
                 currentModel={currentModel}
@@ -126,8 +112,8 @@ export function ChatInterface() {
               />
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Temperature: {temperature}
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Temperature: {temperature.toFixed(1)}
                 </label>
                 <input
                   type="range"
@@ -136,12 +122,12 @@ export function ChatInterface() {
                   step="0.1"
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full"
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Max Tokens: {maxTokens}
                 </label>
                 <input
@@ -151,7 +137,7 @@ export function ChatInterface() {
                   step="256"
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                  className="w-full"
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
                 />
               </div>
             </div>
@@ -159,16 +145,17 @@ export function ChatInterface() {
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
+        <div className="max-w-4xl mx-auto space-y-6">
           {messages.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              <p className="text-lg font-medium">No messages yet</p>
-              <p className="mt-1">Start a conversation by typing a message below</p>
+            <div className="flex flex-col items-center justify-center h-full text-center py-20">
+              <div className="glass-panel p-8 rounded-3xl">
+                <svg className="w-16 h-16 mx-auto mb-4 text-blue-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                <h2 className="text-2xl font-semibold text-gray-200 mb-2">Start a Conversation</h2>
+                <p className="text-gray-400">Ask me anything to get started</p>
+              </div>
             </div>
           ) : (
             <>
@@ -188,10 +175,9 @@ export function ChatInterface() {
         </div>
       </div>
 
-      {/* Error display */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 px-4 py-2">
-          <div className="max-w-4xl mx-auto flex items-center gap-2 text-red-600 dark:text-red-400">
+        <div className="flex-shrink-0 px-6 py-3 border-t border-red-500/20 bg-red-500/10">
+          <div className="max-w-4xl mx-auto flex items-center gap-3 text-red-300">
             <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -200,20 +186,19 @@ export function ChatInterface() {
         </div>
       )}
 
-      {/* Input */}
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+      <div className="flex-shrink-0 p-6">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="flex gap-2">
+          <div className="input-container p-2 flex items-end gap-3">
             <textarea
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your message..."
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="flex-1 bg-transparent px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none resize-none"
               rows={1}
               style={{
-                minHeight: '44px',
+                minHeight: '48px',
                 maxHeight: '200px',
               }}
               disabled={isLoading}
@@ -223,7 +208,8 @@ export function ChatInterface() {
               <button
                 type="button"
                 onClick={cancelCurrentStream}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                className="flex-shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl p-3 transition-all duration-200"
+                title="Stop generating"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -234,7 +220,8 @@ export function ChatInterface() {
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-shrink-0 btn-primary"
+                title="Send message"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

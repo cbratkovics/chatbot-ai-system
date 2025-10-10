@@ -63,9 +63,140 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background: linear-gradient(135deg, #0f0c29 0%, #1a1432 25%, #24243e 50%, #302b63 75%, #24243e 100%);
+    background-attachment: fixed;
+    overflow: hidden;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .message-bubble {
+    @apply rounded-2xl px-4 py-3 shadow-lg transition-all duration-200;
+    animation: slideIn 0.2s ease-out;
+  }
+
+  .user-message {
+    @apply message-bubble bg-gradient-to-br from-blue-600 to-blue-700 text-white ml-auto;
+    max-width: 80%;
+  }
+
+  .assistant-message {
+    @apply message-bubble glass-panel text-gray-100;
+    max-width: 85%;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm;
+    transition: all 0.2s ease;
+  }
+
+  .status-badge.connected {
+    @apply bg-emerald-500/20 text-emerald-300 border border-emerald-500/30;
+  }
+
+  .status-badge.disconnected {
+    @apply bg-red-500/20 text-red-300 border border-red-500/30;
+  }
+
+  .input-container {
+    @apply glass-panel rounded-2xl;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700;
+    @apply text-white rounded-xl px-4 py-2.5 font-medium;
+    @apply transition-all duration-200 shadow-lg hover:shadow-xl;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-icon {
+    @apply p-2.5 rounded-xl hover:bg-white/10 transition-all duration-200;
+    @apply text-gray-300 hover:text-white;
+  }
+
+  .prose {
+    @apply text-gray-100;
+  }
+
+  .prose p {
+    @apply mb-3 leading-relaxed;
+  }
+
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    @apply font-semibold mb-2 mt-4 text-gray-100;
+  }
+
+  .prose h1 {
+    @apply text-2xl;
+  }
+
+  .prose h2 {
+    @apply text-xl;
+  }
+
+  .prose h3 {
+    @apply text-lg;
+  }
+
+  .prose ul, .prose ol {
+    @apply mb-3 ml-5;
+  }
+
+  .prose li {
+    @apply mb-1;
+  }
+
+  .prose a {
+    @apply text-blue-400 hover:text-blue-300 underline;
+  }
+
+  .prose strong {
+    @apply font-semibold text-gray-50;
+  }
+
+  .prose em {
+    @apply italic;
+  }
+
+  .prose blockquote {
+    @apply border-l-4 border-blue-500/50 pl-4 italic text-gray-300 my-3;
+  }
+
+  .prose pre {
+    @apply mb-3 rounded-lg overflow-x-auto;
+  }
+
+  .prose table {
+    @apply w-full border-collapse mb-3;
+  }
+
+  .prose th, .prose td {
+    @apply border border-white/10 px-3 py-2;
+  }
+
+  .prose th {
+    @apply bg-white/5 font-semibold;
+  }
+
+  .prose hr {
+    @apply border-white/10 my-4;
   }
 }
 
@@ -73,8 +204,57 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    transition: background 0.2s;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
   }
 }

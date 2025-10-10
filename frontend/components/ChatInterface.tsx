@@ -1,235 +1,125 @@
 "use client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { API } from "@/lib/api";
+import { useChatWebSocket } from "@/hooks/useChatWebSocket";
 
-import React, { useRef, useEffect } from 'react';
-import { useChat } from '@/hooks/useChat';
-import { ChatMessage } from './ChatMessage';
-import { ModelSelector } from './ModelSelector';
+type Message = { role: "user" | "assistant"; content: string };
+
+const Bubble = ({ role, children }: { role: Message["role"]; children: React.ReactNode }) => (
+  <div className={`flex ${role === "user" ? "justify-end" : "justify-start"} my-2`}>
+    <div className={`${role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"} max-w-[80%] rounded-2xl px-4 py-2 shadow-sm`}>
+      {children}
+    </div>
+  </div>
+);
 
 export function ChatInterface() {
-  const {
-    messages,
-    currentModel,
-    availableModels,
-    isLoading,
-    error,
-    wsStatus,
-    isConnected,
-    sendMessage,
-    cancelCurrentStream,
-    clearMessages,
-    deleteMessage,
-    editMessage,
-    retryMessage,
-    setCurrentModel,
-  } = useChat();
+  const [models, setModels] = useState<string[]>([]);
+  const [model, setModel] = useState<string>("");
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
 
-  const [input, setInput] = React.useState('');
-  const [showSettings, setShowSettings] = React.useState(false);
-  const [temperature, setTemperature] = React.useState(0.7);
-  const [maxTokens, setMaxTokens] = React.useState(2048);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const onWsMessage = useCallback((m: any) => {
+    if (m?.role && m?.content) {
+      setMessages(prev => [...prev, { role: m.role, content: m.content }]);
+    }
+  }, []);
+  const { status: wsStatus, send: wsSend } = useChatWebSocket(onWsMessage);
+
+  useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
-    inputRef.current?.focus();
+    let mounted = true;
+    API.models()
+      .then(({ models }) => {
+        if (!mounted) return;
+        setModels(models);
+        if (!model && models.length) setModel(models[0]);
+      })
+      .catch((e) => setError(`Failed to load models: ${e.message}`));
+    return () => { mounted = false; };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const canSend = useMemo(() => input.trim().length > 0 && (model?.length ?? 0) > 0, [input, model]);
 
-    sendMessage(input.trim(), {
-      temperature,
-      maxTokens,
-    });
-
-    setInput('');
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+  const handleSend = async () => {
+    if (!canSend) return;
+    const text = input.trim();
+    setInput("");
+    setMessages((m) => [...m, { role: "user", content: text }]);
+    setLoading(true);
+    setError(null);
+    try {
+      const { message } = await API.complete({ model, messages: [...messages, { role: "user", content: text }] });
+      setMessages((m) => [...m, { role: "assistant", content: message }]);
+      wsSend({ role: "user", content: text });
+    } catch (e: any) {
+      setError(e?.message ?? "Request failed");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCopy = () => {
-    console.log('Copied to clipboard');
-  };
-
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
-      <header className="glass-panel border-b border-white/10 px-6 py-4 flex-shrink-0">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              AI Chat
-            </h1>
-            <span className={`status-badge ${isConnected ? 'connected' : 'disconnected'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} animate-pulse`} />
-              {wsStatus}
-            </span>
+    <div className="grid grid-rows-[auto,1fr,auto] gap-4 min-h-[70dvh] rounded-2xl border border-border bg-card shadow-sm">
+      <div className="px-4 pt-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="text-sm text-muted-foreground">WebSocket: 
+            <span className={`ml-1 font-medium ${wsStatus === "open" ? "text-green-500" : wsStatus === "connecting" ? "text-yellow-500" : "text-red-500"}`}>{wsStatus}</span>
           </div>
-
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="btn-icon"
-              title="Settings"
+            <label className="text-sm text-muted-foreground">Model</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-
-            <button
-              onClick={clearMessages}
-              className="btn-icon"
-              title="Clear chat"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
           </div>
+          <button
+            onClick={async () => { try { const h = await API.health(); setError(null); } catch (e:any) { setError(`Health check failed: ${e.message}`); } }}
+            className="ml-auto rounded-md border border-input bg-background px-3 py-1 text-sm hover:bg-accent hover:text-accent-foreground"
+          >
+            Health
+          </button>
         </div>
-      </header>
-
-      {showSettings && (
-        <div className="glass-panel border-b border-white/10 px-6 py-4 flex-shrink-0">
-          <div className="max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <ModelSelector
-                models={availableModels}
-                currentModel={currentModel}
-                onModelChange={setCurrentModel}
-                disabled={isLoading}
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Temperature: {temperature.toFixed(1)}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={temperature}
-                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Max Tokens: {maxTokens}
-                </label>
-                <input
-                  type="range"
-                  min="256"
-                  max="4096"
-                  step="256"
-                  value={maxTokens}
-                  onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center py-20">
-              <div className="glass-panel p-8 rounded-3xl">
-                <svg className="w-16 h-16 mx-auto mb-4 text-blue-400/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                <h2 className="text-2xl font-semibold text-gray-200 mb-2">Start a Conversation</h2>
-                <p className="text-gray-400">Ask me anything to get started</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  message={message}
-                  onEdit={editMessage}
-                  onDelete={deleteMessage}
-                  onRetry={retryMessage}
-                  onCopy={handleCopy}
-                />
-              ))}
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
+        {error && <div className="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">{error}</div>}
       </div>
 
-      {error && (
-        <div className="flex-shrink-0 px-6 py-3 border-t border-red-500/20 bg-red-500/10">
-          <div className="max-w-4xl mx-auto flex items-center gap-3 text-red-300">
-            <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm">{error}</span>
-          </div>
+      <div ref={scroller} className="overflow-y-auto px-4">
+        {messages.length === 0 && (
+          <div className="my-16 text-center text-sm text-muted-foreground">Ask anything to get started.</div>
+        )}
+        {messages.map((m, i) => <Bubble key={i} role={m.role}>{m.content}</Bubble>)}
+        {loading && <div className="my-2 text-xs text-muted-foreground">Thinking…</div>}
+      </div>
+
+      <div className="border-t border-border p-3">
+        <div className="flex items-end gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={1}
+            placeholder="Type your message..."
+            className="min-h-[44px] max-h-40 w-full resize-y rounded-lg border border-input bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-ring"
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+          />
+          <button
+            onClick={handleSend}
+            disabled={!canSend || loading}
+            className="shrink-0 rounded-lg bg-primary px-4 py-2 text-primary-foreground shadow-sm disabled:opacity-60"
+          >
+            Send
+          </button>
         </div>
-      )}
-
-      <div className="flex-shrink-0 p-6">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="input-container p-2 flex items-end gap-3">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type your message..."
-              className="flex-1 bg-transparent px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none resize-none"
-              rows={1}
-              style={{
-                minHeight: '48px',
-                maxHeight: '200px',
-              }}
-              disabled={isLoading}
-            />
-
-            {isLoading ? (
-              <button
-                type="button"
-                onClick={cancelCurrentStream}
-                className="flex-shrink-0 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl p-3 transition-all duration-200"
-                title="Stop generating"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!input.trim() || isLoading}
-                className="flex-shrink-0 btn-primary"
-                title="Send message"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </form>
+        <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+          <span>Enter to send • Shift+Enter for newline</span>
+          <span>Calls your Render API with model routing</span>
+        </div>
       </div>
     </div>
   );

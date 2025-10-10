@@ -1,6 +1,6 @@
 {
-  "installCommand": "cd frontend && npm ci --include=dev",
-  "buildCommand": "cd frontend && npm run build",
+  "installCommand": "cd frontend && npm ci --include=dev --no-fund --no-audit --loglevel=error",
+  "buildCommand": "cd frontend && npm run build --silent",
   "outputDirectory": "frontend/.next",
   "devCommand": "cd frontend && npm run dev",
   "framework": "nextjs",

@@ -4,8 +4,8 @@ services:
   # Backend API service
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: docker/dockerfiles/Dockerfile
       args:
         BUILD_DATE: ${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
         VCS_REF: ${VCS_REF:-$(git rev-parse --short HEAD)}
@@ -28,6 +28,15 @@ services:
       - RATE_LIMIT_REQUESTS=100
       - CACHE_ENABLED=true
       - CACHE_TTL_SECONDS=3600
+      # Pinecone Vector Database Configuration
+      - PINECONE_API_KEY=${PINECONE_API_KEY:-}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-us-east-1}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-chatbot-ai-system}
+      - PINECONE_DIMENSION=${PINECONE_DIMENSION:-1536}
+      - PINECONE_METRIC=${PINECONE_METRIC:-cosine}
+      - PINECONE_NAMESPACE=${PINECONE_NAMESPACE:-default}
+      - ENABLE_VECTOR_SEARCH=${ENABLE_VECTOR_SEARCH:-false}
+      - VECTOR_SEARCH_TOP_K=${VECTOR_SEARCH_TOP_K:-5}
     volumes:
       - ./src:/app/src:ro
       - ./logs:/app/logs

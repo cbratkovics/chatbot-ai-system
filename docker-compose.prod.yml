@@ -47,7 +47,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/dockerfiles/Dockerfile.production
       args:
         BUILD_DATE: ${BUILD_DATE}
         VCS_REF: ${VCS_REF}
@@ -74,6 +74,15 @@ services:
       - CACHE_TTL_SECONDS=7200
       - METRICS_ENABLED=true
       - SECRET_KEY=${SECRET_KEY}
+      # Pinecone Vector Database Configuration
+      - PINECONE_API_KEY=${PINECONE_API_KEY:-}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT:-us-east-1}
+      - PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-chatbot-ai-system}
+      - PINECONE_DIMENSION=${PINECONE_DIMENSION:-1536}
+      - PINECONE_METRIC=${PINECONE_METRIC:-cosine}
+      - PINECONE_NAMESPACE=${PINECONE_NAMESPACE:-production}
+      - ENABLE_VECTOR_SEARCH=${ENABLE_VECTOR_SEARCH:-false}
+      - VECTOR_SEARCH_TOP_K=${VECTOR_SEARCH_TOP_K:-5}
     volumes:
       - ./logs:/app/logs
       - backend-data:/app/data

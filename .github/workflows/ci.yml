@@ -118,6 +118,9 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           DATABASE_URL: postgresql://postgres:test123@localhost:5432/test_db
           ENVIRONMENT: test
+          PINECONE_API_KEY: test-key
+          PINECONE_ENVIRONMENT: test
+          ENABLE_VECTOR_SEARCH: false
       
       - name: Generate coverage report
         run: |
@@ -126,6 +129,9 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           DATABASE_URL: postgresql://postgres:test123@localhost:5432/test_db
           ENVIRONMENT: test
+          PINECONE_API_KEY: test-key
+          PINECONE_ENVIRONMENT: test
+          ENABLE_VECTOR_SEARCH: false
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

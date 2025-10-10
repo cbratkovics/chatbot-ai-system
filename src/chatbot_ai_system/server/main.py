@@ -119,7 +119,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # Shutdown WebSocket manager
     try:
-        from chatbot_ai_system.websocket.ws_manager import WebSocketManager
+        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
 
         ws_manager = WebSocketManager()
         await ws_manager.shutdown()
@@ -231,7 +231,7 @@ def create_app() -> FastAPI:
     app.include_router(cache_router, prefix="/api/v1/cache", tags=["cache"])
     
     # Add health endpoints
-    from chatbot_ai_system.api.health import health_router
+    from chatbot_ai_system.v1.routes.health import router as health_router
     app.include_router(health_router, prefix="/api/v1", tags=["health"])
 
     # Add WebSocket routes

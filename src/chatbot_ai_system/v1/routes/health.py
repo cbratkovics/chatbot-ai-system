@@ -2,7 +2,7 @@
 
 import time
 
-from chatbot_ai_system.api.core.config import settings
+from chatbot_ai_system.core.config import settings
 from fastapi import APIRouter
 
 router = APIRouter()

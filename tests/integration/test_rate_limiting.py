@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from chatbot_ai_system.middleware.rate_limiter import RateLimiter
-from chatbot_ai_system.exceptions import RateLimitError
+from chatbot_ai_system.core.tenancy.rate_limiter import RateLimiter
+from chatbot_ai_system.providers.base import RateLimitError
 
 
 @pytest.mark.integration
@@ -19,8 +19,6 @@ class TestRateLimiting:
         """Create rate limiter instance."""
         limiter = RateLimiter(
             redis_client=mock_redis,
-            default_limit=10,
-            default_window=60,
         )
         return limiter
 

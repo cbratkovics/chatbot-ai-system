@@ -7,6 +7,7 @@ import pytest
 from chatbot_ai_system.providers.base import (
     ChatMessage,
     ChatResponse,
+    CompletionRequest,
     ProviderError,
     RateLimitError,
 )
@@ -30,7 +31,7 @@ class TestProviderFailover:
         provider._semaphore = asyncio.Semaphore(10)
         provider.is_healthy = MagicMock(return_value=True)
         provider.supports_model = MagicMock(return_value=True)
-        provider.chat = AsyncMock(
+        provider.complete = AsyncMock(
             return_value=ChatResponse(
                 content="Response from Provider A",
                 model="gpt-3.5-turbo",
@@ -50,7 +51,7 @@ class TestProviderFailover:
         provider._semaphore = asyncio.Semaphore(10)
         provider.is_healthy = MagicMock(return_value=True)
         provider.supports_model = MagicMock(return_value=True)
-        provider.chat = AsyncMock(
+        provider.complete = AsyncMock(
             return_value=ChatResponse(
                 content="Response from Provider B",
                 model="gpt-3.5-turbo",
@@ -66,7 +67,7 @@ class TestProviderFailover:
     ):
         """Test automatic failover when primary provider fails."""
         # Configure provider A to fail
-        mock_provider_a.chat.side_effect = ProviderError(
+        mock_provider_a.complete.side_effect = ProviderError(
             "Service unavailable", provider="provider_a"
         )
 
@@ -79,9 +80,8 @@ class TestProviderFailover:
 
         # Make a request
         messages = [ChatMessage(role="user", content="Hello")]
-        response = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response = await orchestrator.complete(request)
 
         # Should have failed over to provider B
         assert response.content == "Response from Provider B"
@@ -94,7 +94,7 @@ class TestProviderFailover:
     ):
         """Test circuit breaker activates after multiple failures."""
         # Configure provider A to always fail
-        mock_provider_a.chat.side_effect = ProviderError(
+        mock_provider_a.complete.side_effect = ProviderError(
             "Persistent error", provider="provider_a"
         )
 
@@ -108,7 +108,8 @@ class TestProviderFailover:
         for _ in range(6):  # Threshold is 5
             messages = [ChatMessage(role="user", content="Test")]
             try:
-                await orchestrator.chat(messages=messages, model="gpt-3.5-turbo")
+                request = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+                await orchestrator.complete(request)
             except ProviderError:
                 pass
 
@@ -118,9 +119,8 @@ class TestProviderFailover:
 
         # Future requests should go directly to provider B
         messages = [ChatMessage(role="user", content="Hello")]
-        response = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response = await orchestrator.complete(request)
         assert response.provider == "provider_b"
 
     @pytest.mark.asyncio
@@ -142,7 +142,7 @@ class TestProviderFailover:
                 cached=False,
             )
 
-        mock_provider_a.chat = AsyncMock(side_effect=rate_limited_then_success)
+        mock_provider_a.complete = AsyncMock(side_effect=rate_limited_then_success)
 
         orchestrator = ProviderOrchestrator(
             providers=[mock_provider_a, mock_provider_b],
@@ -150,9 +150,8 @@ class TestProviderFailover:
         )
 
         messages = [ChatMessage(role="user", content="Test")]
-        response = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response = await orchestrator.complete(request)
 
         # Should retry and succeed
         assert response.content == "Success after retry"
@@ -172,21 +171,18 @@ class TestProviderFailover:
         messages = [ChatMessage(role="user", content="Test")]
 
         # First request should go to provider A
-        response1 = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request1 = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response1 = await orchestrator.complete(request1)
         assert response1.provider == "provider_a"
 
         # Second request should go to provider B
-        response2 = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request2 = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response2 = await orchestrator.complete(request2)
         assert response2.provider == "provider_b"
 
         # Third request should go back to provider A
-        response3 = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request3 = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response3 = await orchestrator.complete(request3)
         assert response3.provider == "provider_a"
 
     @pytest.mark.asyncio
@@ -206,7 +202,8 @@ class TestProviderFailover:
         messages = [ChatMessage(role="user", content="Test")]
 
         with pytest.raises(ProviderError) as exc_info:
-            await orchestrator.chat(messages=messages, model="gpt-3.5-turbo")
+            request = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+            await orchestrator.complete(request)
 
         assert "No healthy providers available" in str(exc_info.value)
 
@@ -230,21 +227,19 @@ class TestProviderFailover:
         messages = [ChatMessage(role="user", content="Test")]
 
         # Request for GPT model should go to provider A
-        response1 = await orchestrator.chat(
-            messages=messages, model="gpt-3.5-turbo"
-        )
+        request1 = CompletionRequest(messages=messages, model="gpt-3.5-turbo")
+        response1 = await orchestrator.complete(request1)
         assert response1.provider == "provider_a"
 
         # Request for Claude model should go to provider B
-        mock_provider_b.chat.return_value = ChatResponse(
+        mock_provider_b.complete.return_value = ChatResponse(
             content="Claude response",
             model="claude-3-haiku",
             provider="provider_b",
             cached=False,
         )
-        response2 = await orchestrator.chat(
-            messages=messages, model="claude-3-haiku"
-        )
+        request2 = CompletionRequest(messages=messages, model="claude-3-haiku")
+        response2 = await orchestrator.complete(request2)
         assert response2.provider == "provider_b"
 
     @pytest.mark.asyncio
@@ -261,7 +256,7 @@ class TestProviderFailover:
 
         # Send multiple concurrent requests
         tasks = [
-            orchestrator.chat(messages=messages, model="gpt-3.5-turbo")
+            orchestrator.complete(CompletionRequest(messages=messages, model="gpt-3.5-turbo"))
             for _ in range(10)
         ]
         responses = await asyncio.gather(*tasks)

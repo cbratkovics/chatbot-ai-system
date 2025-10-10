@@ -9,6 +9,7 @@ import pytest
 from httpx import AsyncClient
 
 
+@pytest.mark.skip(reason="E2E tests require running server on localhost:8000")
 class TestFailoverScenarios:
     """Test suite for system failover scenarios."""
 

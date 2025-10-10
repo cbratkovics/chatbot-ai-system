@@ -17,17 +17,22 @@ class TestCacheOperations:
     @pytest.fixture
     async def redis_cache(self, mock_redis):
         """Create Redis cache instance with mock."""
-        cache = RedisCache(redis_client=mock_redis)
+        cache = RedisCache(redis_url="redis://localhost:6379/0")
+        # Set the client directly for testing
+        cache.client = mock_redis
+        cache._connected = True
         return cache
 
     @pytest.fixture
     async def semantic_cache(self, mock_redis):
         """Create semantic cache instance."""
         cache = SemanticCache(
-            redis_client=mock_redis,
+            redis_url="redis://localhost:6379/0",
             similarity_threshold=0.85,
-            max_cache_size=1000,
+            max_entries=1000,
         )
+        # Set the client directly for testing
+        cache.redis_client = mock_redis
         return cache
 
     @pytest.mark.asyncio

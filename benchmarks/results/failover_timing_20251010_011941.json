@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-10-10T01:22:48.386640",
+  "timestamp": "2025-10-10T01:19:46.289125",
   "test_environment": {
     "python_version": "3.11",
     "async_framework": "asyncio",
@@ -15,10 +15,10 @@
       "failure_type": "timeout",
       "runs": 10,
       "successful_runs": 10,
-      "avg_failover_ms": 263.43477310147136,
-      "min_failover_ms": 262.60474000446266,
-      "max_failover_ms": 263.91901400347706,
-      "p95_failover_ms": 263.91901400347706,
+      "avg_failover_ms": 262.3214873005054,
+      "min_failover_ms": 261.6297839995241,
+      "max_failover_ms": 263.48139999754494,
+      "p95_failover_ms": 263.48139999754494,
       "meets_isolated_threshold": true,
       "meets_load_threshold": true
     },
@@ -27,10 +27,10 @@
       "failure_type": "rate_limit",
       "runs": 10,
       "successful_runs": 10,
-      "avg_failover_ms": 114.29576730006374,
-      "min_failover_ms": 113.30331199860666,
-      "max_failover_ms": 114.90987500292249,
-      "p95_failover_ms": 114.90987500292249,
+      "avg_failover_ms": 113.0511581992323,
+      "min_failover_ms": 112.1357989977696,
+      "max_failover_ms": 114.26906899578171,
+      "p95_failover_ms": 114.26906899578171,
       "meets_isolated_threshold": true,
       "meets_load_threshold": true
     },
@@ -39,10 +39,10 @@
       "failure_type": "server_error",
       "runs": 10,
       "successful_runs": 10,
-      "avg_failover_ms": 113.8450130019919,
-      "min_failover_ms": 112.36469400319038,
-      "max_failover_ms": 114.89245100528933,
-      "p95_failover_ms": 114.89245100528933,
+      "avg_failover_ms": 112.81791669971426,
+      "min_failover_ms": 111.6355560006923,
+      "max_failover_ms": 113.60929899819894,
+      "p95_failover_ms": 113.60929899819894,
       "meets_isolated_threshold": true,
       "meets_load_threshold": true
     }

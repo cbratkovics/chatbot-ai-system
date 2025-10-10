@@ -47,7 +47,7 @@ async def status():
 
     # Check cache connectivity if available
     try:
-        from chatbot_ai_system.cache import cache
+        from chatbot_ai_system.core.cache import cache
 
         test_key = "health:check"
         await cache.set(test_key, "ok", ttl=10)

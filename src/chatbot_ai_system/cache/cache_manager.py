@@ -4,9 +4,9 @@ import logging
 import time
 from uuid import UUID
 
-from chatbot_ai_system.cache.semantic_cache import SemanticCache
-from chatbot_ai_system.providers.orchestrator import ProviderOrchestrator
-from chatbot_ai_system.providers.base import CompletionRequest, CompletionResponse
+from chatbot_ai_system.core.cache.semantic_cache import SemanticCache
+from chatbot_ai_system.core.models.orchestrator import ProviderOrchestrator
+from chatbot_ai_system.core.models.base import CompletionRequest, CompletionResponse
 
 logger = logging.getLogger(__name__)
 

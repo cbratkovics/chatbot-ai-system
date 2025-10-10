@@ -146,7 +146,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         tier_limits = self._get_tier_limits(tier)
 
         # Check rate limits from cache
-        from chatbot_ai_system.api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         cache = CacheManager()
 
@@ -190,7 +190,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
         """
         try:
             # Track in cache for real-time analytics
-            from chatbot_ai_system.api.core.cache.cache_manager import CacheManager
+            from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
             cache = CacheManager()
 
@@ -330,7 +330,7 @@ class TenantContextManager:
         Returns:
             Usage statistics
         """
-        from chatbot_ai_system.api.core.cache.cache_manager import CacheManager
+        from chatbot_ai_system.core.cache.cache_manager import CacheManager
 
         cache = CacheManager()
 

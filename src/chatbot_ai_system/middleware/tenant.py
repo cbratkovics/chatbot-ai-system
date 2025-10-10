@@ -7,7 +7,7 @@ from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ...config import settings
+from chatbot_ai_system.config.settings import settings
 
 logger = structlog.get_logger()
 

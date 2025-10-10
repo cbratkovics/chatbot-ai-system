@@ -23,7 +23,7 @@ def get_engine() -> Engine:
                 raise ValueError("DATABASE_URL is required but not set")
         else:
             database_url = settings.database_url
-        
+
         _engine = create_engine(
             database_url,
             echo=settings.is_development,
@@ -39,11 +39,7 @@ def get_session_factory() -> sessionmaker:
     """Get or create session factory (lazy initialization)."""
     global _SessionLocal
     if _SessionLocal is None:
-        _SessionLocal = sessionmaker(
-            autocommit=False, 
-            autoflush=False, 
-            bind=get_engine()
-        )
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
     return _SessionLocal
 
 
@@ -52,7 +48,7 @@ def get_session_factory() -> sessionmaker:
 class _LazyEngine:
     def __getattr__(self, name):
         return getattr(get_engine(), name)
-    
+
     def __repr__(self):
         return repr(get_engine())
 
@@ -60,7 +56,7 @@ class _LazyEngine:
 class _LazySessionLocal:
     def __call__(self, *args, **kwargs):
         return get_session_factory()(*args, **kwargs)
-    
+
     def __getattr__(self, name):
         return getattr(get_session_factory(), name)
 

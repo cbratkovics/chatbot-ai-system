@@ -26,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 async def root():
     """Root endpoint."""
@@ -34,8 +35,9 @@ async def root():
         "version": "1.0.0",
         "status": "operational",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
+
 
 @app.get("/health")
 async def health():
@@ -47,13 +49,10 @@ async def health():
             "service": "chatbot-ai-system",
             "version": "1.0.0",
             "environment": os.getenv("ENVIRONMENT", "development"),
-            "checks": {
-                "api": True,
-                "database": True,
-                "cache": True
-            }
-        }
+            "checks": {"api": True, "database": True, "cache": True},
+        },
     )
+
 
 @app.get("/api/v1/models")
 async def list_models():
@@ -63,9 +62,10 @@ async def list_models():
             {"provider": "openai", "model": "gpt-3.5-turbo", "status": "available"},
             {"provider": "openai", "model": "gpt-4", "status": "available"},
             {"provider": "anthropic", "model": "claude-3-haiku-20240307", "status": "available"},
-            {"provider": "anthropic", "model": "claude-3-sonnet", "status": "available"}
+            {"provider": "anthropic", "model": "claude-3-sonnet", "status": "available"},
         ]
     }
+
 
 @app.post("/api/v1/chat/completions")
 async def chat_completion(request: dict):
@@ -75,21 +75,21 @@ async def chat_completion(request: dict):
         "object": "chat.completion",
         "created": 1677652288,
         "model": request.get("model", "gpt-3.5-turbo"),
-        "choices": [{
-            "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": "This is a demo response from the AI Chatbot System."
-            },
-            "finish_reason": "stop"
-        }],
-        "usage": {
-            "prompt_tokens": 10,
-            "completion_tokens": 20,
-            "total_tokens": 30
-        }
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "This is a demo response from the AI Chatbot System.",
+                },
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
     }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

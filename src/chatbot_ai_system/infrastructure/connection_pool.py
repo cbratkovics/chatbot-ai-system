@@ -154,7 +154,9 @@ class ConnectionPool(Generic[T]):
         """Create a new connection"""
         try:
             if asyncio.iscoroutinefunction(self.factory):
-                conn: T = await asyncio.wait_for(self.factory(), timeout=self.config.connection_timeout)
+                conn: T = await asyncio.wait_for(
+                    self.factory(), timeout=self.config.connection_timeout
+                )
             else:
                 conn = self.factory()
             self.active_connections += 1

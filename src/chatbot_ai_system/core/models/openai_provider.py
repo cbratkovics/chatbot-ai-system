@@ -60,7 +60,7 @@ class OpenAIProvider:
         try:
             if self.client is None:
                 raise ValueError("OpenAI client not initialized")
-                
+
             model = request.get("model", "gpt-3.5-turbo")
             messages = request.get(
                 "messages", [{"role": "user", "content": request.get("message", "")}]
@@ -109,7 +109,7 @@ class OpenAIProvider:
             if stream:
                 yield stream
             return
-            
+
         async for chunk in stream:
             # Check if chunk is already a dict (e.g., from mock)
             if isinstance(chunk, dict):
@@ -138,7 +138,7 @@ class OpenAIProvider:
                 wait_time = 2**attempt
                 logger.warning(f"Retry {attempt + 1}/{self.max_retries} after {wait_time}s")
                 await asyncio.sleep(wait_time)
-        
+
         # This should never be reached due to the raise in the except block
         raise RuntimeError("Retry loop completed without returning")
 

@@ -54,7 +54,9 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         BaseProvider.__init__(self, api_key, timeout, max_retries)
         StreamingOpenAIMixin.__init__(self, chunk_size=10)
         self.client = AsyncOpenAI(
-            api_key=api_key, timeout=timeout, max_retries=0  # We handle retries ourselves
+            api_key=api_key,
+            timeout=timeout,
+            max_retries=0,  # We handle retries ourselves
         )
 
     async def chat(
@@ -92,7 +94,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         for msg in messages:
             message_dict: ChatCompletionMessageParam = {
                 "role": cast(Any, msg.role),  # Cast to satisfy type checker
-                "content": msg.content
+                "content": msg.content,
             }
             openai_messages.append(message_dict)
 
@@ -113,7 +115,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
                     "temperature": temperature,
                     "stream": kwargs.get("stream", False),
                 }
-                
+
                 if max_tokens:
                     create_kwargs["max_tokens"] = max_tokens
                 if "top_p" in kwargs:
@@ -132,7 +134,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
                     create_kwargs["user"] = kwargs["user"]
                 if "seed" in kwargs:
                     create_kwargs["seed"] = kwargs["seed"]
-                    
+
                 response = await self.client.chat.completions.create(**create_kwargs)
 
                 # Calculate duration
@@ -256,7 +258,7 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
         # If we get here, all retries failed
         if last_error:
             raise ProviderError(f"All retry attempts failed: {str(last_error)}", provider="openai")
-        
+
         # This should never be reached, but satisfies type checker
         raise ProviderError("Failed to get response from OpenAI", provider="openai")
 
@@ -282,12 +284,14 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
             AsyncIterator[StreamChunk]: Stream of response chunks
         """
         # Delegate to the mixin's stream_chat method and convert chunk types
-        async for mixin_chunk in self.stream_chat(messages, model, temperature, max_tokens, **kwargs):
+        async for mixin_chunk in self.stream_chat(
+            messages, model, temperature, max_tokens, **kwargs
+        ):
             # Convert streaming_mixin.StreamChunk to base.StreamChunk
             base_chunk = StreamChunk(
                 content=mixin_chunk.content,
                 is_final=mixin_chunk.is_final,
-                usage=None  # Usage handled separately if needed
+                usage=None,  # Usage handled separately if needed
             )
             yield base_chunk
 

@@ -61,20 +61,28 @@ class CacheManager:
     async def get_statistics(self):
         # Get Redis info from the mock
         if hasattr(self.redis_client, "info"):
-            info = await self.redis_client.info() if callable(self.redis_client.info) else self.redis_client.info.return_value
+            info = (
+                await self.redis_client.info()
+                if callable(self.redis_client.info)
+                else self.redis_client.info.return_value
+            )
         else:
             info = {}
-        
+
         # Calculate hit rate from Redis stats
         hits = info.get("hits", 0)
         misses = info.get("misses", 0)
         total_requests = hits + misses
         hit_rate = hits / total_requests if total_requests > 0 else 0
-        
+
         # Calculate memory usage
         memory_usage_mb = info.get("used_memory", 0) / (1024 * 1024)
-        
-        return {"hit_rate": hit_rate, "memory_usage_mb": memory_usage_mb, "total_requests": total_requests}
+
+        return {
+            "hit_rate": hit_rate,
+            "memory_usage_mb": memory_usage_mb,
+            "total_requests": total_requests,
+        }
 
     async def clear_all(self):
         await self.redis_client.flushdb()

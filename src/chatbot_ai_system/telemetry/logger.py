@@ -85,6 +85,7 @@ def setup_logging(
 
     # Configure structlog processors
     from typing import List, Any, Callable
+
     processors: List[Callable[..., Any]] = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,

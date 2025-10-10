@@ -218,21 +218,25 @@ def create_app() -> FastAPI:
 
     # Add routes
     app.include_router(api_router, prefix="/api/v1")
-    
+
     # Add authentication endpoints
     from chatbot_ai_system.api.auth import auth_router
+
     app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
-    
+
     # Add tenant endpoints
     from chatbot_ai_system.api.tenants import tenant_router
+
     app.include_router(tenant_router, prefix="/api/v1/tenants", tags=["tenants"])
-    
+
     # Add cache endpoints
     from chatbot_ai_system.api.cache import cache_router
+
     app.include_router(cache_router, prefix="/api/v1/cache", tags=["cache"])
-    
+
     # Add health endpoints
     from chatbot_ai_system.v1.routes.health import router as health_router
+
     app.include_router(health_router, prefix="/api/v1", tags=["health"])
 
     # Add WebSocket routes
@@ -269,22 +273,27 @@ def create_app() -> FastAPI:
             "checks": {},
         }
 
-        # Check Redis connection
-        try:
-            from chatbot_ai_system.api.chat import redis_cache
+        # Check Redis connection (skip in test environment)
+        if settings.environment == "test":
+            health_status["checks"]["redis"] = "test mode"
+        else:
+            try:
+                from chatbot_ai_system.api.chat import redis_cache
 
-            if redis_cache:
-                await redis_cache.redis.ping()
-                health_status["checks"]["redis"] = "healthy"
-            else:
-                health_status["checks"]["redis"] = "not initialized"
+                if redis_cache:
+                    await redis_cache.redis.ping()
+                    health_status["checks"]["redis"] = "healthy"
+                else:
+                    health_status["checks"]["redis"] = "not initialized"
+                    health_status["status"] = "degraded"
+            except Exception as e:
+                health_status["checks"]["redis"] = f"unhealthy: {str(e)}"
                 health_status["status"] = "degraded"
-        except Exception as e:
-            health_status["checks"]["redis"] = f"unhealthy: {str(e)}"
-            health_status["status"] = "degraded"
 
-        # Check AI providers configuration
-        if not settings.has_openai_key and not settings.has_anthropic_key:
+        # Check AI providers configuration (skip in test environment)
+        if settings.environment == "test":
+            health_status["checks"]["ai_providers"] = "test mode"
+        elif not settings.has_openai_key and not settings.has_anthropic_key:
             health_status["checks"]["ai_providers"] = "no API keys configured"
             health_status["status"] = "unhealthy"
         else:

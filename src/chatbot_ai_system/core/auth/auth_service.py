@@ -202,12 +202,17 @@ class AuthService:
             if hasattr(self.db, "_is_mock") and hasattr(self.db, "execute"):
                 # This is a mock database with execute method (unit test)
                 from sqlalchemy import text
-                result = await self.db.execute(text("SELECT * FROM api_keys WHERE key_hash = :key_hash"), {"key_hash": key_hash})
+
+                result = await self.db.execute(
+                    text("SELECT * FROM api_keys WHERE key_hash = :key_hash"),
+                    {"key_hash": key_hash},
+                )
             elif not hasattr(self.db, "execute"):
                 # This is a simplified mock without execute
-                if hasattr(self.db, 'get_api_key'):
+                if hasattr(self.db, "get_api_key"):
                     # Check if it's an async function
                     import inspect
+
                     if inspect.iscoroutinefunction(self.db.get_api_key):
                         result = await self.db.get_api_key(key_hash)
                     else:
@@ -217,6 +222,7 @@ class AuthService:
                     class MockResult:
                         def scalar_one_or_none(self):
                             return None
+
                     result = MockResult()
             else:
                 from sqlalchemy import select

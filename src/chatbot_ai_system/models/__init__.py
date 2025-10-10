@@ -11,6 +11,7 @@ try:
         Tenant,
         User,
     )
+
     # Alias for compatibility
     Chat = Conversation
 except ImportError:

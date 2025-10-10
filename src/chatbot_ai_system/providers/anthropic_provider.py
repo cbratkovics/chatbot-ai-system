@@ -52,7 +52,9 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
         BaseProvider.__init__(self, api_key, timeout, max_retries)
         StreamingAnthropicMixin.__init__(self, chunk_size=10)
         self.client = AsyncAnthropic(
-            api_key=api_key, timeout=timeout, max_retries=0  # We handle retries ourselves
+            api_key=api_key,
+            timeout=timeout,
+            max_retries=0,  # We handle retries ourselves
         )
 
     async def chat(
@@ -141,7 +143,7 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
                     top_p=kwargs.get("top_p", None),
                     top_k=kwargs.get("top_k", None),
                     stop_sequences=kwargs.get("stop_sequences", None),
-                    metadata=kwargs.get("metadata", None)
+                    metadata=kwargs.get("metadata", None),
                 )
 
                 # Calculate duration
@@ -265,7 +267,7 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
             raise ProviderError(
                 f"All retry attempts failed: {str(last_error)}", provider="anthropic"
             )
-        
+
         # This should never be reached, but satisfies type checker
         raise ProviderError("Failed to get response from Anthropic", provider="anthropic")
 
@@ -291,12 +293,14 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
             AsyncIterator[StreamChunk]: Stream of response chunks
         """
         # Delegate to the mixin's stream_chat method and convert chunk types
-        async for mixin_chunk in self.stream_chat(messages, model, temperature, max_tokens, **kwargs):
+        async for mixin_chunk in self.stream_chat(
+            messages, model, temperature, max_tokens, **kwargs
+        ):
             # Convert streaming_mixin.StreamChunk to base.StreamChunk
             base_chunk = StreamChunk(
                 content=mixin_chunk.content,
                 is_final=mixin_chunk.is_final,
-                usage=None  # Usage handled separately if needed
+                usage=None,  # Usage handled separately if needed
             )
             yield base_chunk
 

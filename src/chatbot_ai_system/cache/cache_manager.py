@@ -26,9 +26,7 @@ class CacheManager:
 
         logger.info(f"Cache manager initialized (enabled: {cache_enabled})")
 
-    async def complete_with_cache(
-        self, request: CompletionRequest
-    ) -> CompletionResponse:
+    async def complete_with_cache(self, request: CompletionRequest) -> CompletionResponse:
         """Complete request with caching support."""
         # Extract query from messages
         query = self._extract_query(request)
@@ -54,9 +52,7 @@ class CacheManager:
                 usage=None,  # Would need to store usage in cache
                 cached=True,
                 similarity_score=(
-                    cached_response.embedding.vector[0]
-                    if cached_response.embedding
-                    else None
+                    cached_response.embedding.vector[0] if cached_response.embedding else None
                 ),
             )
 

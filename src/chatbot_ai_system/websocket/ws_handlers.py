@@ -389,7 +389,7 @@ class MessageHandler:
         self, websocket: WebSocket, message: WebSocketMessage, connection_id: str, **kwargs
     ) -> WebSocketMessage:
         """Handle authentication request.
-        
+
         Currently implements mock authentication for demo purposes.
         Production implementation would validate JWT tokens.
         """
@@ -400,7 +400,7 @@ class MessageHandler:
             data={
                 "status": "authenticated",
                 "message": "Demo authentication successful",
-                "note": "Production would validate JWT tokens"
+                "note": "Production would validate JWT tokens",
             },
         )
 

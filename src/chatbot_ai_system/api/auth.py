@@ -20,36 +20,40 @@ async def login(request: AuthRequest):
         if request.api_key == settings.api_key or request.api_key == "test-api-key":
             token = jwt.encode(
                 {"sub": "api_user", "exp": int(time.time()) + 3600},
-                settings.jwt_secret_key.get_secret_value() if settings.jwt_secret_key else "test-secret",
-                algorithm="HS256"
+                settings.jwt_secret_key.get_secret_value()
+                if settings.jwt_secret_key
+                else "test-secret",
+                algorithm="HS256",
             )
             return AuthResponse(access_token=token, expires_in=3600)
     elif request.username and request.password:
         # Username/password authentication (mock)
-        if (request.username == "test" and request.password == "test") or \
-           (request.username == "testuser" and request.password == "testpass123"):
+        if (request.username == "test" and request.password == "test") or (
+            request.username == "testuser" and request.password == "testpass123"
+        ):
             token = jwt.encode(
                 {"sub": request.username, "exp": int(time.time()) + 3600},
-                settings.jwt_secret_key.get_secret_value() if settings.jwt_secret_key else "test-secret",
-                algorithm="HS256"
+                settings.jwt_secret_key.get_secret_value()
+                if settings.jwt_secret_key
+                else "test-secret",
+                algorithm="HS256",
             )
             # Include refresh_token for compatibility with tests
             refresh_token = jwt.encode(
                 {"sub": request.username, "exp": int(time.time()) + 7200, "type": "refresh"},
-                settings.jwt_secret_key.get_secret_value() if settings.jwt_secret_key else "test-secret",
-                algorithm="HS256"
+                settings.jwt_secret_key.get_secret_value()
+                if settings.jwt_secret_key
+                else "test-secret",
+                algorithm="HS256",
             )
             return {
                 "access_token": token,
                 "refresh_token": refresh_token,
                 "token_type": "bearer",
-                "expires_in": 3600
+                "expires_in": 3600,
             }
-    
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid credentials"
-    )
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 @auth_router.post("/refresh", response_model=AuthResponse)
@@ -57,29 +61,29 @@ async def refresh(credentials: Optional[HTTPAuthorizationCredentials] = Depends(
     """Refresh token endpoint."""
     if not credentials:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No authorization token provided"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="No authorization token provided"
         )
-    
+
     # Mock token refresh
     try:
         payload = jwt.decode(
             credentials.credentials,
-            settings.jwt_secret_key.get_secret_value() if settings.jwt_secret_key else "test-secret",
-            algorithms=["HS256"]
+            settings.jwt_secret_key.get_secret_value()
+            if settings.jwt_secret_key
+            else "test-secret",
+            algorithms=["HS256"],
         )
         # Generate new token
         new_token = jwt.encode(
             {"sub": payload.get("sub"), "exp": int(time.time()) + 3600},
-            settings.jwt_secret_key.get_secret_value() if settings.jwt_secret_key else "test-secret",
-            algorithm="HS256"
+            settings.jwt_secret_key.get_secret_value()
+            if settings.jwt_secret_key
+            else "test-secret",
+            algorithm="HS256",
         )
         return AuthResponse(access_token=new_token, expires_in=3600)
     except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 
 @auth_router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -94,15 +98,14 @@ async def create_api_key(credentials: Optional[HTTPAuthorizationCredentials] = D
     """Create API key endpoint."""
     # Mock API key creation
     import secrets
-    return {
-        "key": f"sk-{secrets.token_urlsafe(32)}",
-        "created_at": time.time(),
-        "name": "test-key"
-    }
+
+    return {"key": f"sk-{secrets.token_urlsafe(32)}", "created_at": time.time(), "name": "test-key"}
 
 
 @auth_router.delete("/api-keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_api_key(key_id: str, credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)):
+async def delete_api_key(
+    key_id: str, credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+):
     """Delete API key endpoint."""
     # Mock API key deletion
     return

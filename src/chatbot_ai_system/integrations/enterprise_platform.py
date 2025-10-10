@@ -141,6 +141,7 @@ class WebhookDelivery:
 # SQLAlchemy models
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy models."""
+
     pass
 
 
@@ -653,14 +654,14 @@ class EnterpriseIntegrationPlatform:
             """Wrapper for webhook delivery"""
             webhook_data = {
                 "webhook_id": webhook_id,
-                "event": event, 
+                "event": event,
                 "payload": payload,
                 "delivery_id": f"delivery_{webhook_id}_{event}",
                 "url": "",  # This should be populated from webhook configuration
-                "secret": ""  # This should be populated from webhook configuration
+                "secret": "",  # This should be populated from webhook configuration
             }
             await self._deliver_webhook(webhook_data)
-        
+
         @self.celery.task
         def deliver_webhook(webhook_id: str, event: str, payload: dict[str, Any]):
             """Celery task for webhook delivery"""
@@ -846,17 +847,17 @@ class EnterpriseIntegrationPlatform:
 
                     if delivery:
                         update_data: dict[str, Any] = {
-                            'status_code': response.status_code,
-                            'response_body': response.text[:1000],  # Limit size
-                            'attempts': delivery.attempts + 1
+                            "status_code": response.status_code,
+                            "response_body": response.text[:1000],  # Limit size
+                            "attempts": delivery.attempts + 1,
                         }
 
                         if 200 <= response.status_code < 300:
-                            update_data['delivered_at'] = datetime.now(UTC)
-                            update_data['failed'] = False
+                            update_data["delivered_at"] = datetime.now(UTC)
+                            update_data["failed"] = False
                         else:
-                            update_data['failed'] = True
-                            update_data['error_message'] = f"HTTP {response.status_code}"
+                            update_data["failed"] = True
+                            update_data["error_message"] = f"HTTP {response.status_code}"
 
                         db.query(WebhookDeliveryLog).filter(
                             WebhookDeliveryLog.id == delivery_id
@@ -883,11 +884,9 @@ class EnterpriseIntegrationPlatform:
                 if delivery:
                     db.query(WebhookDeliveryLog).filter(
                         WebhookDeliveryLog.id == webhook_data["delivery_id"]
-                    ).update({
-                        'failed': True,
-                        'error_message': str(e),
-                        'attempts': delivery.attempts + 1
-                    })
+                    ).update(
+                        {"failed": True, "error_message": str(e), "attempts": delivery.attempts + 1}
+                    )
                     db.commit()
 
             finally:

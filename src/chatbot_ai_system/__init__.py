@@ -1,10 +1,10 @@
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __author__ = "Christopher Bratkovics"
 
 
 def get_version():
-    return "1.0.0"  # For backward compatibility in tests
+    return "1.1.0"
 
 
 class ChatbotClient:

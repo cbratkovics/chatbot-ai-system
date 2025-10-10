@@ -58,7 +58,7 @@ class AnthropicProvider:
         try:
             if self.client is None:
                 raise ValueError("Anthropic client not initialized")
-                
+
             model = self._map_model_name(request.get("model", "claude-3-sonnet"))
             messages = self.format_messages(
                 request.get("messages", [{"role": "user", "content": request.get("message", "")}])
@@ -104,7 +104,7 @@ class AnthropicProvider:
             if stream:
                 yield self._format_stream_chunk(stream)
             return
-            
+
         async for chunk in stream:
             yield self._format_stream_chunk(chunk)
 

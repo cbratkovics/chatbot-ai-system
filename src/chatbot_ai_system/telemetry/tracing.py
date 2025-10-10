@@ -39,7 +39,7 @@ class TracingManager:
 
     def __init__(self) -> None:
         """Initialize tracing manager."""
-        self.enabled = getattr(settings, 'JAEGER_ENABLED', False)
+        self.enabled = getattr(settings, "JAEGER_ENABLED", False)
         self.tracer = None
         self._active_spans: Dict[str, SpanContext] = {}
 
@@ -51,16 +51,16 @@ class TracingManager:
         try:
             resource = Resource.create(
                 {
-                    "service.name": getattr(settings, 'JAEGER_SERVICE_NAME', 'chatbot-ai-system'),
-                    "service.version": getattr(settings, 'VERSION', '1.0.0'),
+                    "service.name": getattr(settings, "JAEGER_SERVICE_NAME", "chatbot-ai-system"),
+                    "service.version": getattr(settings, "VERSION", "1.0.0"),
                 }
             )
 
             provider = TracerProvider(resource=resource)
 
             jaeger_exporter = JaegerExporter(
-                agent_host_name=getattr(settings, 'JAEGER_AGENT_HOST', 'localhost'),
-                agent_port=getattr(settings, 'JAEGER_AGENT_PORT', 6831),
+                agent_host_name=getattr(settings, "JAEGER_AGENT_HOST", "localhost"),
+                agent_port=getattr(settings, "JAEGER_AGENT_PORT", 6831),
             )
 
             provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
@@ -69,8 +69,8 @@ class TracingManager:
             self.tracer = trace.get_tracer(__name__)
             logger.info(
                 "Tracing initialized",
-                host=getattr(settings, 'JAEGER_AGENT_HOST', 'localhost'),
-                port=getattr(settings, 'JAEGER_AGENT_PORT', 6831),
+                host=getattr(settings, "JAEGER_AGENT_HOST", "localhost"),
+                port=getattr(settings, "JAEGER_AGENT_PORT", 6831),
             )
         except Exception as e:
             logger.error("Failed to initialize tracing", error=str(e))
@@ -105,7 +105,7 @@ class TracingManager:
                         for key, value in tags.items():
                             span.set_attribute(key, str(value))
 
-                    if hasattr(span_context, 'span'):
+                    if hasattr(span_context, "span"):
                         span_context.span = span
                     yield span_context
             else:

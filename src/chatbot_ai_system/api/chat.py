@@ -72,7 +72,7 @@ class ChatCompletionRequest(BaseModel):
             "example": {
                 "messages": [
                     {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "What is the capital of France?"}
+                    {"role": "user", "content": "What is the capital of France?"},
                 ],
                 "model": "gpt-3.5-turbo",
                 "temperature": 0.7,
@@ -107,18 +107,20 @@ class ChatCompletionResponse(BaseModel):
                 "object": "chat.completion",
                 "created": 1711018800,
                 "model": "gpt-3.5-turbo",
-                "choices": [{
-                    "index": 0,
-                    "message": {
-                        "role": "assistant",
-                        "content": "The capital of France is Paris."
-                    },
-                    "finish_reason": "stop"
-                }],
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": "The capital of France is Paris.",
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 15, "total_tokens": 25},
                 "cached": False,
                 "cache_key": "chat:v1:gpt-3.5-turbo:abc123...",
-                "similarity_score": None
+                "similarity_score": None,
             }
         }
 
@@ -164,7 +166,7 @@ class ProviderFactory:
         # Handle "default" model
         if model == "default":
             model = settings.default_model
-        
+
         # Determine provider from model
         provider_name = cls.MODEL_PROVIDER_MAP.get(model)
 
@@ -185,7 +187,7 @@ class ProviderFactory:
                 )
             if not settings.openai_api_key:
                 raise ValueError("OpenAI API key not configured")
-            
+
             return OpenAIProvider(
                 api_key=settings.openai_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
@@ -201,7 +203,7 @@ class ProviderFactory:
                 )
             if not settings.anthropic_api_key:
                 raise ValueError("Anthropic API key not configured")
-            
+
             return AnthropicProvider(
                 api_key=settings.anthropic_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
@@ -260,7 +262,7 @@ async def chat_completion(
         model_name = request.model
         if model_name == "default":
             model_name = settings.default_model
-        
+
         # Create provider
         provider = ProviderFactory.create_provider(model_name, settings)
 
@@ -296,18 +298,17 @@ async def chat_completion(
             id=response.request_id,
             created=int(datetime.utcnow().timestamp()),
             model=response.model,
-            choices=[{
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": response.content
-                },
-                "finish_reason": "stop"
-            }],
+            choices=[
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": response.content},
+                    "finish_reason": "stop",
+                }
+            ],
             usage=response.usage,
             cached=response.cached,
-            cache_key=getattr(response, 'cache_key', None),
-            similarity_score=getattr(response, 'similarity_score', None),
+            cache_key=getattr(response, "cache_key", None),
+            similarity_score=getattr(response, "similarity_score", None),
         )
 
         logger.info(

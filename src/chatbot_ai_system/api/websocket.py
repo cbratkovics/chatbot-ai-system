@@ -55,7 +55,7 @@ class ProviderFactory:
 
             if not settings.openai_api_key:
                 raise ValueError("OpenAI API key not configured")
-            
+
             return OpenAIProvider(
                 api_key=settings.openai_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
@@ -69,7 +69,7 @@ class ProviderFactory:
 
             if not settings.anthropic_api_key:
                 raise ValueError("Anthropic API key not configured")
-            
+
             return AnthropicProvider(
                 api_key=settings.anthropic_api_key.get_secret_value(),
                 timeout=settings.request_timeout,
@@ -196,7 +196,8 @@ async def websocket_chat_endpoint(
             try:
                 # Receive message with timeout
                 message = await asyncio.wait_for(
-                    ws_manager.receive_message(connection_id), timeout=300.0  # 5 minute timeout
+                    ws_manager.receive_message(connection_id),
+                    timeout=300.0,  # 5 minute timeout
                 )
 
                 if not message:

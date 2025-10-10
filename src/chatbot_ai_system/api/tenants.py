@@ -17,15 +17,15 @@ async def list_tenants():
             name="Default Tenant",
             created_at=datetime.utcnow(),
             rate_limit=100,
-            rate_period=60
+            rate_period=60,
         ),
         TenantInfo(
             id="tenant-2",
             name="Premium Tenant",
             created_at=datetime.utcnow(),
             rate_limit=1000,
-            rate_period=60
-        )
+            rate_period=60,
+        ),
     ]
 
 
@@ -38,7 +38,7 @@ async def get_tenant(tenant_id: str):
             name="Default Tenant",
             created_at=datetime.utcnow(),
             rate_limit=100,
-            rate_period=60
+            rate_period=60,
         )
     elif tenant_id == "tenant-2":
         return TenantInfo(
@@ -46,12 +46,11 @@ async def get_tenant(tenant_id: str):
             name="Premium Tenant",
             created_at=datetime.utcnow(),
             rate_limit=1000,
-            rate_period=60
+            rate_period=60,
         )
     else:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tenant {tenant_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant {tenant_id} not found"
         )
 
 
@@ -59,31 +58,36 @@ async def get_tenant(tenant_id: str):
 async def create_tenant(name: str, rate_limit: int = 100, rate_period: int = 60):
     """Create a new tenant."""
     import uuid
+
     return TenantInfo(
         id=f"tenant-{uuid.uuid4().hex[:8]}",
         name=name,
         created_at=datetime.utcnow(),
         rate_limit=rate_limit,
-        rate_period=rate_period
+        rate_period=rate_period,
     )
 
 
 @tenant_router.put("/{tenant_id}", response_model=TenantInfo)
-async def update_tenant(tenant_id: str, name: str | None = None, rate_limit: int | None = None, rate_period: int | None = None):
+async def update_tenant(
+    tenant_id: str,
+    name: str | None = None,
+    rate_limit: int | None = None,
+    rate_period: int | None = None,
+):
     """Update tenant."""
     if tenant_id not in ["tenant-1", "tenant-2"]:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tenant {tenant_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant {tenant_id} not found"
         )
-    
+
     # Mock update
     return TenantInfo(
         id=tenant_id,
         name=name or "Updated Tenant",
         created_at=datetime.utcnow(),
         rate_limit=rate_limit or 100,
-        rate_period=rate_period or 60
+        rate_period=rate_period or 60,
     )
 
 
@@ -92,7 +96,6 @@ async def delete_tenant(tenant_id: str):
     """Delete tenant."""
     if tenant_id not in ["tenant-1", "tenant-2"]:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tenant {tenant_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Tenant {tenant_id} not found"
         )
     return

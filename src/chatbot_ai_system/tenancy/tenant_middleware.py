@@ -61,9 +61,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 # Track usage for billing
                 tenant_id = tenant_context.get("tenant_id")
                 if tenant_id is not None:
-                    await self._track_request(
-                        tenant_id, request.url.path, request.method
-                    )
+                    await self._track_request(tenant_id, request.url.path, request.method)
 
             # Process request
             response = await call_next(request)

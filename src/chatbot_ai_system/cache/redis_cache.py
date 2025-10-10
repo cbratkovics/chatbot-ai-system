@@ -224,7 +224,7 @@ class RedisCache:
             if not self.client:
                 logger.warning("Redis client not connected")
                 return None
-            
+
             # Try exact match first
             data = await self.client.get(key)
 
@@ -324,7 +324,7 @@ class RedisCache:
             if not self.client:
                 logger.warning("Redis client not connected")
                 return False
-            
+
             ttl = ttl or self.ttl_seconds
             await self.client.setex(key, ttl, compressed_data)
 
@@ -395,7 +395,7 @@ class RedisCache:
             if not self.client:
                 logger.warning("Redis client not connected")
                 return 0
-            
+
             count = 0
 
             # Invalidate specific key
@@ -496,7 +496,7 @@ class RedisCache:
             if not self.client:
                 logger.warning("Redis client not connected")
                 return False
-            
+
             await self.client.flushdb()
             logger.info("Cleared all cache entries")
 

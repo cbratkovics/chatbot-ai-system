@@ -16,7 +16,7 @@ async def get_cache_stats():
         "total_keys": 150,
         "memory_used_mb": 12.5,
         "evictions": 23,
-        "last_reset": datetime.utcnow().isoformat()
+        "last_reset": datetime.utcnow().isoformat(),
     }
 
 
@@ -32,11 +32,9 @@ async def list_cache_keys(pattern: Optional[str] = "*", limit: int = 100):
     """List cache keys."""
     # Mock cache key listing
     return {
-        "keys": [
-            f"chat:session:{i}" for i in range(min(10, limit))
-        ],
+        "keys": [f"chat:session:{i}" for i in range(min(10, limit))],
         "total": 10,
-        "pattern": pattern
+        "pattern": pattern,
     }
 
 
@@ -49,12 +47,11 @@ async def get_cache_entry(key: str):
             "key": key,
             "value": {"messages": [], "created_at": datetime.utcnow().isoformat()},
             "ttl": 3600,
-            "hits": 5
+            "hits": 5,
         }
     else:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Cache key '{key}' not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Cache key '{key}' not found"
         )
 
 
@@ -72,5 +69,5 @@ async def warm_cache(keys: list[str] | None = None):
     return {
         "warmed": len(keys) if keys else 0,
         "status": "completed",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }

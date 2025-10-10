@@ -170,14 +170,14 @@ class StreamingMixin:
         """
         # Use asyncio.Queue for merging
         queue: asyncio.Queue[Tuple[int, Optional[StreamChunk]]] = asyncio.Queue()
-        
+
         # Create tasks for all streams - we'll handle them differently
         # since we can't directly create tasks from async iterators
         async def stream_wrapper(stream: AsyncIterator[StreamChunk], stream_id: int) -> None:
             async for chunk in stream:
                 await queue.put((stream_id, chunk))
             await queue.put((stream_id, None))  # Sentinel
-            
+
         tasks: List[Task[None]] = [
             asyncio.create_task(stream_wrapper(stream, i)) for i, stream in enumerate(streams)
         ]
@@ -270,7 +270,7 @@ class StreamingOpenAIMixin(StreamingMixin):
             request_params.update(kwargs)
 
             # Make streaming request
-            client = getattr(self, 'client', None)
+            client = getattr(self, "client", None)
             if not client:
                 raise ValueError("OpenAI client not initialized")
             stream = await client.chat.completions.create(**request_params)
@@ -373,7 +373,7 @@ class StreamingAnthropicMixin(StreamingMixin):
             request_params.update(kwargs)
 
             # Make streaming request
-            client = getattr(self, 'client', None)
+            client = getattr(self, "client", None)
             if not client:
                 raise ValueError("Anthropic client not initialized")
             async with client.messages.stream(**request_params) as stream:

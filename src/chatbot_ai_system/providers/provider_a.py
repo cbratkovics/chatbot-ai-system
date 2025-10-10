@@ -28,20 +28,20 @@ logger = logging.getLogger(__name__)
 
 class ProviderATokenUsage(TokenUsage):
     """Provider A specific token usage with cost calculation."""
-    
+
     model: str
     config: Any
-    
+
     def __init__(self, prompt_tokens: int, completion_tokens: int, model: str, config: Any):
         # Initialize as Pydantic model
         super().__init__(
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
-            total_tokens=prompt_tokens + completion_tokens
+            total_tokens=prompt_tokens + completion_tokens,
         )
         # Store additional attributes after initialization
-        object.__setattr__(self, 'model', model)
-        object.__setattr__(self, 'config', config)
+        object.__setattr__(self, "model", model)
+        object.__setattr__(self, "config", config)
 
     @property
     def prompt_cost(self) -> float:
@@ -74,7 +74,7 @@ class ProviderATokenUsage(TokenUsage):
 
 class ProviderA(BaseProvider):
     """Provider A implementation with HTTP API integration."""
-    
+
     name: str = "provider_a"
     config: Any
     base_url: str
@@ -83,12 +83,12 @@ class ProviderA(BaseProvider):
 
     def __init__(self, config: Any):
         # Initialize base provider with required parameters
-        api_key = getattr(config, 'api_key', '')
-        timeout = getattr(config, 'timeout', 30)
-        max_retries = getattr(config, 'max_retries', 3)
+        api_key = getattr(config, "api_key", "")
+        timeout = getattr(config, "timeout", 30)
+        max_retries = getattr(config, "max_retries", 3)
         super().__init__(api_key=api_key, timeout=timeout, max_retries=max_retries)
         self.config = config
-        self.base_url = getattr(config, 'base_url', None) or "https://api.providerA.com/v1"
+        self.base_url = getattr(config, "base_url", None) or "https://api.providerA.com/v1"
         self.session = None
 
         # Model mappings
@@ -133,9 +133,7 @@ class ProviderA(BaseProvider):
         error_code = error.get("code")
 
         if status == 401:
-            raise AuthenticationError(
-                f"Authentication failed: {error_message}", provider=self.name
-            )
+            raise AuthenticationError(f"Authentication failed: {error_message}", provider=self.name)
 
         elif status == 429:
             # Extract retry-after from headers or error response
@@ -143,19 +141,13 @@ class ProviderA(BaseProvider):
             if "retry_after" in error:
                 retry_after = int(error["retry_after"])
 
-            raise RateLimitError(
-                f"Rate limit exceeded: {error_message}",
-                provider=self.name
-            )
+            raise RateLimitError(f"Rate limit exceeded: {error_message}", provider=self.name)
 
         elif status == 402:
             raise QuotaExceededError(f"Quota exceeded: {error_message}", provider=self.name)
 
         elif status == 400 and error_code == "model_not_found":
-            raise ModelNotFoundError(
-                f"Model not found: {error_message}",
-                provider=self.name
-            )
+            raise ModelNotFoundError(f"Model not found: {error_message}", provider=self.name)
 
         elif status == 400 and error_type == "policy_violation":
             raise ContentFilterError(
@@ -165,9 +157,7 @@ class ProviderA(BaseProvider):
         else:
             # Generic provider error
             raise ProviderError(
-                f"Provider A API error: {error_message}",
-                provider=self.name,
-                status_code=status
+                f"Provider A API error: {error_message}", provider=self.name, status_code=status
             )
 
     async def chat(
@@ -222,26 +212,19 @@ class ProviderA(BaseProvider):
                         "completion_tokens": usage_data.get("completion_tokens", 0),
                         "total_tokens": usage_data.get("total_tokens", 0),
                     },
-                    finish_reason=choice.get("finish_reason")
+                    finish_reason=choice.get("finish_reason"),
                 )
 
         except aiohttp.ClientError as e:
-            raise ProviderError(
-                f"HTTP client error: {str(e)}",
-                provider=self.name
-            ) from e
+            raise ProviderError(f"HTTP client error: {str(e)}", provider=self.name) from e
 
         except TimeoutError:
             raise ProviderError(
-                f"Request timeout after {getattr(self.config, 'timeout', 30)}s",
-                provider=self.name
+                f"Request timeout after {getattr(self.config, 'timeout', 30)}s", provider=self.name
             ) from None
 
         except json.JSONDecodeError as e:
-            raise ProviderError(
-                f"Invalid JSON response: {str(e)}",
-                provider=self.name
-            ) from e
+            raise ProviderError(f"Invalid JSON response: {str(e)}", provider=self.name) from e
 
     async def stream(  # type: ignore[override]
         self,
@@ -305,9 +288,7 @@ class ProviderA(BaseProvider):
 
                         if content or finish_reason:
                             yield StreamChunk(
-                                content=content,
-                                is_final=bool(finish_reason),
-                                usage=None
+                                content=content, is_final=bool(finish_reason), usage=None
                             )
 
                             chunk_index += 1
@@ -317,21 +298,18 @@ class ProviderA(BaseProvider):
                         continue
 
         except aiohttp.ClientError as e:
-            raise ProviderError(
-                f"Streaming client error: {str(e)}",
-                provider=self.name
-            ) from e
+            raise ProviderError(f"Streaming client error: {str(e)}", provider=self.name) from e
 
         except TimeoutError:
             raise ProviderError(
                 f"Streaming timeout after {getattr(self.config, 'timeout', 30)}s",
-                provider=self.name
+                provider=self.name,
             ) from None
-                        
+
     async def validate_model(self, model: str) -> bool:
         """Validate if a model is supported."""
         return model in self.get_supported_models()
-        
+
     def get_supported_models(self) -> List[str]:
         """Get list of supported models."""
         return list(self.model_mappings.keys())

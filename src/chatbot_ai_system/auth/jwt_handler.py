@@ -19,7 +19,10 @@ class JWTHandler:
     """Handles JWT token creation and verification."""
 
     def __init__(
-        self, secret_key: Optional[str] = None, algorithm: Optional[str] = None, access_token_expire_minutes: Optional[int] = None
+        self,
+        secret_key: Optional[str] = None,
+        algorithm: Optional[str] = None,
+        access_token_expire_minutes: Optional[int] = None,
     ):
         self.secret_key = secret_key or settings.jwt_secret_key
         self.algorithm = algorithm or settings.jwt_algorithm
@@ -102,7 +105,11 @@ jwt_handler = JWTHandler()
 
 
 def create_access_token(
-    user_id: str, tenant_id: str, roles: Optional[List[str]] = None, permissions: Optional[List[str]] = None, **kwargs
+    user_id: str,
+    tenant_id: str,
+    roles: Optional[List[str]] = None,
+    permissions: Optional[List[str]] = None,
+    **kwargs,
 ) -> str:
     """Create access token with user data."""
     data = {

@@ -7,6 +7,7 @@ from uuid import uuid4
 
 class ChatMessage(BaseModel):
     """Chat message model."""
+
     role: str = Field(..., description="Message role (system/user/assistant)")
     content: str = Field(..., description="Message content")
     name: Optional[str] = Field(None, description="Optional name")
@@ -14,6 +15,7 @@ class ChatMessage(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     """Chat completion request model."""
+
     messages: List[ChatMessage] = Field(..., description="List of messages")
     model: str = Field(default="default", description="Model to use")
     temperature: float = Field(default=0.7, ge=0, le=2, description="Sampling temperature")
@@ -29,6 +31,7 @@ class ChatCompletionRequest(BaseModel):
 
 class Choice(BaseModel):
     """Response choice."""
+
     index: int
     message: ChatMessage
     finish_reason: Optional[str] = None
@@ -36,6 +39,7 @@ class Choice(BaseModel):
 
 class Usage(BaseModel):
     """Token usage information."""
+
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
@@ -43,6 +47,7 @@ class Usage(BaseModel):
 
 class ChatCompletionResponse(BaseModel):
     """Chat completion response model."""
+
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid4().hex[:8]}")
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
@@ -56,6 +61,7 @@ class ChatCompletionResponse(BaseModel):
 
 class StreamChoice(BaseModel):
     """Streaming response choice."""
+
     index: int
     delta: Dict[str, Any]
     finish_reason: Optional[str] = None
@@ -63,6 +69,7 @@ class StreamChoice(BaseModel):
 
 class ChatCompletionChunk(BaseModel):
     """Streaming chat completion chunk."""
+
     id: str
     object: str = "chat.completion.chunk"
     created: int
@@ -72,12 +79,14 @@ class ChatCompletionChunk(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response model."""
+
     error: Dict[str, Any]
     status_code: int
 
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     timestamp: datetime
     version: str
@@ -87,6 +96,7 @@ class HealthResponse(BaseModel):
 
 class AuthRequest(BaseModel):
     """Authentication request."""
+
     username: Optional[str] = None
     password: Optional[str] = None
     api_key: Optional[str] = None
@@ -94,6 +104,7 @@ class AuthRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     """Authentication response."""
+
     access_token: str
     token_type: str = "bearer"
     expires_in: Optional[int] = None
@@ -101,6 +112,7 @@ class AuthResponse(BaseModel):
 
 class TenantInfo(BaseModel):
     """Tenant information."""
+
     id: str
     name: str
     created_at: datetime

@@ -67,7 +67,7 @@ async def chat_completion(
 
         # Get tenant_id from request state
         tenant_id = getattr(req.state, "tenant_id", None)
-        
+
         # Convert to internal chat request format
         chat_request = ChatRequest(
             messages=[{"role": msg.role, "content": msg.content} for msg in request.messages],
@@ -95,7 +95,7 @@ async def chat_completion(
         # Format response
         import time
         import uuid
-        
+
         # Convert TokenUsage to dict format
         usage_dict: dict[str, int] = {}
         if response.usage:
@@ -104,20 +104,22 @@ async def chat_completion(
                 "completion_tokens": response.usage.completion_tokens,
                 "total_tokens": response.usage.total_tokens,
             }
-        
+
         # Create choices from response content
-        choices = [{
-            "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": response.content,
-            },
-            "finish_reason": response.finish_reason or "stop",
-        }]
-        
+        choices = [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": response.content,
+                },
+                "finish_reason": response.finish_reason or "stop",
+            }
+        ]
+
         return ChatCompletionResponse(
-            id=getattr(response, 'id', str(uuid.uuid4())),
-            created=getattr(response, 'created', int(time.time())),
+            id=getattr(response, "id", str(uuid.uuid4())),
+            created=getattr(response, "created", int(time.time())),
             model=response.model,
             usage=usage_dict,
             choices=choices,

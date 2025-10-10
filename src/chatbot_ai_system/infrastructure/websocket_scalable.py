@@ -403,18 +403,30 @@ class ScalableWebSocketManager:
             if rate_info:
                 # Handle bytes/string conversion from Redis
                 is_bytes_keys = rate_info and isinstance(next(iter(rate_info.keys()), None), bytes)
-                
+
                 if is_bytes_keys:
                     window_start_val = rate_info.get(b"window_start", b"0")
                     count_val = rate_info.get(b"count", b"0")
-                    window_start = float(window_start_val.decode() if isinstance(window_start_val, bytes) else window_start_val)
-                    connection_count = int(count_val.decode() if isinstance(count_val, bytes) else count_val)
+                    window_start = float(
+                        window_start_val.decode()
+                        if isinstance(window_start_val, bytes)
+                        else window_start_val
+                    )
+                    connection_count = int(
+                        count_val.decode() if isinstance(count_val, bytes) else count_val
+                    )
                 else:
                     # Handle string keys with proper default bytes values
                     window_start_val = rate_info.get(b"window_start", b"0")
                     count_val = rate_info.get(b"count", b"0")
-                    window_start = float(window_start_val.decode() if isinstance(window_start_val, bytes) else window_start_val)
-                    connection_count = int(count_val.decode() if isinstance(count_val, bytes) else count_val)
+                    window_start = float(
+                        window_start_val.decode()
+                        if isinstance(window_start_val, bytes)
+                        else window_start_val
+                    )
+                    connection_count = int(
+                        count_val.decode() if isinstance(count_val, bytes) else count_val
+                    )
 
                 # Check if we're in the same window
                 if current_time - window_start < window_size:

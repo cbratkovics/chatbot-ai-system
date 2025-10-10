@@ -187,6 +187,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: docker/dockerfiles/Dockerfile
           push: false
           tags: chatbot-ai-system:test
           cache-from: type=gha

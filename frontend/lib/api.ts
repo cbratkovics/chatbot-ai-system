@@ -48,9 +48,29 @@ export class APIClient {
 
   // Chat endpoints
   async chatCompletion(request: ChatRequest): Promise<ChatResponse> {
+    // Transform frontend format to backend format
+    const backendRequest = {
+      messages: [
+        // Add conversation history first if provided
+        ...(request.conversationHistory || []).map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        // Add the current message
+        {
+          role: 'user' as const,
+          content: request.message
+        }
+      ],
+      model: request.model,
+      temperature: request.temperature,
+      max_tokens: request.maxTokens,           // Convert camelCase to snake_case
+      system_prompt: request.systemPrompt,     // Convert camelCase to snake_case
+    };
+
     return this.request<ChatResponse>('/chat/completions', {
       method: 'POST',
-      body: JSON.stringify(request),
+      body: JSON.stringify(backendRequest),
     });
   }
 

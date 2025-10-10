@@ -17,6 +17,10 @@ async def init_db():
     from sqlalchemy.orm import sessionmaker
     from chatbot_ai_system.config.settings import settings
 
+    # Check if DATABASE_URL is configured
+    if not settings.database_url:
+        raise ValueError("DATABASE_URL is not configured")
+
     _async_engine = create_async_engine(
         settings.database_url.replace("postgresql://", "postgresql+asyncpg://"),
         echo=settings.is_development,

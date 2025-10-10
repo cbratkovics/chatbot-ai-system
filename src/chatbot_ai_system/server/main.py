@@ -83,8 +83,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
         await init_db()
         logger.info("Database initialized")
+    except ValueError as e:
+        # DATABASE_URL not configured - this is expected for Pinecone-only deployments
+        logger.info("Database not configured, skipping initialization (Pinecone-only mode)")
     except Exception as e:
-        logger.warning(f"Database initialization skipped: {e}")
+        logger.warning(f"Database initialization failed: {e}")
 
     # Initialize Redis cache for chat API
     try:

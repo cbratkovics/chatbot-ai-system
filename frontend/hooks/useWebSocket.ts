@@ -1,3 +1,5 @@
+"use client";
+
 // WebSocket React hook for managing WebSocket connections
 
 import { useEffect, useRef, useState, useCallback } from 'react';

@@ -1,3 +1,5 @@
+"use client";
+
 // Chat message component with markdown support
 
 import React, { memo } from 'react';
@@ -176,7 +178,13 @@ export const ChatMessage = memo(function ChatMessage({
             ) : (
               <ReactMarkdown
                 components={{
-                  code({ node, inline, className, children, ...props }) {
+                  code({ inline, className, children, ...props }: {
+                    inline?: boolean;
+                    className?: string;
+                    children?: React.ReactNode;
+                    node?: any;
+                    [key: string]: any;
+                  }) {
                     const match = /language-(\w+)/.exec(className || '');
                     return !inline && match ? (
                       <SyntaxHighlighter

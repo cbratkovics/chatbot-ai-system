@@ -54,7 +54,7 @@ export interface StreamChunk {
 }
 
 export interface WebSocketMessage {
-  type: 'chat' | 'stream' | 'complete' | 'error' | 'ping' | 'pong' | 'connection' | 'status';
+  type: 'chat' | 'stream' | 'complete' | 'error' | 'ping' | 'pong' | 'connection' | 'status' | 'cancel';
   id: string;
   data?: any;
   timestamp?: string;

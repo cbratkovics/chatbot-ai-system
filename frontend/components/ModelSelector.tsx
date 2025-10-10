@@ -1,3 +1,5 @@
+"use client";
+
 // Model selector component with dropdown
 
 import React from 'react';

@@ -1,3 +1,5 @@
+"use client";
+
 // Chat management hook with state management
 
 import { useState, useCallback, useRef, useEffect } from 'react';

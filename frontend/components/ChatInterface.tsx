@@ -1,3 +1,5 @@
+"use client";
+
 // Main chat interface component
 
 import React, { useRef, useEffect } from 'react';
@@ -60,7 +62,7 @@ export function ChatInterface() {
     }
   };
 
-  const handleCopy = (content: string) => {
+  const handleCopy = () => {
     // Show a toast or notification
     console.log('Copied to clipboard');
   };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { Send, Mic, MicOff, Paperclip } from 'lucide-react';
+import { Send, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ export function ChatInput({
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -58,14 +58,16 @@ export function ChatInput({
       recognitionRef.current?.stop();
       setIsRecording(false);
     } else {
-      const recognition = new (window as any).webkitSpeechRecognition();
+      const SpeechRecognitionAPI = window.webkitSpeechRecognition || window.SpeechRecognition;
+      const recognition = new SpeechRecognitionAPI();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
 
-      recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0])
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const results = Array.from(event.results);
+        const transcript = results
+          .map((result: SpeechRecognitionResult) => result[0])
           .map((result) => result.transcript)
           .join('');
 
@@ -73,7 +75,7 @@ export function ChatInput({
         onVoiceInput?.(transcript);
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
       };

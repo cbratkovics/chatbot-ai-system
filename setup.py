@@ -1,5 +1,6 @@
 from setuptools import find_packages, setup
 
+# configure the package
 setup(
     name="chatbot-ai-system",
     version="1.0.0",

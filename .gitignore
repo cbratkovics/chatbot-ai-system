@@ -98,14 +98,17 @@ dmypy.json
 
 # Site packages (in case venv is in project)
 site-packages/
-lib/
-lib64/
+/lib/
+/lib64/
 share/
 bin/
 /Scripts/
 !scripts/**
 Include/
 pyvenv.cfg
+
+# BUT: Allow frontend/lib directory (for Next.js code)
+!frontend/lib/
 
 # IDE specific
 .vscode/

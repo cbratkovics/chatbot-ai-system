@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://your-backend.onrender.com/api/:path*"
+      "destination": "https://chatbot-ai-system.onrender.com/api/:path*"
     }
   ],
   "headers": [

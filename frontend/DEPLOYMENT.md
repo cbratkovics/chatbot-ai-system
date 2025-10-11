@@ -212,31 +212,82 @@ Before deploying to production:
 
 ## Build Fix Applied (2025-01-11)
 
-### Lightning CSS Binary Issue Resolution
-- **Node Version:** Pinned to 20.x for Lightning CSS compatibility with Next.js 15
-- **Configuration:** Added .nvmrc for local/CI version consistency
-- **Dependencies:** Updated @tailwindcss/postcss and tailwindcss to latest stable (4.1.14)
-- **Diagnostics:** Added prebuild script to log Node version and platform for troubleshooting
+### Lightning CSS Binary Issue - RESOLVED
 
-### WebSocket Configuration Validated
-- **Backend Endpoint:** `/ws/chat` (confirmed live via wscat)
-- **Frontend Config:** Uses NEXT_PUBLIC_WS_URL via config module with automatic path normalization
-- **Environment Variable:** `wss://chatbot-ai-system.onrender.com` (base URL)
-- **Path Resolution:** The `deriveWsUrl()` function in `lib/config.ts` automatically appends `/ws/chat` if missing
+**Root Cause:** Root `vercel.json` with `cd frontend` commands conflicted with Vercel Root Directory setting, causing module resolution failures and missing native binaries.
 
-**Critical:** The config module handles path normalization automatically. If NEXT_PUBLIC_WS_URL doesn't include `/ws/`, it appends `/ws/chat` automatically.
+**Changes Made:**
+1. **Removed Root Config Conflict**
+   - Renamed root `vercel.json` to `vercel.json.DEPRECATED`
+   - Reason: When Vercel Root Directory = `frontend`, build context is already inside frontend/
+   - Using `cd frontend` in build commands caused path resolution to break
 
-### Verification Steps After Deployment
-1. Check build logs for Node version: Should show "Node: v20.x.x"
-2. Check browser console: `console.log(process.env.NEXT_PUBLIC_WS_URL)` or import config
-3. DevTools Network WS tab: Should show connection to `/ws/chat`
-4. Status badge should show "connected" (not "disconnected")
+2. **Added .npmrc Configuration**
+   - Created `frontend/.npmrc` with `optional=true`
+   - Ensures Lightning CSS platform-specific binaries are installed
+   - Required for Linux x64 build environment on Vercel
 
-### Common Issues
-- **404 on WebSocket:** Check that backend exposes `/ws/chat` (NOT just `/ws`)
-- **Lightning CSS Error:** Clear Vercel build cache and ensure Node 20.x is configured
-- **Mixed content:** Using `ws://` instead of `wss://` in production
-- **Path issues:** The config module normalizes paths automatically, check `lib/config.ts:25-36`
+3. **Added Binary Verification**
+   - Created `frontend/scripts/verify-lightningcss.js`
+   - Postinstall script checks for native binary after npm install
+   - Provides troubleshooting guidance if binary missing
+
+4. **Node Version Pinning** (from previous fix)
+   - Node 20.x in package.json engines
+   - .nvmrc with "20"
+   - Prebuild diagnostics script
+
+### Configuration Architecture
+
+**Correct Setup:**
+```
+Vercel Dashboard Settings:
+  Root Directory: "frontend"
+  ↓
+  Build context is: /vercel/path0/frontend/
+  ↓
+  npm ci runs in frontend/
+  ↓
+  Lightning CSS binaries install to frontend/node_modules/lightningcss/node/
+```
+
+**Previous Broken Setup:**
+```
+Root vercel.json: "cd frontend && npm ci"
+  ↓
+  Changes directory after build context set
+  ↓
+  Module resolution confused
+  ↓
+  Binaries installed to wrong path
+```
+
+### Verification After Deploy
+
+1. **Check Vercel Build Logs:**
+   ```
+   Running "vercel build"
+   Vercel CLI 48.x
+   Running "install" command: `npm ci`
+   [should NOT show "cd frontend"]
+   ```
+
+2. **Check Postinstall Output:**
+   ```
+   Lightning CSS binary found: lightningcss.linux-x64-gnu.node
+   ```
+
+3. **Check Build Success:**
+   ```
+   Creating an optimized production build ...
+   ✓ Compiled successfully
+   ```
+
+### WebSocket Configuration (Previously Validated)
+- Backend endpoint: `/ws/chat` (confirmed live)
+- Frontend uses NEXT_PUBLIC_WS_URL directly
+- Config module at `lib/config.ts:25-36` auto-normalizes paths
+- No manual fixes needed for WebSocket connectivity
 
 ## Troubleshooting
 

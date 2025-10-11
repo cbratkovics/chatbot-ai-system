@@ -1,0 +1,19 @@
+# Why This File Was Renamed
+
+The root vercel.json was causing build failures when Vercel Root Directory is set to 'frontend'.
+
+## The Problem
+- Vercel Root Directory: 'frontend' → build context is already IN frontend/
+- Root vercel.json: "cd frontend && npm ci" → tries to change INTO frontend/ again
+- Result: Module resolution conflicts, missing native binaries
+
+## Solution
+- Deleted root vercel.json
+- All Vercel configuration should be in frontend/vercel.json (if needed)
+- Or rely on Vercel's auto-detection with Root Directory = 'frontend'
+
+## Reference
+See docs/VERCEL_CONFIG_NOTES.md for architecture details.
+
+Date: 2025-01-11
+Issue: Lightning CSS native binary not found

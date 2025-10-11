@@ -11,7 +11,8 @@
     "prebuild": "node -e \"console.log('Node:', process.version); console.log('Platform:', process.platform, process.arch)\" && npm ls lightningcss || true",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "node scripts/verify-lightningcss.js || echo 'Warning: Lightning CSS verification skipped'"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",

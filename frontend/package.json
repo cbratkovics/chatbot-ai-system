@@ -2,8 +2,13 @@
   "name": "chatbot-ai-system-frontend",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "20.x",
+    "npm": ">=9"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "node -e \"console.log('Node:', process.version); console.log('Platform:', process.platform, process.arch)\" && npm ls lightningcss || true",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

@@ -210,12 +210,46 @@ Before deploying to production:
 - [ ] Redis cache is configured with proper TTL
 - [ ] Pinecone queries use appropriate top_k values
 
+## Build Fix Applied (2025-01-11)
+
+### Lightning CSS Binary Issue Resolution
+- **Node Version:** Pinned to 20.x for Lightning CSS compatibility with Next.js 15
+- **Configuration:** Added .nvmrc for local/CI version consistency
+- **Dependencies:** Updated @tailwindcss/postcss and tailwindcss to latest stable (4.1.14)
+- **Diagnostics:** Added prebuild script to log Node version and platform for troubleshooting
+
+### WebSocket Configuration Validated
+- **Backend Endpoint:** `/ws/chat` (confirmed live via wscat)
+- **Frontend Config:** Uses NEXT_PUBLIC_WS_URL via config module with automatic path normalization
+- **Environment Variable:** `wss://chatbot-ai-system.onrender.com` (base URL)
+- **Path Resolution:** The `deriveWsUrl()` function in `lib/config.ts` automatically appends `/ws/chat` if missing
+
+**Critical:** The config module handles path normalization automatically. If NEXT_PUBLIC_WS_URL doesn't include `/ws/`, it appends `/ws/chat` automatically.
+
+### Verification Steps After Deployment
+1. Check build logs for Node version: Should show "Node: v20.x.x"
+2. Check browser console: `console.log(process.env.NEXT_PUBLIC_WS_URL)` or import config
+3. DevTools Network WS tab: Should show connection to `/ws/chat`
+4. Status badge should show "connected" (not "disconnected")
+
+### Common Issues
+- **404 on WebSocket:** Check that backend exposes `/ws/chat` (NOT just `/ws`)
+- **Lightning CSS Error:** Clear Vercel build cache and ensure Node 20.x is configured
+- **Mixed content:** Using `ws://` instead of `wss://` in production
+- **Path issues:** The config module normalizes paths automatically, check `lib/config.ts:25-36`
+
 ## Troubleshooting
 
 ### Build Failures
 
+**Error**: `Cannot find module '../lightningcss.linux-x64-gnu.node'`
+- **Root Cause**: Platform-specific Lightning CSS binary missing or wrong Node version
+- **Solution**: Ensure Node 20.x is configured in Vercel project settings
+- **Verify**: Check `.nvmrc` file exists in frontend directory with `20` as content
+- **Action**: Clear Vercel build cache and redeploy
+
 **Error**: `Cannot find module '@tailwindcss/postcss'`
-- **Solution**: Ensure `frontend/package.json` includes `"@tailwindcss/postcss": "^4"` in devDependencies
+- **Solution**: Ensure `frontend/package.json` includes `"@tailwindcss/postcss": "^4.1.14"` in dependencies
 - **Verify**: Run `npm ci` in the frontend directory
 
 **Error**: `Cannot resolve '@/components/ChatInterface'`

@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd frontend && npm ci --include=dev --no-fund --no-audit --loglevel=error",
+  "installCommand": "cd frontend && npm ci --no-audit --no-fund",
   "buildCommand": "cd frontend && npm run build --silent",
   "outputDirectory": "frontend/.next",
   "devCommand": "cd frontend && npm run dev",

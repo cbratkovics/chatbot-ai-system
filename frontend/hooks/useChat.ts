@@ -241,7 +241,7 @@ export function useChat(options: UseChatOptions = {}) {
         );
       } else {
         // Use HTTP API for non-streaming
-        const response = await apiClient.chatCompletion({
+        const response = await apiClient.createChatCompletion({
           message: content,
           model,
           stream: false,

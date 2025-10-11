@@ -1,8 +1,6 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm ci --include=optional --prefer-offline",
   "devCommand": "npm run dev",
   "headers": [
     {

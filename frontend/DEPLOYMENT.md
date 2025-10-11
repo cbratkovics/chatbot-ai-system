@@ -289,6 +289,42 @@ Root vercel.json: "cd frontend && npm ci"
 - Config module at `lib/config.ts:25-36` auto-normalizes paths
 - No manual fixes needed for WebSocket connectivity
 
+### Tailwind CSS v4 to v3 Migration (2025-01-11 - PERMANENT FIX)
+
+**Issue:** Tailwind CSS v4 native binaries failed to install on Vercel.
+
+**Root Cause:**
+- v4 uses `@tailwindcss/oxide` (Rust binary for core engine)
+- v4 uses `lightningcss` (Rust binary for CSS processing)
+- Both rely on optionalDependencies for platform-specific binaries
+- Vercel's npm ci environment failed to install these binaries
+- Build failed: "Cannot find module '../lightningcss.linux-x64-gnu.node'"
+
+**Solution:** Downgraded to Tailwind CSS v3.4.17 (stable, pure JavaScript).
+
+**Changes:**
+- Removed v4 packages with binary dependencies
+- Added v3 packages (tailwindcss, postcss, autoprefixer)
+- Updated PostCSS configuration for v3 syntax
+- Updated globals.css (@import to @tailwind directives)
+- Removed Lightning CSS verification script
+- Simplified Vercel configuration
+
+**Why This Works:**
+- Tailwind v3 uses pure JavaScript (PostCSS-based)
+- No native binaries or platform-specific compilation
+- Production-stable and battle-tested
+- All utility classes identical to v4
+
+**Trade-offs:**
+- Lost v4 beta features (none were actively used)
+- Lost @theme directive (migrated to theme.extend in config)
+- Using stable v3 instead of beta v4
+
+See `TAILWIND_V3_MIGRATION.md` for complete migration details.
+
+---
+
 ### Lightning CSS Optional Dependencies Fix (2025-01-11 - FINAL)
 
 **Root Cause:** npm ci was not installing Lightning CSS's platform-specific binaries even though the main package was present.

@@ -1,0 +1,14 @@
+BUILD STATUS: FAILING
+=====================
+
+Issue: package-lock.json out of sync with package.json
+Error: Missing: lightningcss-cli@1.30.2 from lock file
+
+Cause: package.json was modified but lock file not regenerated
+
+Fix Required: Regenerate package-lock.json using npm install
+
+Human Action Required: Yes
+Git Operations Required: Yes (handled by human)
+
+See LOCKFILE_ISSUE_EXPLANATION.md for details.

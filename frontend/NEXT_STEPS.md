@@ -1,3 +1,13 @@
+# BUILD CURRENTLY FAILING - Lock File Issue
+
+The current build is failing because package-lock.json is out of sync with package.json.
+
+See LOCKFILE_ISSUE_EXPLANATION.md for technical details.
+
+The human will regenerate the lock file and handle git operations separately.
+
+---
+
 # Next Steps - Lightning CSS Fix Applied
 
 ## Changes Made by Claude Code

@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useWebSocket } from './useWebSocket';
 import { apiClient } from '@/lib/api';
 import { Message, Model, WebSocketMessage, Role } from '@/types';
+import type { ChatMessage as APIChatMessage } from '@/lib/api/types';
 
 interface UseChatOptions {
   defaultModel?: string;
@@ -14,6 +15,31 @@ interface UseChatOptions {
   maxMessages?: number;
   persistMessages?: boolean;
   storageKey?: string;
+}
+
+// Helper to normalize and build the message list
+type LocalRole = "system" | "user" | "assistant" | "ai";
+type LocalHistoryItem = { role: LocalRole; content: string };
+
+function buildMessages(args: {
+  content: string;
+  systemPrompt?: string;
+  conversationHistory?: LocalHistoryItem[];
+}): APIChatMessage[] {
+  const { content, systemPrompt, conversationHistory } = args;
+  const msgs: APIChatMessage[] = [];
+
+  if (systemPrompt && systemPrompt.trim()) {
+    msgs.push({ role: "system", content: systemPrompt.trim() });
+  }
+  if (conversationHistory?.length) {
+    for (const m of conversationHistory) {
+      const role = m.role === "ai" ? "assistant" : (m.role as "system" | "user" | "assistant");
+      msgs.push({ role, content: m.content });
+    }
+  }
+  msgs.push({ role: "user", content });
+  return msgs;
 }
 
 export function useChat(options: UseChatOptions = {}) {
@@ -242,13 +268,11 @@ export function useChat(options: UseChatOptions = {}) {
       } else {
         // Use HTTP API for non-streaming
         const response = await apiClient.createChatCompletion({
-          message: content,
           model,
+          messages: buildMessages({ content, systemPrompt: options?.systemPrompt, conversationHistory }),
           stream: false,
           temperature: options?.temperature,
           maxTokens: options?.maxTokens,
-          systemPrompt: options?.systemPrompt,
-          conversationHistory,
         });
 
         // Update assistant message with response
@@ -256,7 +280,7 @@ export function useChat(options: UseChatOptions = {}) {
           msg.id === assistantMessage.id
             ? {
                 ...msg,
-                content: response.response,
+                content: response.response || response.choices?.[0]?.message?.content || '',
                 status: 'sent',
                 isStreaming: false,
                 cached: response.cached,

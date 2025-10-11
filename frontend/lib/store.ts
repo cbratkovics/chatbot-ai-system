@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Message, Model, Session } from './api';
+import { Message, Model, Conversation } from '@/types';
 
 export interface ChatMessage extends Omit<Message, 'id'> {
   id: string;
@@ -14,13 +14,13 @@ export interface ChatMessage extends Omit<Message, 'id'> {
 
 interface ChatStore {
   // Session state
-  currentSession: Session | null;
-  sessions: Session[];
-  
+  currentSession: Conversation | null;
+  sessions: Conversation[];
+
   // Message state
   messages: ChatMessage[];
   streamingMessage: string;
-  
+
   // Model state
   models: Model[];
   selectedModel: string;
@@ -30,8 +30,8 @@ interface ChatStore {
   error: string | null;
   
   // Actions
-  setCurrentSession: (session: Session | null) => void;
-  addSession: (session: Session) => void;
+  setCurrentSession: (session: Conversation | null) => void;
+  addSession: (session: Conversation) => void;
   setMessages: (messages: ChatMessage[]) => void;
   addMessage: (message: ChatMessage) => void;
   updateMessage: (id: string, updates: Partial<ChatMessage>) => void;

@@ -1,13 +1,5 @@
 import { API_CONFIG } from './config';
-
-type ChatMessage = { role: 'user' | 'assistant' | 'system'; content: string };
-type ChatRequest = {
-  model: string;
-  messages: ChatMessage[];
-  stream?: boolean;
-  temperature?: number;
-  [k: string]: any;
-};
+import type { ChatRequest, ChatStreamRequest, ChatResponse } from './api/types';
 
 function join(base: string, path: string) {
   if (!path) return base;
@@ -47,11 +39,37 @@ async function getModels(): Promise<any[]> {
   return data?.models ?? data?.data ?? [];
 }
 
-async function createChatCompletion(payload: ChatRequest): Promise<any> {
+async function createChatCompletion(body: ChatRequest): Promise<ChatResponse> {
+  // If backend expects snake_case for tokens, normalize here:
+  const { maxTokens, ...rest } = body;
+  const finalBody = typeof maxTokens === "number" ? { ...rest, max_tokens: maxTokens } : body;
+
   return request('/chat/completions', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(finalBody),
   });
+}
+
+// Example streaming helper; adapt to your existing streaming endpoint
+async function streamChat(body: ChatStreamRequest, onToken: (t: string) => void): Promise<void> {
+  const { maxTokens, ...rest } = body;
+  const finalBody = typeof maxTokens === "number" ? { ...rest, max_tokens: maxTokens } : body;
+
+  const res = await fetch(join(API_CONFIG.baseURL, '/chat/stream'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(finalBody),
+  });
+
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onToken(decoder.decode(value, { stream: true }));
+  }
 }
 
 async function health(): Promise<any> {
@@ -63,7 +81,8 @@ type APIClient = {
   post: (path: string, body?: unknown, init?: RequestInit) => Promise<any>;
   request: (path: string, init?: RequestInit) => Promise<any>;
   getModels: () => Promise<any[]>;
-  createChatCompletion: (payload: ChatRequest) => Promise<any>;
+  createChatCompletion: (payload: ChatRequest) => Promise<ChatResponse>;
+  streamChat: (body: ChatStreamRequest, onToken: (t: string) => void) => Promise<void>;
   health: () => Promise<any>;
 };
 
@@ -74,8 +93,9 @@ const apiClient: APIClient = {
   request,
   getModels,
   createChatCompletion,
+  streamChat,
   health,
 };
 
-export { apiClient, request, getModels, createChatCompletion, health };
+export { apiClient, request, getModels, createChatCompletion, streamChat, health };
 export default apiClient;

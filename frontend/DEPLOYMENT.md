@@ -289,6 +289,49 @@ Root vercel.json: "cd frontend && npm ci"
 - Config module at `lib/config.ts:25-36` auto-normalizes paths
 - No manual fixes needed for WebSocket connectivity
 
+### Lightning CSS Optional Dependencies Fix (2025-01-11 - FINAL)
+
+**Root Cause:** npm ci was not installing Lightning CSS's platform-specific binaries even though the main package was present.
+
+**Why .npmrc Failed:**
+- `optional=true` is NOT a valid npm configuration option
+- npm was rejecting the config with warnings
+- Optional dependencies install by default, but npm ci is strict with package-lock.json
+
+**Final Solution (Multi-Layered):**
+
+1. **Added lightningcss-cli to devDependencies**
+   - Forces installation of ALL platform binaries
+   - CLI package has binaries as regular deps, not optional
+
+2. **Updated .npmrc (removed invalid config)**
+   - Removed `optional=true` (invalid)
+   - Kept performance optimizations (audit=false, fund=false)
+
+3. **Override Vercel Install Command**
+   - Updated `frontend/vercel.json` with `installCommand: "npm ci --include=optional --prefer-offline"`
+   - Explicitly tells npm ci to include optional dependencies
+
+4. **Enhanced Verification Script**
+   - Shows what files exist in lightningcss/node/
+   - Better diagnostics for troubleshooting
+
+**Technical Details:**
+
+Lightning CSS package structure:
+```
+lightningcss@1.30.1 (main package)
+├── index.js
+├── optionalDependencies:
+│   ├── @lightningcss-linux-x64-gnu (platform binary)
+│   ├── @lightningcss-darwin-arm64 (platform binary)
+│   └── ... (other platforms)
+```
+
+Problem: npm ci with strict lock file was skipping optionalDependencies
+
+Solution: lightningcss-cli explicitly requires all binaries, so adding it as a devDependency guarantees they install.
+
 ## Troubleshooting
 
 ### Build Failures

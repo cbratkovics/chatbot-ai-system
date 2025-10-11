@@ -28,27 +28,47 @@ if (!expectedBinary) {
 }
 
 // Check if binary exists
-const lightningcssPath = path.join(
+const nodeDir = path.join(
   __dirname,
   '..',
   'node_modules',
   'lightningcss',
-  'node',
-  expectedBinary
+  'node'
 );
 
+const lightningcssPath = path.join(nodeDir, expectedBinary);
+
+console.log(`\n=== Lightning CSS Binary Check ===`);
+console.log(`Platform: ${platform}-${arch}`);
+console.log(`Expected: ${expectedBinary}`);
+console.log(`Path: ${lightningcssPath}`);
+
 if (fs.existsSync(lightningcssPath)) {
-  console.log(`Lightning CSS binary found: ${expectedBinary}`);
+  console.log(`Status: Binary found and ready\n`);
   process.exit(0);
 } else {
-  console.error(`Lightning CSS binary MISSING: ${expectedBinary}`);
-  console.error(`Expected at: ${lightningcssPath}`);
-  console.error('\nTroubleshooting:');
-  console.error('1. Delete node_modules and package-lock.json');
-  console.error('2. Run: npm install');
-  console.error('3. Ensure .npmrc has optional=true');
-  console.error('4. Check that Node version matches package.json engines');
+  console.error(`Status: Binary MISSING\n`);
 
-  // Don't fail build - let Next.js fail with better error message
+  // Show what files DO exist
+  if (fs.existsSync(nodeDir)) {
+    const files = fs.readdirSync(nodeDir);
+    console.error(`Files in lightningcss/node/:`);
+    if (files.length === 0) {
+      console.error(`  (directory is empty)`);
+    } else {
+      files.forEach(f => console.error(`  - ${f}`));
+    }
+  } else {
+    console.error(`Directory doesn't exist: ${nodeDir}`);
+  }
+
+  console.error(`\nTroubleshooting:`);
+  console.error(`1. Ensure lightningcss-cli is in devDependencies`);
+  console.error(`2. Delete package-lock.json and node_modules`);
+  console.error(`3. Run: npm install`);
+  console.error(`4. Verify Vercel installCommand includes --include=optional`);
+  console.error(`5. Check that .npmrc does not have invalid 'optional=true' config\n`);
+
+  // Don't fail build - let Next.js show the error
   process.exit(0);
 }

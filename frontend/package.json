@@ -32,8 +32,8 @@
     "tailwind-merge": "^3.3.1",
     "uuid": "^11.1.0",
     "zustand": "^5.0.6",
-    "@tailwindcss/postcss": "^4.0.0",
-    "tailwindcss": "^4.0.0"
+    "@tailwindcss/postcss": "^4.1.14",
+    "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

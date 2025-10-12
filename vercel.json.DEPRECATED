@@ -1,8 +1,0 @@
-{
-  "installCommand": "cd frontend && npm ci --no-audit --no-fund",
-  "buildCommand": "cd frontend && npm run build --silent",
-  "outputDirectory": "frontend/.next",
-  "devCommand": "cd frontend && npm run dev",
-  "framework": "nextjs",
-  "regions": ["iad1"]
-}

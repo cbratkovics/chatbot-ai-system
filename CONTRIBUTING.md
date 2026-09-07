@@ -306,7 +306,7 @@ For performance-related PRs, include benchmark results:
 
 ```bash
 # Run specific benchmarks
-poetry run python benchmarks/run_all_benchmarks.py
+poetry run pytest tests/test_provider_failover.py
 
 # Results saved to benchmarks/results/*.json
 # Include before/after comparison in PR description

@@ -399,29 +399,26 @@ def lint(check):
 
 @cli.command()
 def validate():
-    """Validate all performance claims"""
-    click.echo("Validating performance claims...")
-
-    # Import validation script
-    validation_script = Path("scripts/validate_claims.py")
-    if not validation_script.exists():
-        click.echo(click.style("Validation script not found", fg="red"), err=True)
-        sys.exit(1)
+    """Run the provider failover timing test"""
+    click.echo("Running provider failover timing test...")
 
     try:
         result = subprocess.run(
-            ["python", str(validation_script)], capture_output=True, text=True, check=False
+            ["python", "-m", "pytest", "tests/test_provider_failover.py", "-v"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
         click.echo(result.stdout)
 
         if result.returncode == 0:
-            click.echo(click.style("All claims validated successfully!", fg="green"))
+            click.echo(click.style("Failover timing test passed!", fg="green"))
         else:
-            click.echo(click.style("Some claims could not be validated", fg="red"), err=True)
+            click.echo(click.style("Failover timing test failed", fg="red"), err=True)
             sys.exit(1)
     except Exception as e:
-        click.echo(click.style(f"Validation failed: {e}", fg="red"), err=True)
+        click.echo(click.style(f"Test run failed: {e}", fg="red"), err=True)
         sys.exit(1)
 
 

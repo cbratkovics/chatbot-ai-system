@@ -221,8 +221,8 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
       
-      - name: Run benchmarks
-        run: poetry run python benchmarks/run_all_benchmarks.py
+      - name: Run provider failover timing test
+        run: poetry run pytest tests/test_provider_failover.py -v
         env:
           REDIS_URL: redis://localhost:6379/0
       

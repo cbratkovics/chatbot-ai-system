@@ -2,11 +2,11 @@
 
 ## Achievements
 
-### Performance Metrics
-- **99.5% Uptime**: Circuit breakers, health checks, graceful degradation
-- **<200ms P95 Latency**: Optimized caching, connection pooling
-- **30% Cost Reduction**: Semantic caching with vector similarity
-- **100+ Concurrent Users**: WebSocket management with auto-reconnection
+### Engineering Capabilities
+- **Resilience**: Circuit breakers, health checks, graceful degradation
+- **Latency Optimization**: Response caching and connection pooling
+- **Cost Optimization**: Semantic caching with vector similarity matching
+- **Concurrency**: WebSocket connection management with auto-reconnection
 
 ### Technical Excellence
 - **10+ Design Patterns**: Strategy, Adapter, Circuit Breaker, Saga, Repository

@@ -32,8 +32,8 @@ This project showcases production-grade LLMOps and AI engineering skills:
 | Skill | Implementation | Location |
 |-------|---------------|----------|
 | **Multi-Provider Orchestration** | Unified interface for OpenAI, Anthropic, Llama, Gemini with intelligent routing | [`src/chatbot_ai_system/orchestration/`](src/chatbot_ai_system/orchestration/) |
-| **Semantic Caching** | Redis-backed semantic similarity caching (~73% hit rate) | [`src/chatbot_ai_system/cache/`](src/chatbot_ai_system/cache/) |
-| **WebSocket Streaming** | Real-time token streaming with ~186ms P95 latency | [`src/chatbot_ai_system/websocket/`](src/chatbot_ai_system/websocket/) |
+| **Semantic Caching** | Redis-backed semantic similarity caching with configurable thresholds | [`src/chatbot_ai_system/cache/`](src/chatbot_ai_system/cache/) |
+| **WebSocket Streaming** | Real-time token-by-token streaming over WebSocket | [`src/chatbot_ai_system/websocket/`](src/chatbot_ai_system/websocket/) |
 | **Multi-Tenancy & Auth** | Tenant isolation, JWT authentication, rate limiting | [`src/chatbot_ai_system/middleware/`](src/chatbot_ai_system/middleware/) |
 | **Observability** | Prometheus, Grafana, Jaeger distributed tracing | [`monitoring/`](monitoring/) |
 | **Infrastructure as Code** | Kubernetes manifests, Docker Compose, CI/CD | [`infrastructure/`](infrastructure/), [`k8s/`](k8s/) |
@@ -46,29 +46,50 @@ This project showcases production-grade LLMOps and AI engineering skills:
 ## Key Features
 
 - **Multi-Provider Orchestration**: Intelligent routing between OpenAI, Anthropic, Llama, and Gemini with automatic failover
-- **WebSocket Streaming**: Token-by-token streaming with ~186ms P95 latency (local benchmarks)
-- **Cost Optimization**: Semantic caching achieving ~73% hit rate and ~70% cost reduction
+- **WebSocket Streaming**: Token-by-token response streaming over WebSocket connections
+- **Cost Optimization**: Semantic caching to avoid repeat provider calls for similar prompts
 - **Production Patterns**: Circuit breakers, rate limiting, health monitoring, and comprehensive observability
 - **Multi-Tenancy Support**: Complete tenant isolation with usage tracking and horizontal scaling
 - **Template-Ready**: Pre-configured use cases (customer support, code assistant) for rapid deployment
 
 ---
 
-## Verified Performance Metrics (Local Synthetic Benchmarks)
+## Measured Behavior
 
-| Metric | Target | Achieved | Evidence |
-|--------|--------|----------|----------|
-| **P95 Latency** | < 200ms | **~186ms** | [`benchmark_summary.json`](benchmarks/results/benchmark_summary.json) |
-| **P99 Latency** | < 300ms | **~245ms** | [`benchmark_summary.json`](benchmarks/results/benchmark_summary.json) |
-| **Throughput** | 400+ RPS | **~250 RPS** | [`benchmark_summary.json`](benchmarks/results/benchmark_summary.json) |
-| **Cache Hit Rate** | ≥ 60% | **~73%** | [`cache_metrics_latest.json`](benchmarks/results/cache_metrics_latest.json) |
-| **Cost Reduction** | ≥ 30% | **~70-73%** | [`cache_metrics_latest.json`](benchmarks/results/cache_metrics_latest.json) |
-| **Provider Failover** | < 500ms | **~463ms** | [`benchmark_summary.json`](benchmarks/results/benchmark_summary.json) |
-| **WebSocket Sessions** | 100+ | **~100** | [`benchmark_summary.json`](benchmarks/results/benchmark_summary.json) |
+This repository publishes one measured artifact: provider failover timing.
 
-> **Note**: Results are from local synthetic benchmarks on developer hardware, not production SLAs.
+`tests/test_provider_failover.py` exercises the failover path against mock providers with
+configurable failure modes (timeout, rate limit, server error), timing the orchestration logic with
+`time.perf_counter()` across 10 runs per scenario. Results are written to
+[`benchmarks/results/`](benchmarks/results/).
 
-**Run benchmarks yourself:** `python benchmarks/run_all_benchmarks.py`
+| Scenario | Runs | Average failover | P95 failover |
+|----------|------|------------------|--------------|
+| Timeout | 10 | 262.2 ms | 262.9 ms |
+| Rate limit | 10 | 113.3 ms | 114.4 ms |
+| Server error | 10 | 112.7 ms | 113.2 ms |
+
+Source: [`failover_timing_latest.json`](benchmarks/results/failover_timing_latest.json)
+
+**Scope of this measurement.** These numbers time the failover control flow (detection, timeout
+handling, retry, provider switch) against mocked providers with a synthetic 50 ms base response
+time. They are not provider-to-provider latencies in production, and they say nothing about
+end-to-end response time under real API conditions.
+
+**Reproduce it:** `pytest tests/test_provider_failover.py`
+
+### Running your own benchmarks
+
+The repository includes load-test harnesses that require a running instance and real API keys:
+
+- `benchmarks/performance_test.py` - latency and throughput against a live server
+- `benchmarks/load_tests/k6_api_test.js`, `k6_websocket_test.js` - k6 load tests
+- `benchmarks/load_tests/locust_scenarios.py` - Locust scenarios
+- `benchmarks/run_benchmarks.py` - orchestrates the above (requires k6, locust, docker)
+
+No results from these harnesses are committed to this repository. Latency, throughput, cache hit
+rate, and cost figures depend entirely on hardware, network, model selection, and workload, so any
+numbers you need should come from your own run.
 
 ---
 
@@ -497,8 +518,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Test Coverage**: 85%+
 - **Docker Images**: Backend, Frontend, Monitoring Stack
 - **Supported Providers**: OpenAI, Anthropic, Meta Llama, Google Gemini
-- **Performance**: <200ms P95 latency, 100+ concurrent WebSocket connections
-- **Production-Ready**: Deployed and tested in production environments
+- **Concurrency**: Async request handling with WebSocket connection pooling
+- **Deployment**: Docker Compose, Kubernetes manifests, and CI/CD workflows included
 
 ---
 

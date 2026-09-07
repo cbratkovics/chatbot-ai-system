@@ -136,10 +136,10 @@ pre-commit: format lint type-check security test ## Run all pre-commit checks
 
 ci: lint test build docker-build ## Run CI pipeline locally
 
-evidence: ## Generate all performance evidence
-	@echo "$(GREEN)Generating performance evidence...$(NC)"
-	@$(POETRY) run python benchmarks/run_all_benchmarks.py
-	@echo "$(GREEN)Evidence files generated in benchmarks/results/$(NC)"
+evidence: ## Run the provider failover timing test and write results
+	@echo "$(GREEN)Running provider failover timing test...$(NC)"
+	@$(POETRY) run pytest tests/test_provider_failover.py -v
+	@echo "$(GREEN)Results written to benchmarks/results/$(NC)"
 	@ls -la benchmarks/results/*.json
 
 benchmark: evidence ## Run benchmarks (alias for evidence)

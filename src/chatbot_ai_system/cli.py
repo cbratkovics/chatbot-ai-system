@@ -18,10 +18,10 @@ def run_demo():
 
 
 def run_benchmark(requests=100):
-    print(f"Running benchmarks with {requests} requests...")
+    print("Running provider failover timing test...")
     import subprocess
 
-    subprocess.run(["python3", "benchmarks/run_all_benchmarks.py", "--requests", str(requests)])
+    subprocess.run(["python3", "-m", "pytest", "tests/test_provider_failover.py", "-v"])
 
 
 @click.group()

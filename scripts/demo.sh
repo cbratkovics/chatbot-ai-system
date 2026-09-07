@@ -96,9 +96,9 @@ if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
 fi
 
 # Run benchmarks if Poetry is available
-if [ "$POETRY_AVAILABLE" = true ] && [ -f benchmarks/run_all_benchmarks.py ]; then
+if [ "$POETRY_AVAILABLE" = true ] && [ -f tests/test_provider_failover.py ]; then
     echo -e "${GREEN}Running performance benchmarks...${NC}"
-    poetry run python benchmarks/run_all_benchmarks.py || true
+    poetry run pytest tests/test_provider_failover.py || true
     
     if [ -f benchmarks/results/latest.json ]; then
         echo -e "${GREEN}Benchmark results generated successfully${NC}"

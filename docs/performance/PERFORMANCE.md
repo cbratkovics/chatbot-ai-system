@@ -2,17 +2,24 @@
 
 ## Performance Metrics & Benchmarks
 
-### Current Performance Metrics
+### Performance Targets
 
-| Metric | Target | Achieved | Test Conditions |
-|--------|--------|----------|-----------------|
-| P95 Latency | <200ms | 189ms | 100 concurrent users |
-| P99 Latency | <500ms | 445ms | 100 concurrent users |
-| Throughput | 1000 RPS | 1250 RPS | 4 CPU cores, 16GB RAM |
-| Concurrent Users | 100+ | 150 | WebSocket connections |
-| Cache Hit Rate | 30% | 35% | Semantic similarity threshold 0.85 |
-| Cost Reduction | 30% | 32% | Through caching |
-| Uptime | 99.9% | 99.95% | 30-day average |
+These are the design targets the load-test thresholds are written against. This repository does not
+publish measured results for them: latency, throughput, cache hit rate, and cost depend on hardware,
+network, model selection, and workload, so the only meaningful numbers are the ones from your own
+run against your own deployment.
+
+| Metric | Target | Test Conditions |
+|--------|--------|-----------------|
+| P95 Latency | <200ms | 100 concurrent users |
+| P99 Latency | <500ms | 100 concurrent users |
+| Throughput | 1000 RPS | 4 CPU cores, 16GB RAM |
+| Concurrent Users | 100+ | WebSocket connections |
+| Cache Hit Rate | 30% | Semantic similarity threshold 0.85 |
+| Uptime | 99.9% | 30-day average |
+
+The one measured artifact published here is provider failover timing. See the Measured Behavior
+section of the [project README](../../README.md).
 
 ## Benchmark Methodology
 
@@ -138,36 +145,22 @@ def get_next_provider():
 
 ## Load Testing Results
 
-### Stress Test Results
+No load-test results are published in this repository.
 
-**Test Configuration**
-- Virtual Users: 200
-- Duration: 1 hour
-- Request Rate: 1500 RPS
+The harnesses in [`benchmarks/`](../../benchmarks/) are provided so you can generate results for
+your own deployment:
 
-**Results**
-```
-Requests      [total, rate, throughput]  270000, 1500.0/s, 1485.3/s
-Duration      [total, attack, wait]      3h0m0s, 3h0m0s, 142ms
-Latencies     [min, mean, 50, 90, 95, 99, max]
-              12ms, 156ms, 145ms, 178ms, 189ms, 445ms, 2.1s
-Success       [ratio]                    99.2%
-Status Codes  [200:267840, 429:1620, 503:540]
-```
+- `benchmarks/load_tests/k6_api_test.js` and `k6_websocket_test.js` (requires k6)
+- `benchmarks/load_tests/locust_scenarios.py` (requires Locust)
+- `benchmarks/performance_test.py` (requires a running instance)
 
-### Endurance Test Results
+Latency, throughput, and success rate depend on hardware, network conditions, model selection, and
+prompt mix. Numbers copied from someone else's environment would not tell you anything useful about
+yours.
 
-**Test Configuration**
-- Virtual Users: 50
-- Duration: 24 hours
-- Request Rate: 500 RPS
+The one measured artifact published here is provider failover timing, described in the Measured
+Behavior section of the [project README](../../README.md).
 
-**Results**
-- Total Requests: 43,200,000
-- Success Rate: 99.95%
-- Memory Leak: None detected
-- CPU Usage: Stable at 65%
-- Memory Usage: Stable at 4.2GB
 
 ## Monitoring and Alerting
 
@@ -314,7 +307,12 @@ groups:
 
 ## Cost Analysis
 
-### Current Cost Breakdown
+> The figures below are an illustrative cost model for sizing and planning. They are not observed
+> spend from a deployed instance of this system.
+
+### Example Cost Breakdown
+
+For a hypothetical deployment serving roughly 1,000,000 requests per month:
 
 | Component | Monthly Cost | Percentage |
 |-----------|--------------|------------|
@@ -326,18 +324,25 @@ groups:
 | Storage | $250 | 5% |
 | **Total** | **$5,000** | **100%** |
 
-### Cost Optimization Through Caching
+### Modeling Cost Reduction Through Caching
 
-**Without Caching**
+Semantic caching reduces cost by serving similar prompts without a provider call. The savings scale
+directly with hit rate, which depends on how repetitive your traffic is:
+
+**Baseline (no caching)**
 - Requests: 1,000,000/month
 - Average tokens: 200/request
 - Cost: $3,000/month
 
-**With Caching (35% hit rate)**
+**At a 35% hit rate**
 - Cache hits: 350,000
 - API calls: 650,000
 - Cost: $1,950/month
-- **Savings: $1,050/month (35%)**
+- Savings: $1,050/month
+
+Substitute your own hit rate to model your case. `benchmarks/performance/cost_analyzer.py`
+implements this calculation and its `simulate_cache_scenario()` helper takes the hit rate as a
+parameter.
 
 ## Performance Roadmap
 

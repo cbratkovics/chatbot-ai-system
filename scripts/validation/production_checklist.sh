@@ -89,7 +89,7 @@ echo "------------------------"
 check "Unit tests exist" "ls tests/unit/*.py 2>/dev/null | grep -q '.py'"
 warn_check "Integration tests exist" "ls tests/integration/*.py 2>/dev/null | grep -q '.py'"
 warn_check "E2E tests exist" "ls tests/e2e/*.py 2>/dev/null | grep -q '.py'"
-check "Benchmark scripts exist" "[ -f benchmarks/run_all_benchmarks.py ]"
+check "Benchmark harnesses exist" "[ -f benchmarks/performance_test.py ]"
 echo ""
 
 echo -e "${YELLOW}6. Performance & Monitoring${NC}"

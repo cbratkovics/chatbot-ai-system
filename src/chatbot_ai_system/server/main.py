@@ -283,8 +283,8 @@ def create_app() -> FastAPI:
             try:
                 from chatbot_ai_system.api.chat import redis_cache
 
-                if redis_cache:
-                    await redis_cache.redis.ping()
+                if redis_cache and redis_cache.client:
+                    await redis_cache.client.ping()
                     health_status["checks"]["redis"] = "healthy"
                 else:
                     health_status["checks"]["redis"] = "not initialized"

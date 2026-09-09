@@ -7,6 +7,7 @@ Proves < 500ms failover in isolation and < 700ms under load.
 
 import asyncio
 import json
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -395,15 +396,17 @@ async def test_generate_failover_report(providers, tmp_path):
                 }
             )
 
-    # Save report
-    report_path = Path("benchmarks/results") / f"failover_timing_{TIMESTAMP}.json"
-    report_path.parent.mkdir(parents=True, exist_ok=True)
+    # Save report. Test runs never write into the committed benchmarks/results/ files;
+    # they go to a gitignored scratch directory unless BENCHMARK_RESULTS_DIR says otherwise.
+    results_dir = Path(os.environ.get("BENCHMARK_RESULTS_DIR", "benchmarks/results/tmp"))
+    results_dir.mkdir(parents=True, exist_ok=True)
+    report_path = results_dir / f"failover_timing_{TIMESTAMP}.json"
 
     with open(report_path, "w") as f:
         json.dump(results, f, indent=2)
 
-    # Also save as latest
-    latest_path = Path("benchmarks/results/failover_timing_latest.json")
+    # Also save as latest (same scratch directory)
+    latest_path = results_dir / "failover_timing_latest.json"
     with open(latest_path, "w") as f:
         json.dump(results, f, indent=2)
 
@@ -419,5 +422,5 @@ async def test_generate_failover_report(providers, tmp_path):
 if __name__ == "__main__":
     # Run tests with detailed output
     pytest.main(
-        [__file__, "-v", "--tb=short", f"--junitxml=benchmarks/results/junit_{TIMESTAMP}.xml"]
+        [__file__, "-v", "--tb=short", f"--junitxml=benchmarks/results/tmp/junit_{TIMESTAMP}.xml"]
     )

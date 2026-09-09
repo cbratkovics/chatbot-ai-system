@@ -2,9 +2,16 @@
 
 import asyncio
 import json
+import os
 
 import pytest
 from websockets import connect
+
+# These tests drive a running server over a real socket. Point TEST_BASE_URL at one
+# (e.g. http://localhost:8000) to run them; otherwise they are skipped.
+pytestmark = pytest.mark.live("TEST_BASE_URL")
+_BASE = os.environ.get("TEST_BASE_URL", "http://localhost:8000").rstrip("/")
+WS_URI = _BASE.replace("http", "ws", 1) + "/ws/chat"
 
 
 class TestWebSocketFlow:
@@ -13,7 +20,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_connection_lifecycle(self):
         """Test complete WebSocket connection lifecycle."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async with connect(uri) as websocket:
             await websocket.send(json.dumps({"type": "ping"}))
@@ -26,7 +33,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_authentication(self):
         """Test WebSocket authentication flow."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
         headers = {"Authorization": "Bearer test-token"}
 
         async with connect(uri, extra_headers=headers) as websocket:
@@ -41,7 +48,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_streaming_response(self):
         """Test streaming response through WebSocket."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async with connect(uri) as websocket:
             await websocket.send(
@@ -66,7 +73,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_reconnection(self):
         """Test WebSocket reconnection handling."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
         session_id = "session123"
 
         async with connect(uri) as websocket:
@@ -89,7 +96,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_concurrent_connections(self):
         """Test handling of concurrent WebSocket connections."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async def create_connection(client_id):
             async with connect(uri) as websocket:
@@ -107,7 +114,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_error_recovery(self):
         """Test WebSocket error recovery."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async with connect(uri) as websocket:
             await websocket.send(json.dumps({"type": "chat", "data": {"invalid": "request"}}))
@@ -128,7 +135,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_rate_limiting(self):
         """Test WebSocket rate limiting."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async with connect(uri) as websocket:
             for i in range(150):
@@ -145,7 +152,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_heartbeat(self):
         """Test WebSocket heartbeat mechanism."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async with connect(uri) as websocket:
             heartbeat_count = 0
@@ -165,7 +172,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_binary_data(self):
         """Test WebSocket binary data transmission."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         async with connect(uri) as websocket:
             binary_data = b"Binary test data"
@@ -182,7 +189,7 @@ class TestWebSocketFlow:
     @pytest.mark.asyncio
     async def test_websocket_broadcast(self):
         """Test WebSocket broadcast functionality."""
-        uri = "ws://localhost:8000/ws/chat"
+        uri = WS_URI
 
         connections = []
         for i in range(3):

@@ -1,13 +1,11 @@
-[tool.poetry]
+[project]
 name = "chatbot-ai-system"
 version = "1.1.0"
-description = "Production-ready AI chatbot orchestration platform with multi-provider support and Pinecone vector search"
-authors = ["Christopher Bratkovics <cbratkovics@gmail.com>"]
-license = "MIT"
+description = "Multi-provider AI chat platform: failover, optional semantic cache, SSE streaming, demo guardrails"
 readme = "README.md"
-homepage = "https://github.com/cbratkovics/chatbot-ai-system"
-repository = "https://github.com/cbratkovics/chatbot-ai-system"
-keywords = ["chatbot", "ai", "llm", "gpt", "claude", "streaming", "websocket"]
+license = { text = "MIT" }
+authors = [{ name = "Christopher Bratkovics", email = "cbratkovics@gmail.com" }]
+keywords = ["chatbot", "ai", "llm", "gpt", "claude", "streaming", "sse", "failover"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -18,10 +16,21 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+requires-python = ">=3.11,<4.0"
+# Dependencies stay in [tool.poetry.dependencies] (groups, extras); declare them dynamic here.
+dynamic = ["dependencies"]
+
+[project.urls]
+homepage = "https://github.com/cbratkovics/chatbot-ai-system"
+repository = "https://github.com/cbratkovics/chatbot-ai-system"
+
+[project.scripts]
+chatbotai = "chatbot_ai_system.cli:cli"
+
+[tool.poetry]
 packages = [{include = "chatbot_ai_system", from = "src"}]
 
 [tool.poetry.dependencies]
-python = "^3.11"
 fastapi = "^0.104.1"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
 pydantic = "^2.5.0"
@@ -60,9 +69,6 @@ types-bleach = "^6.1.0"
 types-redis = "^4.6.0"
 types-aiofiles = "^23.2.0"
 
-[tool.poetry.scripts]
-chatbotai = "chatbot_ai_system.cli:main"
-
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -87,5 +93,6 @@ markers = [
     "integration: Integration tests (requires services)",
     "e2e: End-to-end tests (full stack)",
     "benchmark: Performance benchmarks",
+    "live(env_var): needs an external service; skipped unless the named env var is set (default TEST_BASE_URL)",
 ]
 asyncio_mode = "auto"

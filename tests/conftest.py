@@ -22,6 +22,18 @@ from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 
+def pytest_runtest_setup(item):
+    """Skip @pytest.mark.live tests unless their external service is configured.
+
+    ``@pytest.mark.live("TEST_BASE_URL")`` names the env var that carries the service
+    address. Nothing in the test run starts a server; you point it at one.
+    """
+    for marker in item.iter_markers("live"):
+        env_var = marker.args[0] if marker.args else "TEST_BASE_URL"
+        if not os.environ.get(env_var):
+            pytest.skip(f"live test: set {env_var} to run it")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_env():
     """Ensure test environment is properly configured."""
@@ -68,35 +80,91 @@ async def async_client():
         yield client
 
 
+@pytest.fixture(autouse=True)
+def _reset_chat_singletons():
+    """Fresh demo guardrails per test so per-IP limits never leak between tests."""
+    from chatbot_ai_system.api import chat as chat_api
+
+    chat_api.demo_guard = None
+    yield
+    chat_api.demo_guard = None
+
+
 @pytest.fixture
 def mock_redis():
+    """In-memory stand-in for redis.asyncio with TTL, SCAN, and pipeline semantics.
+
+    Tests may still override individual methods (e.g. ``mock_redis.get = AsyncMock(...)``).
+    """
+    import fnmatch
+    import time as _time
+
     redis = MagicMock()
-    # Store data in memory for testing
     redis._data = {}
+    redis._expiry = {}
+
+    def _alive(key):
+        exp = redis._expiry.get(key)
+        if exp is not None and exp <= _time.time():
+            redis._data.pop(key, None)
+            redis._expiry.pop(key, None)
+            return False
+        return key in redis._data
 
     async def mock_get(key):
-        return redis._data.get(key)
+        return redis._data.get(key) if _alive(key) else None
 
     async def mock_setex(key, ttl, value):
         redis._data[key] = value
+        redis._expiry[key] = _time.time() + ttl
         return True
 
-    async def mock_set(key, value):
+    async def mock_set(key, value, *args, **kwargs):
         redis._data[key] = value
+        redis._expiry.pop(key, None)
         return True
 
-    async def mock_delete(key):
+    async def mock_expire(key, ttl):
         if key in redis._data:
-            del redis._data[key]
-        return 1
+            redis._expiry[key] = _time.time() + ttl
+        return True
+
+    async def mock_delete(*keys):
+        removed = 0
+        for key in keys:
+            if key in redis._data:
+                del redis._data[key]
+                redis._expiry.pop(key, None)
+                removed += 1
+        return removed
+
+    async def mock_scan_iter(match="*", **kwargs):
+        for key in list(redis._data):
+            if _alive(key) and fnmatch.fnmatch(key, match):
+                yield key
+
+    def mock_pipeline(*args, **kwargs):
+        pipe = MagicMock()
+        queued = []
+        pipe.setex = MagicMock(side_effect=lambda k, ttl, v: queued.append(("setex", k, ttl, v)))
+        pipe.set = MagicMock(side_effect=lambda k, v: queued.append(("set", k, None, v)))
+
+        async def execute():
+            for op, k, ttl, v in queued:
+                await (mock_setex(k, ttl, v) if op == "setex" else mock_set(k, v))
+            return [True] * len(queued)
+
+        pipe.execute = AsyncMock(side_effect=execute)
+        return pipe
 
     redis.get = AsyncMock(side_effect=mock_get)
     redis.set = AsyncMock(side_effect=mock_set)
     redis.setex = AsyncMock(side_effect=mock_setex)
     redis.delete = AsyncMock(side_effect=mock_delete)
+    redis.expire = AsyncMock(side_effect=mock_expire)
+    redis.scan_iter = mock_scan_iter
     redis.zrange = AsyncMock(return_value=[])
     redis.zadd = AsyncMock()
-    redis.expire = AsyncMock()
     redis.hget = AsyncMock(return_value=None)
     redis.hset = AsyncMock()
     redis.flushdb = AsyncMock()
@@ -105,18 +173,135 @@ def mock_redis():
     redis.bgsave = AsyncMock(return_value=True)
     redis.zcount = AsyncMock(return_value=0)
     redis.eval = AsyncMock(return_value=1)
-    redis.pipeline = MagicMock(return_value=MagicMock(execute=AsyncMock()))
+    redis.pipeline = MagicMock(side_effect=mock_pipeline)
     return redis
 
 
 @pytest.fixture
 def mock_database():
+    """AsyncSession stand-in: every awaited method is an AsyncMock."""
     db = MagicMock()
-    db.execute = MagicMock()
+    db.execute = AsyncMock(return_value=MagicMock())  # awaited -> sync Result-like object
     db.commit = AsyncMock()
     db.add = MagicMock()
     db.rollback = AsyncMock()
+    db.begin = MagicMock(return_value=AsyncMock())
     return db
+
+
+class FakeChatProvider:
+    """Deterministic provider for the HTTP and WebSocket chat paths (no network)."""
+
+    name = "fake"
+
+    def __init__(self, reply: str = "fake response") -> None:
+        self.reply = reply
+        self.calls = 0
+        self.stream_error: Exception | None = None  # raise this instead of streaming
+
+    async def chat(self, messages, model, temperature=0.7, max_tokens=None, **kwargs):
+        from chatbot_ai_system.providers.base import ChatResponse
+
+        self.calls += 1
+        return ChatResponse(
+            content=self.reply,
+            model=model,
+            provider="fake",
+            finish_reason="stop",
+            usage={"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
+        )
+
+    async def stream_chat(self, messages, model, temperature=0.7, max_tokens=None, **kwargs):
+        from types import SimpleNamespace
+
+        self.calls += 1
+        for word in self.reply.split(" "):
+            yield SimpleNamespace(content=word + " ", is_final=False)
+
+    async def stream(self, messages, model, temperature=0.7, max_tokens=None, **kwargs):
+        """Chain-facing stream: content chunks, then a final chunk carrying usage."""
+        from chatbot_ai_system.providers.base import StreamChunk, TokenUsage
+
+        self.calls += 1
+        if self.stream_error is not None:
+            raise self.stream_error
+        words = self.reply.split(" ")
+        for i, word in enumerate(words):
+            yield StreamChunk(content=word + (" " if i < len(words) - 1 else ""), is_final=False)
+        yield StreamChunk(
+            content="",
+            is_final=True,
+            usage=TokenUsage(prompt_tokens=5, completion_tokens=len(words), total_tokens=5 + len(words)),
+        )
+
+    async def validate_model(self, model: str) -> bool:
+        return True
+
+    def get_supported_models(self):
+        return []
+
+
+@pytest.fixture
+def fake_chat_provider(monkeypatch):
+    """Route /api/v1/chat/completions and /ws/chat to FakeChatProvider.
+
+    Combined with the memory-cache fallback this makes the app fully healthy under test
+    with no Redis and no provider keys.
+    """
+    from chatbot_ai_system.api import chat as chat_api
+    from chatbot_ai_system.api import websocket as ws_api
+
+    provider = FakeChatProvider()
+    monkeypatch.setattr(chat_api, "make_provider", lambda name, settings: provider)
+    monkeypatch.setattr(
+        ws_api.ProviderFactory, "create_streaming_provider", lambda model, settings: provider
+    )
+    return provider
+
+
+def _fake_openai_like_response(model: str, messages: list, prefix: str) -> dict:
+    users = [m.get("content", "") for m in messages if m.get("role") == "user"]
+    content = f"{prefix}: " + " | ".join(users)
+    return {
+        "id": "fake-id",
+        "object": "chat.completion",
+        "model": model,
+        "choices": [{"index": 0, "message": {"role": "assistant", "content": content}}],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+    }
+
+
+@pytest.fixture
+def fake_core_clients(monkeypatch):
+    """Give the core/models providers fake SDK clients instead of real OpenAI/Anthropic ones.
+
+    The fake echoes the user messages back so context-preservation assertions hold.
+    """
+    from chatbot_ai_system.core.models import anthropic_provider, openai_provider
+
+    openai_client = MagicMock()
+    openai_client.chat.completions.create = AsyncMock(
+        side_effect=lambda **kw: _fake_openai_like_response(
+            kw.get("model", "gpt"), kw.get("messages", []), "fake-openai"
+        )
+    )
+    anthropic_client = MagicMock()
+    anthropic_client.messages.create = AsyncMock(
+        side_effect=lambda **kw: _fake_openai_like_response(
+            kw.get("model", "claude"), kw.get("messages", []), "fake-anthropic"
+        )
+    )
+    monkeypatch.setattr(
+        openai_provider.OpenAIProvider,
+        "_init_client",
+        lambda self: setattr(self, "client", openai_client),
+    )
+    monkeypatch.setattr(
+        anthropic_provider.AnthropicProvider,
+        "_init_client",
+        lambda self: setattr(self, "client", anthropic_client),
+    )
+    return {"openai": openai_client, "anthropic": anthropic_client}
 
 
 @pytest_asyncio.fixture

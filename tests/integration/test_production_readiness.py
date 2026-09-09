@@ -11,9 +11,14 @@ This test suite validates the complete system is ready for production deployment
 """
 
 import os
+import pathlib
+
 import pytest
 from unittest.mock import patch, AsyncMock, Mock
 from httpx import AsyncClient
+
+# Resolve from this file so the tests work from any checkout location.
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
@@ -296,7 +301,7 @@ class TestProductionReadiness:
         """Test Docker configuration files exist."""
         import pathlib
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system")
+        root = REPO_ROOT
 
         # Check main docker files exist
         assert (root / "docker" / "dockerfiles" / "Dockerfile").exists()
@@ -307,7 +312,7 @@ class TestProductionReadiness:
         """Test docker-compose files exist."""
         import pathlib
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system")
+        root = REPO_ROOT
 
         # Check docker-compose files exist
         assert (root / "docker-compose.yml").exists()
@@ -317,7 +322,7 @@ class TestProductionReadiness:
         """Test .env.example exists with all required variables."""
         import pathlib
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system")
+        root = REPO_ROOT
         env_example = root / ".env.example"
 
         assert env_example.exists()
@@ -335,7 +340,7 @@ class TestProductionReadiness:
         """Test CI/CD workflow exists."""
         import pathlib
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system")
+        root = REPO_ROOT
         ci_workflow = root / ".github" / "workflows" / "ci.yml"
 
         assert ci_workflow.exists()
@@ -350,7 +355,7 @@ class TestProductionReadiness:
         """Test pyproject.toml has correct dependencies."""
         import pathlib
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system")
+        root = REPO_ROOT
         pyproject = root / "pyproject.toml"
 
         assert pyproject.exists()
@@ -369,7 +374,7 @@ class TestProductionReadiness:
         """Test README.md exists."""
         import pathlib
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system")
+        root = REPO_ROOT
         readme = root / "README.md"
 
         assert readme.exists()
@@ -419,7 +424,7 @@ class TestSystemSecurity:
         import pathlib
         import re
 
-        root = pathlib.Path("/Users/christopherbratkovics/Desktop/chatbot-ai-system/src")
+        root = REPO_ROOT / "src"
 
         # Patterns that might indicate hardcoded secrets
         secret_patterns = [

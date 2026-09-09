@@ -6,6 +6,12 @@ from unittest.mock import patch
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _use_fake_sdk_clients(fake_core_clients):
+    """No network: core providers get fake OpenAI/Anthropic clients."""
+    return fake_core_clients
+
+
 class TestModelSwitching:
     """Test suite for dynamic model switching."""
 
@@ -142,12 +148,16 @@ class TestModelSwitching:
         """Test routing based on model capabilities."""
         from chatbot_ai_system.core.models.model_factory import ModelFactory
 
-        factory = ModelFactory()
+        # ModelFactory only consults capability_required inside _select_cost_optimized_model,
+        # i.e. with cost_optimization=True, optimize_cost=True and a message >= 100 chars.
+        factory = ModelFactory(cost_optimization=True)
+        padding = " Please include explanations and edge cases in your answer." * 2
 
         code_request = {
             **sample_chat_request,
-            "message": "Write a Python function to sort a list",
+            "message": "Write a Python function to sort a list" + padding,
             "capability_required": "code_generation",
+            "optimize_cost": True,
         }
 
         response = await factory.process_request(code_request)
@@ -155,8 +165,9 @@ class TestModelSwitching:
 
         math_request = {
             **sample_chat_request,
-            "message": "Solve this calculus problem",
+            "message": "Solve this calculus problem" + padding,
             "capability_required": "mathematics",
+            "optimize_cost": True,
         }
 
         response = await factory.process_request(math_request)

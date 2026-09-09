@@ -6,7 +6,7 @@
 - **Resilience**: Circuit breakers, health checks, graceful degradation
 - **Latency Optimization**: Response caching and connection pooling
 - **Cost Optimization**: Semantic caching with vector similarity matching
-- **Concurrency**: WebSocket connection management with auto-reconnection
+- **Streaming**: Server-Sent Events over one POST, with client-observed timings on every message
 
 ### Technical Excellence
 - **10+ Design Patterns**: Strategy, Adapter, Circuit Breaker, Saga, Repository

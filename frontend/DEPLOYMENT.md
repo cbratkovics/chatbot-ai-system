@@ -31,7 +31,6 @@ That is the only variable the demo needs. The app appends `/api/v1` if it is mis
 and falls back to the Render URL above when the variable is unset. Optional:
 
 ```bash
-NEXT_PUBLIC_WS_URL=wss://chatbot-ai-system.onrender.com/ws/chat   # only if WebSocket streaming is enabled
 NEXT_PUBLIC_APP_NAME=AI Chat System
 ```
 

@@ -8,8 +8,8 @@ This is the **demo release** of the AI Chatbot System - a streamlined, productio
 
 - **One-Command Setup** - Just run `./setup_demo.sh`
 - **Multi-LLM Support** - OpenAI & Anthropic providers
-- **Intelligent Caching** - Redis-powered responses
-- **Real-time Streaming** - WebSocket support
+- **Semantic Caching** - exact key first, then embedding similarity (Redis optional)
+- **Real-time Streaming** - Server-Sent Events
 - **Professional UI** - Modern React/Next.js interface
 
 ## Quick Start
@@ -47,8 +47,8 @@ cp backend/.env.example backend/.env
 
 - Multiple LLM provider support
 - Semantic caching system
-- WebSocket streaming
-- Rate limiting (30 req/min)
+- SSE streaming
+- Rate limiting (demo guardrails: 10 req/min per IP)
 - Health monitoring
 - Interactive API documentation
 
@@ -84,7 +84,6 @@ At least one of:
 ## Known Issues
 
 - Redis connection errors are handled gracefully
-- WebSocket requires modern browser
 - Rate limiting is per-IP in demo mode
 
 ## Changelog

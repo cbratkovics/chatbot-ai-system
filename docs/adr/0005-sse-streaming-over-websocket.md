@@ -26,6 +26,15 @@ Why SSE rather than the WebSocket path:
 ## Consequences
 
 - The WebSocket endpoint stays for the full deployment and its own tests; the demo does not use it.
+  The frontend no longer ships a WebSocket client at all (the unused `hooks/useWebSocket`,
+  `lib/websocket` stack and `NEXT_PUBLIC_WS_URL` were removed on 2026-09-08); older deployment
+  notes that mention them carry a superseded banner.
+- Two things silently broke the "live token stream" in browsers and were only found by driving a
+  real browser against the backend: `GZipMiddleware` buffered the whole SSE body because browsers
+  send `Accept-Encoding: gzip` (the SSE response now sets `Content-Encoding: identity`), and any
+  Starlette `BaseHTTPMiddleware` in the stack made uvicorn close a stream on a reused keep-alive
+  connection 5 s after the previous request (every middleware is now pure ASGI;
+  `tests/unit/test_keepalive_streaming.py` runs a real server to keep it that way).
 - An error after the first token cannot change the HTTP status; it is sent as an `error` event
   with any partial content, and the UI shows it in the banner.
 - Token usage on streams comes from OpenAI's trailing usage chunk when available, otherwise from a

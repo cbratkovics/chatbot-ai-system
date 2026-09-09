@@ -11,6 +11,12 @@ Have `docs/DIAGNOSIS.md` and `docs/adr/` open in another tab in case they ask "w
 > "This is a chat service where the engineering is visible: every answer shows which provider
 > answered, whether the cache hit, the latency, the token cost, and what failed over."
 
+## 0:10 — Or just press Demo, then Run all
+
+The guided demo sends the three requests below as standalone messages and explains each result
+in place, while the **Evidence** rail on the right keeps score. If you have thirty seconds, do
+that and narrate. If you have three minutes, drive it by hand:
+
 ## 0:15 — First question (streaming + telemetry)
 
 **Click:** type *"In one sentence, what does a semantic cache do?"* and press Enter.
@@ -24,21 +30,23 @@ Have `docs/DIAGNOSIS.md` and `docs/adr/` open in another tab in case they ask "w
 > protocol, and the failover and cache logic is computed once for both JSON and streamed
 > answers. Token counts come from OpenAI's usage chunk; the cost is list price."
 
-## 0:50 — Same question again (cache HIT)
+## 0:50 — Ask it differently (semantic cache HIT)
 
-**Click:** press the up arrow or retype the identical question. Enter.
+**Click:** type a paraphrase, e.g. *"Explain briefly what semantic caching does."* Enter.
+("Conversation memory" is off by default, so each message is a standalone request and the cache
+key is the question alone.)
 
-**Point at:** `cache HIT (1.00)` · single-digit ms · `$0.00` · no provider in the attempt log.
+**Point at:** `cache HIT · semantic 0.9x` · ~200 ms · `$1.8e-7 · saved $2e-5`. The Evidence rail's
+"Spent vs avoided" tile moves.
 
 **Say:**
-> "Exact-match cache on the normalised prompt, model and temperature. It's an in-process LRU
-> because the demo runs with no Redis; set `REDIS_URL` and the same interface is backed by Redis.
-> The health endpoint tells you which one is live. I deliberately kept semantic matching behind a
-> flag: TF-IDF would put 160 MB of scikit-learn on the boot path of a 512 MB instance."
-
-If asked why not embeddings: "Paraphrase matching is a feature for a real workload with a
-similarity threshold you can tune against real traffic. For a demo it would just make the HIT
-harder to explain."
+> "Exact key first, free and instant. On an exact miss the question is embedded and compared
+> against what this worker has answered, scoped to the same model, temperature and prior
+> conversation, so a follow-up can't drag an unrelated answer over the threshold. The threshold
+> isn't a guess: `/evals` has precision and recall on 68 labelled pairs and a sweep, and the
+> default is where F1 peaks. That page also shows the honest part: negation traps still get
+> through, because embeddings can't tell 'should' from 'should not'. That's the next thing I'd fix,
+> and the eval is how I'd know it worked."
 
 ## 1:25 — Simulate a provider outage (failover)
 
@@ -46,7 +54,8 @@ harder to explain."
 *"Name three failure modes of an LLM provider call."*
 
 **Point at:** the chip: `groq · openai/gpt-oss-20b` and the amber badge
-`failover: openai → groq (simulated)`. Hover it: `openai/gpt-4o-mini: 503 simulated_outage`.
+`failover: openai → groq (simulated)`. The Evidence rail's failover timeline shows the attempt
+chain `openai/gpt-4o-mini 503 simulated_outage → groq/openai/gpt-oss-20b ok`.
 
 **Say:**
 > "The toggle sends one header; the server refuses to call the primary and records a 503, then
@@ -76,11 +85,14 @@ harder to explain."
 
 ## 2:45 — Close on the process
 
+**Click:** open **Evals** in the header.
+
 **Say:**
-> "The repo has a diagnosis doc with the reproduction commands, five one-page ADRs for these
-> decisions, and a test triage where I un-quarantined 79 failing integration tests: twelve tested
-> an API that never existed and were deleted with git evidence, the rest were stale fixtures and
-> drift. Coverage is 31% and the README says so."
+> "Nothing on these pages is typed in. The chat page derives its numbers from the session's own
+> telemetry; this page renders a committed eval artifact with its run timestamp and commit, and
+> switches to the live copy when the backend is awake. The evals found three real bugs on their
+> first runs. The repo has a diagnosis doc, seven one-page ADRs, and a test triage that
+> un-quarantined 79 failing integration tests. Coverage is 31% and the README says so."
 
 Stop talking. Let them ask.
 
@@ -90,8 +102,9 @@ Stop talking. Let them ask.
   different base URL: zero new dependencies. Free tier is enough for a demo.
 - **Why one worker?** The cache and rate limits are in-process. Two workers would halve the
   hit rate and double the limits. Redis fixes both when you have it.
-- **What would you do first with a budget?** Redis for shared cache and limits, then real
-  semantic matching with a threshold tuned on logged prompts, then Prometheus on `/metrics`.
+- **What would you do first with a budget?** Redis for the shared cache and limits, a lexical
+  guard (negation and entity agreement) in front of the semantic match with the eval as the
+  gate, then scrape `/metrics` into a real Prometheus.
 - **What's not real in this repo?** Four modules are labelled design sketches in their first
   line. The tenants and API-key routers are stubs. `docs/TEST_TRIAGE.md` lists twelve places
   where the code, not the tests, is wrong.

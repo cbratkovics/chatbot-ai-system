@@ -7,9 +7,12 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![CI Pipeline](https://github.com/cbratkovics/chatbot-ai-system/actions/workflows/ci.yml/badge.svg)](https://github.com/cbratkovics/chatbot-ai-system/actions)
 
-A FastAPI + Next.js chat service that shows its own engineering on screen: every answer
-carries a telemetry chip with the provider that answered, the model, cache HIT/MISS, latency,
-token counts, estimated cost, and the failover log for that request.
+A FastAPI + Next.js LLM gateway that shows its own engineering on screen. Every answer carries
+a telemetry chip: the provider and model that answered, cache HIT or MISS with the similarity
+score, latency, tokens, cost paid and cost avoided, and the failover chain for that request. An
+Evidence rail aggregates the session, a guided demo runs the three headline behaviours with real
+requests, and [`/evals`](https://chatbot-ai-system.vercel.app/evals) publishes precision and
+recall for the cache from a committed benchmark run.
 
 ## Live demo
 
@@ -24,20 +27,35 @@ The UI says so while it waits.
   replace this comment with:  ![15-second demo](docs/images/demo.gif)
 -->
 
-### What to try (3 minutes)
+### What to try (one minute)
 
-1. **Ask anything.** Watch the answer stream token by token. The chip under it shows
-   `openai · gpt-4o-mini`, `cache MISS`, latency, `in / out` tokens, and the estimated cost.
-2. **Ask the exact same question again.** The chip flips to `cache HIT`, `$0.00`, and the
-   latency drops to single-digit milliseconds. Nothing was sent to a provider.
-3. **Tick "Simulate provider failure"** (top right) and ask again. The primary provider is forced
-   to fail with a 503 and the request fails over to Groq; the chip shows
-   `failover: openai → groq (simulated)`. The error on the primary is real code path, the outage
-   is the only thing simulated.
-4. **Break it on purpose.** Send eleven messages inside a minute and read the `429 rate_limited`
-   banner with its request id. Errors are structured, never "Request failed".
+Press **Demo** and then **Run all**. Three real requests go out, and each step explains what
+came back:
 
-The full walkthrough with talking points is in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+1. **A question.** The answer streams token by token; the chip shows `openai · gpt-4o-mini`,
+   `cache MISS`, server latency and time to first token, tokens in and out, and the list-price
+   cost.
+2. **A paraphrase of it.** The semantic cache serves the stored answer without a provider call:
+   `cache HIT · semantic 0.93`, the cost paid for the embedding lookup, and the provider cost
+   avoided. If it misses, the step says why (similarity below threshold, matching disabled, or
+   embeddings unavailable).
+3. **A simulated outage.** The primary is forced to fail with a 503 and the fallback answers;
+   the chip and the Evidence rail's failover timeline show the attempt chain
+   `openai 503 simulated_outage → groq ok`. Only the outage is simulated.
+
+The **Evidence** rail on the right keeps score for the session: cache hit rate, money spent versus
+avoided, client-observed P50/P95, time to first token on misses, and every failover. Each tile has
+a one-line "why this matters". Then open [`/evals`](https://chatbot-ai-system.vercel.app/evals)
+for the offline precision and recall of the cache and the pass rates of the failover and
+streaming-contract evals. The talking points are in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+
+### Screenshots
+
+<!-- Placeholder image paths; drop the PNGs in and remove this comment. Suggested size 1440x900. -->
+
+| Chat with the Evidence rail | Failover chain | `/evals` |
+|---|---|---|
+| ![Chat page with the Evidence rail after the guided demo](docs/images/screenshot-chat-evidence.png) | ![A failover chip and the failover timeline with the attempt chain](docs/images/screenshot-failover.png) | ![The evals page with precision, recall and the threshold sweep](docs/images/screenshot-evals.png) |
 
 ### Runs for ~$0/month
 
@@ -60,8 +78,9 @@ token budget on `gpt-4o-mini` is under $0.10.
 |---|---|---|
 | Provider failover on 401/402/429/5xx/timeout | [`providers/chain.py`](src/chatbot_ai_system/providers/chain.py) | `attempts[]` in every response; the failure toggle |
 | Optional infrastructure, visible degradation | [`cache/memory_cache.py`](src/chatbot_ai_system/cache/memory_cache.py), [`vector_store/__init__.py`](src/chatbot_ai_system/vector_store/__init__.py) | `/health` reports `cache: memory`; app boots with one key and nothing else |
-| Exact-match response cache | [`api/chat.py`](src/chatbot_ai_system/api/chat.py) | `cache HIT`, `$0.00` on repeat questions |
-| Streaming over plain HTTP | [`api/chat.py`](src/chatbot_ai_system/api/chat.py) (SSE) | live token stream, `ttfb` in the chip |
+| Semantic cache, exact key first | [`cache/semantic_match.py`](src/chatbot_ai_system/cache/semantic_match.py), [`api/chat.py`](src/chatbot_ai_system/api/chat.py) | `cache HIT · semantic 0.93` with cost avoided; precision/recall on [`/evals`](https://chatbot-ai-system.vercel.app/evals) |
+| Streaming over plain HTTP | [`api/chat.py`](src/chatbot_ai_system/api/chat.py) (SSE) | live token stream, `ttfb` in the chip; contract checked by the SSE eval |
+| Observed numbers only | [`frontend/components/evidence/`](frontend/components/evidence/), [`evals/`](evals/) | Evidence rail from session telemetry; `/evals` from the committed artifact (ADR 0006) |
 | Structured errors with real status codes | [`api/errors.py`](src/chatbot_ai_system/api/errors.py) | `402 provider_quota_exhausted [openai]: … · request <id>` |
 | Cost control without a database | [`api/guardrails.py`](src/chatbot_ai_system/api/guardrails.py) | friendly 429s; `/chat/health` shows tokens used today |
 
@@ -76,13 +95,14 @@ Two full views, one per deployment, are in
 
 ```mermaid
 flowchart LR
-    UI[Next.js UI<br/>SSE client + telemetry chip] -->|POST /api/v1/chat/completions| API[FastAPI<br/>error envelope, CORS, request id]
+    UI[Next.js UI<br/>SSE client, telemetry chip, Evidence rail, /evals] -->|POST /api/v1/chat/completions| API[FastAPI<br/>error envelope, CORS, request id, metrics]
     API --> GUARD[Demo guardrails]
-    GUARD --> CACHE[Cache: in-process LRU]
+    GUARD --> CACHE[Cache: exact key, then<br/>embedding similarity]
     CACHE -.->|REDIS_URL| REDIS[(Redis)]
+    CACHE -->|embed on exact miss| EMB[OpenAI text-embedding-3-small]
     CACHE -->|miss| CHAIN[Provider chain]
     CHAIN -->|primary| OAI[OpenAI gpt-4o-mini]
-    CHAIN -->|fallback| GROQ[Groq llama-3.1-8b]
+    CHAIN -->|fallback| GROQ[Groq openai/gpt-oss-20b]
     CHAIN -.->|ANTHROPIC_API_KEY| ANTH[Anthropic]
     CHAIN -.->|ENABLE_VECTOR_SEARCH| PINE[(Pinecone)]
     CHAIN --> TEL[telemetry] --> UI
@@ -93,27 +113,30 @@ flowchart LR
 Every number in this section comes from a committed artifact produced by a script in this
 repository. There are no other performance claims in this README.
 
-### Live demo benchmark
+### System evals (the numbers)
 
-`scripts/bench_demo.py` sends 20 requests (5 distinct prompts, each repeated 4 times) to the
-live API, paced under the demo rate limit, and writes
-[`benchmarks/results/bench_demo_latest.json`](benchmarks/results/bench_demo_latest.json).
+`make evals` runs four evals against a live backend and commits the result as
+[`evals/results/latest.json`](evals/results/latest.json), summarised in
+[`evals/results/latest.md`](evals/results/latest.md) and rendered at
+[`/evals`](https://chatbot-ai-system.vercel.app/evals) (ADR 0006). This README does not repeat
+the numbers; the artifact carries its run timestamp, commit SHA, target and cost.
 
-| Metric | Value |
-|---|---|
-| Cache hit rate | *run the script* |
-| Latency P50 / P95, cache miss | *run the script* |
-| Latency P50 / P95, cache hit | *run the script* |
-| Failovers observed | *run the script* |
+| Eval | What it measures | Where |
+|---|---|---|
+| Cache paraphrase | precision, recall, F1 and confusion matrix of the semantic cache on 68 labelled pairs (paraphrases, normalisation, same-words-different-ask, negation and entity-swap traps), plus a threshold sweep that sets `SEMANTIC_CACHE_THRESHOLD` | [`evals/cache_paraphrase_eval.py`](evals/cache_paraphrase_eval.py), [`evals/data/cache_pairs.jsonl`](evals/data/cache_pairs.jsonl) |
+| Failover | with the primary forced down: did a different provider answer, was the failure recorded, did the first token still stream; added latency versus baseline | [`evals/failover_eval.py`](evals/failover_eval.py) |
+| SSE contract | `meta → delta* → done \| error`, never gzip-compressed, across hits, misses, bypasses and failovers | [`evals/sse_contract_eval.py`](evals/sse_contract_eval.py) |
+| Latency | client and server P50/P95/P99 per path (exact hit, semantic hit, miss, failover, bypass) | [`evals/latency_eval.py`](evals/latency_eval.py) |
 
 ```bash
-poetry run python scripts/bench_demo.py                      # live demo, ~2.5 min at 9 req/min
-poetry run python scripts/bench_demo.py --base-url http://localhost:8000 --rpm 0 --runs 40
-poetry run python scripts/bench_demo.py --simulate-failure   # with DEMO_FAILURE_TOGGLE_ENABLED=true
+# backend with the demo limits off, then:
+SEMANTIC_CACHE_ENABLED=true DEMO_GUARDRAILS_ENABLED=false RATE_LIMIT_ENABLED=false make dev
+make evals                                   # ~190 requests, ~2.5 min, well under a cent
+poetry run python scripts/bench_demo.py      # the older 20-request smoke against the live demo
 ```
 
-The table above is filled in by hand from the JSON the script writes, and only from that.
-Latencies are client-observed from the machine that ran the script.
+The scoring functions are unit-tested on fixture data (`tests/unit/test_evals_scoring.py`); a run
+with any failed request is written to `last-failed.json` and never replaces `latest.json`.
 
 ### Failover control-flow timing
 
@@ -133,10 +156,13 @@ Regenerate with `BENCHMARK_RESULTS_DIR=benchmarks/results poetry run pytest test
 
 ### Test suite
 
-`poetry run pytest tests/` — 316 passed, 0 failures, 2 strict `xfail`s that document known gaps
-(listed in [`docs/TEST_TRIAGE.md`](docs/TEST_TRIAGE.md)). Line coverage measured by
-`pytest --cov=chatbot_ai_system` is **31%**: the demo path is covered, the full-deployment
-modules (multi-tenancy, orchestration strategies, observability) largely are not.
+`poetry run pytest tests/` — 355 passed, 48 skipped (live-service tests), 2 strict `xfail`s that
+document known gaps (listed in [`docs/TEST_TRIAGE.md`](docs/TEST_TRIAGE.md)). Two tests start a
+real uvicorn server: one proves a stream survives the keep-alive timer on a reused connection,
+the other that no `BaseHTTPMiddleware` is in the stack (ADR 0005). Frontend: `npm test` runs the
+Vitest suites for the Evidence rail's statistics and the `/evals` page helpers. Line coverage of
+the backend is **31%**: the demo path is covered, the full-deployment modules (multi-tenancy,
+orchestration strategies, observability) largely are not.
 
 ## Quick start
 
@@ -199,7 +225,10 @@ for the full list with comments. The ones that matter:
 | `DEFAULT_MODEL` | `gpt-4o-mini` | legacy ids such as `gpt-3.5-turbo` are mapped forward |
 | `FALLBACK_MODELS` | `groq:openai/gpt-oss-20b` | comma-separated `provider:model` chain; retired ids such as `llama-3.1-8b-instant` are mapped forward |
 | `REDIS_URL` | unset | set to use Redis; unreachable or unset falls back to memory |
-| `SEMANTIC_CACHE_ENABLED` | `false` | TF-IDF similarity matching (loads scikit-learn) |
+| `SEMANTIC_CACHE_ENABLED` | `true` | paraphrase matching with OpenAI embeddings on an exact miss; degrades to exact-match without a key (ADR 0007) |
+| `SEMANTIC_CACHE_THRESHOLD` | `0.76` | F1-optimal value from the eval sweep; change it by re-running `make evals` |
+| `SEMANTIC_CACHE_MAX_ENTRIES` | `512` | bound on the in-process embedding index |
+| `RATE_LIMIT_ENABLED` | `true` | outer 100 req/min per IP for every route; turn off for eval runs |
 | `ENABLE_VECTOR_SEARCH` | `false` | Pinecone retrieval; nothing imports Pinecone unless true |
 | `DEMO_*` | see file | per-IP limits, token cap, history cap, daily budget |
 | `DEMO_FAILURE_TOGGLE_ENABLED` | `false` | shows the failure switch; header `X-Demo-Simulate-Failure: 1` |
@@ -212,6 +241,7 @@ Deployment notes for Render and Vercel: [`render.yaml`](render.yaml) and
 ```bash
 make check            # ruff + mypy + pytest
 make build-frontend   # tsc + next build
+cd frontend && npm run lint && npm test
 ```
 
 Equivalent to `poetry run ruff check .`, `poetry run mypy src/ --ignore-missing-imports`,
@@ -226,11 +256,12 @@ Tests that need a live service are marked `live` and skip unless `TEST_BASE_URL`
 ├── src/chatbot_ai_system/   # backend package (see below)
 ├── frontend/                # Next.js 15 UI (Vercel); Dockerfile is for the local compose stack only
 ├── tests/                   # unit, integration (live-service tests gated by env vars), contract, e2e, load
+├── evals/                   # system evals, labelled dataset, committed results (make evals)
 ├── docs/                    # ADRs, diagnosis, test triage, demo script, audits
 ├── docker/                  # backend Dockerfiles, prod compose, nginx and redis configs
 ├── infrastructure/          # Terraform, Helm/k8s, monitoring stack: full deployment only, not the demo
 ├── benchmarks/              # harnesses and the committed results the README cites
-├── scripts/                 # bench_demo.py
+├── scripts/                 # bench_demo.py (shares evals.stats)
 ├── docker-compose.yml       # local dev stack: make up
 ├── render.yaml              # Render blueprint for the demo backend
 └── Makefile                 # make help
@@ -241,7 +272,7 @@ full-deployment surface (about 34k lines) and is not exercised by the public dem
 
 | package | role |
 |---|---|
-| `api/` (`chat.py`, `errors.py`, `guardrails.py`), `providers/` (`chain.py`, `catalog.py`, `openai_provider.py`, `groq_provider.py`, `anthropic_provider.py`), `cache/` (`memory_cache.py`, `redis_cache.py`), `config/`, `server/` | **the demo**: routing, failover, cache, guardrails, SSE, app factory |
+| `api/` (`chat.py`, `errors.py`, `guardrails.py`, `ratelimit.py`, `metrics.py`, `evals.py`), `providers/` (`chain.py`, `catalog.py`, `openai_provider.py`, `groq_provider.py`, `anthropic_provider.py`), `cache/` (`memory_cache.py`, `redis_cache.py`, `semantic_match.py`), `config/`, `server/` | **the demo**: routing, failover, exact-then-semantic cache, guardrails, SSE, Prometheus, eval artifact, app factory |
 | `websocket/`, `ws_handlers/`, `streaming/` | WebSocket streaming with its own protocol |
 | `orchestration/`, `orchestrator/`, `reliability/` | orchestrator with load-balancing strategies, circuit breakers, retry policies |
 | `auth/`, `tenancy/`, `middleware/`, `database/`, `models/`, `schemas/` | multi-tenancy, JWT auth, ORM models |
@@ -255,9 +286,10 @@ Known gaps in the full-deployment surface are listed in
 
 ## Technology
 
-FastAPI 0.104 on Python 3.12, Pydantic 2, the `openai` SDK (also used for Groq via its
-OpenAI-compatible endpoint), `anthropic` SDK, `redis` (optional), `tiktoken` for token
-estimates. Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 3.
+FastAPI 0.104 on Python 3.12, Pydantic 2, the `openai` SDK (chat, embeddings, and Groq via its
+OpenAI-compatible endpoint), `anthropic` SDK, `redis` (optional), `tiktoken` for token estimates,
+`prometheus_client`. Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 3, Radix tooltip
+and dialog, Vitest. Charts are hand-written SVG; there is no charting library.
 
 ## License
 

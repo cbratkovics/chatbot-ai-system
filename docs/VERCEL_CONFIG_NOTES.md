@@ -1,5 +1,11 @@
 # Vercel Configuration Architecture Notes
 
+> **Superseded (2026-09-08).** This document predates the demo's current design and describes a
+> WebSocket-based frontend and manual deployment steps that no longer exist. The demo streams over
+> Server-Sent Events (ADR 0005) and the frontend ships no WebSocket client. Current instructions:
+> [`frontend/DEPLOYMENT.md`](../frontend/DEPLOYMENT.md), [`render.yaml`](../render.yaml) and the
+> README's Quick start. Kept for the full-deployment history only.
+
 ## Purpose
 
 This document explains the Vercel configuration architecture for the AI Chatbot System, including why certain design decisions were made and how the configuration files interact with the deployment process.

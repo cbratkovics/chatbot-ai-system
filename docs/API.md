@@ -16,16 +16,16 @@ Currently, the API is open. Future versions will support:
 
 ## Rate Limiting
 
-- **Default**: 100 requests per minute per IP
-- **Burst**: 20 requests
-- **WebSocket**: 5 connections per minute
+Two layers, both in-process (ADR 0004):
 
-Rate limit headers:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 99
-X-RateLimit-Reset: 2024-01-01T00:01:00Z
-```
+- **Outer limit, every route**: `RATE_LIMIT_REQUESTS` per `RATE_LIMIT_PERIOD` seconds per client IP
+  (default 100 per 60 s; `/health` and `/metrics` exempt). Exceeding it returns `429` with the
+  standard error envelope (`code: "rate_limited"`) and a `Retry-After` header.
+- **Demo guardrails, chat route**: `DEMO_RATE_LIMIT_PER_MINUTE` (10) and `DEMO_RATE_LIMIT_PER_DAY`
+  (40) per IP, a per-request token cap and a shared daily token budget; `429` codes
+  `rate_limited`, `daily_limit_reached`, `demo_budget_exhausted`.
+
+`GET /api/v1/chat/health` reports both (`rate_limit`, `guardrails`).
 
 ## Endpoints
 
@@ -188,7 +188,11 @@ DELETE /api/v1/cache/clear
 **Query Parameters:**
 - `pattern`: Optional pattern to clear specific entries
 
-## WebSocket API
+## WebSocket API (full deployment only)
+
+The public demo does not use this endpoint and the demo frontend has no WebSocket client; the
+demo streams over Server-Sent Events on `POST /api/v1/chat/completions` (ADR 0005). The endpoint
+remains mounted for the full deployment and its own tests.
 
 ### Connection
 

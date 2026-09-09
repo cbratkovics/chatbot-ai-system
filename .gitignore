@@ -158,7 +158,9 @@ claude-*.md
 coverage.xml
 *.pyc
 __pycache__/
-.python-version
 
 # Scratch output from test runs (benchmark scripts write to benchmarks/results/ explicitly)
 benchmarks/results/tmp/
+
+# Empty backup files written by the database-backup helper during test runs
+backups/

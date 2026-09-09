@@ -106,6 +106,8 @@ class CircuitBreaker:
 class RedisCache:
     """Redis cache with advanced features."""
 
+    backend = "redis"
+
     def __init__(
         self,
         redis_url: str = "redis://localhost:6379/0",
@@ -114,6 +116,7 @@ class RedisCache:
         compression_threshold: int = 1000,
         enable_compression: bool = True,
         enable_circuit_breaker: bool = True,
+        connect_timeout_seconds: float = 2.0,
     ):
         """
         Initialize Redis cache.
@@ -132,6 +135,7 @@ class RedisCache:
         self.compression_threshold = compression_threshold
         self.enable_compression = enable_compression
         self.enable_circuit_breaker = enable_circuit_breaker
+        self.connect_timeout_seconds = connect_timeout_seconds
 
         self.client: Optional[redis.Redis] = None
         self.pool: Optional[ConnectionPool] = None
@@ -143,10 +147,14 @@ class RedisCache:
         """Establish Redis connection with pooling."""
         try:
             # Create connection pool
+            # Bounded timeouts: an unreachable Redis must fail in seconds, not minutes,
+            # so startup can fall back to the in-process cache.
             self.pool = ConnectionPool.from_url(
                 self.redis_url,
                 max_connections=self.max_connections,
                 decode_responses=False,  # We handle encoding/decoding
+                socket_connect_timeout=self.connect_timeout_seconds,
+                socket_timeout=self.connect_timeout_seconds,
             )
 
             # Create Redis client

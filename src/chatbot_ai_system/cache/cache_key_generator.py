@@ -7,9 +7,6 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +43,13 @@ class CacheKeyGenerator:
             self._initialize_vectorizer()
 
     def _initialize_vectorizer(self):
-        """Initialize TF-IDF vectorizer for semantic similarity."""
+        """Initialize TF-IDF vectorizer for semantic similarity.
+
+        scikit-learn is imported here, not at module level: it costs ~160 MB and ~2 s
+        on boot, and the exact-match cache does not need it.
+        """
+        from sklearn.feature_extraction.text import TfidfVectorizer
+
         self.vectorizer = TfidfVectorizer(
             max_features=1000,
             ngram_range=(1, 3),
@@ -178,6 +181,8 @@ class CacheKeyGenerator:
             vectors = self.vectorizer.fit_transform([text1, text2])
 
             # Calculate cosine similarity
+            from sklearn.metrics.pairwise import cosine_similarity
+
             similarity = cosine_similarity(vectors[0:1], vectors[1:2])[0][0]
 
             return float(similarity)

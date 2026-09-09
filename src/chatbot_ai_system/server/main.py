@@ -9,6 +9,7 @@ from datetime import datetime
 
 import uvicorn
 from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -21,6 +22,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from chatbot_ai_system import __version__
+from chatbot_ai_system.api.errors import ErrorEnvelopeMiddleware, error_payload
 from chatbot_ai_system.api.routes import api_router
 from chatbot_ai_system.config.settings import settings
 
@@ -89,14 +91,34 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         logger.warning(f"Database initialization failed: {e}")
 
-    # Initialize Redis cache for chat API
+    # Initialize the response cache: Redis if reachable, else in-process memory.
     try:
-        from chatbot_ai_system.api.chat import initialize_cache
+        from chatbot_ai_system.api.chat import cache_backend_name, initialize_cache
 
         await initialize_cache(settings)
-        logger.info("Redis cache system initialized")
+        logger.info("Response cache backend: %s", cache_backend_name())
     except Exception as e:
-        logger.warning(f"Redis cache initialization skipped: {e}")
+        logger.warning(f"Cache initialization failed, continuing without cache: {e}")
+
+    from chatbot_ai_system.providers.catalog import provider_for, resolve_model
+
+    if provider_for(resolve_model(settings.default_model)) is None:
+        logger.warning(
+            "DEFAULT_MODEL=%r is not in the model catalogue; requests for 'default' will 404",
+            settings.default_model,
+        )
+    elif resolve_model(settings.default_model) != settings.default_model:
+        logger.warning(
+            "DEFAULT_MODEL=%r is a legacy id; serving %r instead. Update the env var.",
+            settings.default_model,
+            resolve_model(settings.default_model),
+        )
+    logger.info(
+        "Providers configured: %s (default model %s, fallbacks %s)",
+        ", ".join(settings.configured_providers) or "none",
+        settings.default_model,
+        settings.fallback_chain or "none",
+    )
 
     yield
 
@@ -111,25 +133,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception:
         pass
 
-    # Close Redis cache
+    # Close cache
     try:
-        from chatbot_ai_system.api.chat import redis_cache
+        from chatbot_ai_system.api import chat as chat_api
 
-        if redis_cache:
-            await redis_cache.disconnect()
-            logger.info("Redis cache disconnected")
+        if chat_api.cache:
+            await chat_api.cache.disconnect()
+            chat_api.cache = None  # next get_cache() rebuilds instead of reusing a closed one
+            logger.info("Cache disconnected")
     except Exception as e:
-        logger.warning(f"Error disconnecting Redis cache: {e}")
-
-    # Shutdown WebSocket manager
-    try:
-        from chatbot_ai_system.core.streaming.websocket_manager import WebSocketManager
-
-        ws_manager = WebSocketManager()
-        await ws_manager.shutdown()
-        logger.info("WebSocket manager shut down")
-    except Exception as e:
-        logger.warning(f"Error shutting down WebSocket manager: {e}")
+        logger.warning(f"Error disconnecting cache: {e}")
 
 
 def create_app() -> FastAPI:
@@ -148,7 +161,10 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-    # Add middleware (order matters - reverse order of execution)
+    # Middleware. Starlette wraps in reverse order: the first add_middleware call is the
+    # innermost. ErrorEnvelopeMiddleware goes first so it sits *inside* CORS and its
+    # 500s still carry CORS headers.
+    app.add_middleware(ErrorEnvelopeMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -173,14 +189,17 @@ def create_app() -> FastAPI:
                 "path": request.url.path,
             },
         )
+        detail = exc.detail
+        if isinstance(detail, dict):
+            code = str(detail.get("code", "http_error"))
+            message = str(detail.get("message", detail))
+        else:
+            code = "http_error"
+            message = str(detail)
         return JSONResponse(
             status_code=exc.status_code,
-            content={
-                "error": exc.detail,
-                "status_code": exc.status_code,
-                "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat(),
-            },
+            content=error_payload(code, message, request_id=request_id),
+            headers=getattr(exc, "headers", None),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -193,12 +212,12 @@ def create_app() -> FastAPI:
         )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "error": "Validation error",
-                "details": exc.errors(),
-                "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat(),
-            },
+            content=error_payload(
+                "validation_error",
+                "Request validation failed",
+                request_id=request_id,
+                details=jsonable_encoder(exc.errors()),
+            ),
         )
 
     @app.exception_handler(Exception)
@@ -212,11 +231,7 @@ def create_app() -> FastAPI:
         )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={
-                "error": "Internal server error",
-                "request_id": request_id,
-                "timestamp": datetime.utcnow().isoformat(),
-            },
+            content=error_payload("internal_error", "Internal server error", request_id=request_id),
         )
 
     # Add routes
@@ -276,36 +291,35 @@ def create_app() -> FastAPI:
             "checks": {},
         }
 
-        # Check Redis connection (skip in test environment)
-        if settings.environment == "test":
-            health_status["checks"]["redis"] = "test mode"
-        else:
-            try:
-                from chatbot_ai_system.api.chat import redis_cache
+        # Cache backend: redis, memory, or disabled. Memory is a healthy state for the
+        # demo; only an enabled-but-broken cache degrades.
+        try:
+            from chatbot_ai_system.api.chat import get_cache
 
-                if redis_cache and redis_cache.client:
-                    await redis_cache.client.ping()
-                    health_status["checks"]["redis"] = "healthy"
-                else:
-                    health_status["checks"]["redis"] = "not initialized"
+            backend = await get_cache(settings)
+            if backend is None:
+                health_status["checks"]["cache"] = "disabled"
+            else:
+                cache_health = await backend.health_check()
+                health_status["checks"]["cache"] = backend.backend
+                if not cache_health.get("connected", True):
+                    health_status["checks"]["cache"] = f"{backend.backend}: unhealthy"
                     health_status["status"] = "degraded"
-            except Exception as e:
-                health_status["checks"]["redis"] = f"unhealthy: {str(e)}"
-                health_status["status"] = "degraded"
+        except Exception as e:
+            health_status["checks"]["cache"] = f"unhealthy: {str(e)}"
+            health_status["status"] = "degraded"
 
-        # Check AI providers configuration (skip in test environment)
-        if settings.environment == "test":
-            health_status["checks"]["ai_providers"] = "test mode"
-        elif not settings.has_openai_key and not settings.has_anthropic_key:
+        # AI providers: at least one key must be present to serve completions.
+        providers = settings.configured_providers
+        if providers:
+            health_status["checks"]["ai_providers"] = f"configured: {', '.join(providers)}"
+        else:
             health_status["checks"]["ai_providers"] = "no API keys configured"
             health_status["status"] = "unhealthy"
-        else:
-            providers = []
-            if settings.has_openai_key:
-                providers.append("openai")
-            if settings.has_anthropic_key:
-                providers.append("anthropic")
-            health_status["checks"]["ai_providers"] = f"configured: {', '.join(providers)}"
+        health_status["checks"]["default_model"] = settings.default_model
+        health_status["checks"]["fallback_chain"] = [
+            f"{p}:{m}" for p, m in settings.fallback_chain
+        ]
 
         return JSONResponse(
             status_code=200 if health_status["status"] == "healthy" else 503,

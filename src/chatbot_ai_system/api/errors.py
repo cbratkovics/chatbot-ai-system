@@ -1,0 +1,133 @@
+"""Structured error envelope shared by every route.
+
+Every error the API returns has the shape::
+
+    {"error": {"code": "...", "message": "...", "provider": "...", "request_id": "..."}}
+
+Why: the frontend can only show what the backend sends, and a bare 500 with no CORS
+headers is invisible to a browser. One envelope, one place to build it.
+"""
+
+import logging
+from typing import Any, Dict, Optional
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from ..providers.base import (
+    AuthenticationError,
+    ContentFilterError,
+    ModelNotFoundError,
+    ProviderError,
+    QuotaExceededError,
+    RateLimitError,
+    TimeoutError,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def error_payload(
+    code: str,
+    message: str,
+    provider: Optional[str] = None,
+    request_id: Optional[str] = None,
+    **extra: Any,
+) -> Dict[str, Any]:
+    """Build the envelope body."""
+    body: Dict[str, Any] = {
+        "code": code,
+        "message": message,
+        "provider": provider,
+        "request_id": request_id,
+    }
+    body.update({k: v for k, v in extra.items() if v is not None})
+    return {"error": body, "request_id": request_id}
+
+
+def error_response(
+    status_code: int,
+    code: str,
+    message: str,
+    provider: Optional[str] = None,
+    request_id: Optional[str] = None,
+    headers: Optional[Dict[str, str]] = None,
+    **extra: Any,
+) -> JSONResponse:
+    """Build a JSONResponse carrying the envelope."""
+    return JSONResponse(
+        status_code=status_code,
+        content=error_payload(code, message, provider, request_id, **extra),
+        headers=headers,
+    )
+
+
+def classify_provider_error(exc: ProviderError) -> tuple[int, str]:
+    """Map a provider exception to (HTTP status, error code).
+
+    Order matters: subclasses first.
+    """
+    if isinstance(exc, AuthenticationError):
+        return 401, "provider_auth_error"
+    if isinstance(exc, QuotaExceededError):
+        return 402, "provider_quota_exhausted"
+    if isinstance(exc, RateLimitError):
+        return 429, "provider_rate_limited"
+    if isinstance(exc, TimeoutError):
+        return 504, "provider_timeout"
+    if isinstance(exc, ModelNotFoundError):
+        return 404, "model_not_found"
+    if isinstance(exc, ContentFilterError):
+        return 422, "content_filtered"
+    # Anything else the upstream did wrong is a bad gateway, never a bare 500.
+    status = exc.status_code
+    if status is not None and 400 <= status < 500:
+        return 502, "provider_error"
+    if status is not None and status >= 500:
+        return 502, "provider_error"
+    return 503, "provider_unavailable"
+
+
+def provider_error_response(
+    exc: ProviderError, request_id: str, **extra: Any
+) -> JSONResponse:
+    """Turn a provider exception into the envelope with the right status."""
+    status_code, code = classify_provider_error(exc)
+    headers: Dict[str, str] = {}
+    retry_after = getattr(exc, "retry_after", None)
+    if status_code == 429:
+        headers["Retry-After"] = str(retry_after or 30)
+    return error_response(
+        status_code,
+        code,
+        exc.message,
+        provider=exc.provider,
+        request_id=request_id,
+        headers=headers or None,
+        **extra,
+    )
+
+
+class ErrorEnvelopeMiddleware(BaseHTTPMiddleware):
+    """Catch anything unhandled *inside* the CORS boundary.
+
+    FastAPI's ``Exception`` handler runs in ServerErrorMiddleware, outside CORSMiddleware,
+    so its 500 has no CORS headers and the browser cannot read it. This middleware is
+    registered inside CORS, so the browser always gets a readable envelope.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as exc:  # noqa: BLE001 - this is the last line of defence
+            request_id = getattr(request.state, "request_id", None)
+            logger.error(
+                "Unhandled error: %s", exc, extra={"request_id": request_id}, exc_info=True
+            )
+            return error_response(
+                500,
+                "internal_error",
+                "Internal server error",
+                request_id=request_id,
+            )

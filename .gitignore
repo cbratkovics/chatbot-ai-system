@@ -159,3 +159,6 @@ coverage.xml
 *.pyc
 __pycache__/
 .python-version
+
+# Scratch output from test runs (benchmark scripts write to benchmarks/results/ explicitly)
+benchmarks/results/tmp/

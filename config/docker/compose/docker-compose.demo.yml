@@ -3,8 +3,8 @@ version: '3.8'
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.demo
+      context: ../../..
+      dockerfile: docker/dockerfiles/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -23,8 +23,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.demo
+      context: ../../../frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:

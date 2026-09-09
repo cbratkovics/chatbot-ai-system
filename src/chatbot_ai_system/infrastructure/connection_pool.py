@@ -1,6 +1,9 @@
-"""
-Connection Pooling and Retry Logic Implementation
-Provides resilient connection management with automatic retries and circuit breaking
+"""DESIGN SKETCH - NOT WIRED INTO THE APPLICATION.
+
+HTTP connection pooling for provider clients.
+
+It imports aiohttp, which are not project dependencies, so it cannot be imported at runtime and
+is excluded from the demo and the test suite. It is kept as an architecture artifact only.
 """
 
 import asyncio

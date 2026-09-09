@@ -1,6 +1,11 @@
-"""
-Multi-Region Architecture with Global Load Balancing
-AWS Route53, Lambda@Edge, and cross-region replication
+"""DESIGN SKETCH - NOT WIRED INTO THE APPLICATION.
+
+Multi-region routing, blue/green and canary deployment orchestration for a global deployment.
+
+It imports boto3, geoip2, geopy and aiohttp, which are not project dependencies, so it cannot be imported at runtime and
+is excluded from the demo and the test suite. It is kept as an architecture artifact only.
+The `_simulate_*` methods and several `asyncio.sleep` calls stand in for real AWS/network
+behaviour; nothing here has been executed against real infrastructure.
 """
 
 import asyncio

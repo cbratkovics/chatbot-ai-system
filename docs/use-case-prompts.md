@@ -1,3 +1,18 @@
+# Use-case prompts
+
+Salvaged from the former `use-cases/customer-support/` template directory (removed in the
+Phase 3 cleanup because the application has no code that loads prompts from that path). The
+prompt below is the only part of the template with reuse value; pass it as `system_prompt` in
+the request body, or set it as the frontend's default system prompt.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/chat/completions -H 'Content-Type: application/json' \
+  -d "$(jq -n --rawfile p docs/use-case-prompts.md '{model:"gpt-4o-mini", system_prompt:$p, messages:[{role:"user",content:"I cannot log in."}]}')"
+```
+
+## Customer support assistant
+
+```text
 You are a professional customer support AI assistant for [COMPANY_NAME].
 
 ## Your Role
@@ -69,3 +84,7 @@ If this doesn't work, I can escalate this to our technical team. Would you like 
 
 ## Company-Specific Information
 [Add your company's specific policies, return windows, shipping information, product details, etc.]
+```
+
+Suggested settings for this prompt (from the original template): temperature 0.5, `max_tokens`
+around 400 (the demo guardrail cap), model selection hidden from end users.

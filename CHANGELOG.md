@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Streamed answers on a reused keep-alive connection (every browser request after the CORS preflight) were closed by uvicorn's 5 s keep-alive timer mid-stream (`net::ERR_INCOMPLETE_CHUNKED_ENCODING`). Cause: Starlette `BaseHTTPMiddleware` layers in the stack (slowapi's alone reproduced it). `RequestIDMiddleware`, `ErrorEnvelopeMiddleware` and `MetricsMiddleware` are now pure ASGI and the slowapi middleware is replaced by a pure-ASGI per-IP limiter (`api/ratelimit.py`, same 100 req/min default, 429 envelope with `Retry-After`); `--timeout-keep-alive 65` added to the Render start command as belt and braces. Regression test runs a real uvicorn server (`tests/unit/test_keepalive_streaming.py`).
+- SSE responses opt out of GZipMiddleware (`Content-Encoding: identity`): browsers send `Accept-Encoding: gzip` and Starlette's streaming gzip only flushes when zlib's buffer fills, so the "live" token stream arrived as one burst at the end of every answer.
+- Groq retired `llama-3.1-8b-instant` / `llama-3.3-70b-versatile` for free-tier use (2026-08-16, 404 `model_not_found`), which made every failover fail. Catalogue now carries `openai/gpt-oss-20b` / `openai/gpt-oss-120b` with Groq's list prices; the old ids are legacy aliases, and `FALLBACK_MODELS` resolves them.
+- Provider snapshot ids (`gpt-4o-mini-2024-07-18`) are priced as their catalogue alias; the JSON path reported `cost_usd: null` before.
 - Live demo outage: OpenAI `insufficient_quota` was retried as a rate limit and surfaced as "Request failed"; it is now a non-retryable 402 with a structured error envelope, and the request fails over to Groq (`docs/DIAGNOSIS.md`, ADR 0003).
 - Unhandled 500s now carry CORS headers (error-envelope middleware inside CORS).
 - Unreachable `REDIS_URL` no longer blocks startup for ~75 s; it falls back to an in-process cache within 2 s (ADR 0001).
@@ -15,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 79 failing integration tests triaged: fixtures repaired, drift fixed, 19 tests for APIs that never existed deleted with git evidence (`docs/TEST_TRIAGE.md`).
 
 ### Added
+- Frontend Evidence rail (`frontend/components/evidence/`): cache hit rate, spent vs avoided, client-observed P50/P95, TTFB on streamed misses, failover count, per-message latency sparkline, provider distribution, failover timeline with attempt chains; every tile has a keyboard-reachable "why this matters" tooltip. Derived by a pure, Vitest-covered `computeSessionStats`; missing Phase 1 fields are treated as unknown, never zero.
+- Guided demo (three real requests: question, paraphrase, simulated outage) that explains each observed result, including why a paraphrase missed.
+- Client-observed timings per message (`clientMs`, `clientTtfbMs`), "Conversation memory" toggle (off by default: each message is a standalone request so repeats and paraphrases can hit the cache), "New chat" that keeps the evidence, mobile Evidence drawer, header pills renamed to SSE Streaming / Semantic Cache / Multi-Provider Failover, `/evals` nav link, reduced-motion support.
 - Semantic (paraphrase) cache on the demo path: exact key first, then OpenAI embeddings in a bounded in-process index scoped by tenant, model, temperature and prior conversation; degrades to exact-match with `cache.semantic = "unavailable"` (ADR 0007, supersedes the exact-match-only part of ADR 0001).
 - Telemetry additions on `done` / JSON: `cost_avoided_usd`, `cache.match`, real `cache.similarity`, `cache.semantic`, `cache.matched_key`, `cache.threshold`, `cache.age_seconds`, `embedding {model, tokens, latency_ms, cost_usd}`; a hit now preserves the original `usage.source` instead of relabelling an estimate as provider-reported.
 - `GET /api/v1/evals/latest` serving the committed eval artifact with ETag / 304 / 404 envelope.

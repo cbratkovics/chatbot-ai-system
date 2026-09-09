@@ -46,7 +46,7 @@ The full walkthrough with talking points is in [`docs/DEMO_SCRIPT.md`](docs/DEMO
 | Frontend | Vercel Hobby | $0 |
 | Backend API | Render free tier, one worker | $0 |
 | Response cache | in-process LRU (Redis optional) | $0 |
-| Fallback provider | Groq free tier, `llama-3.1-8b-instant` | $0 |
+| Fallback provider | Groq free tier, `openai/gpt-oss-20b` | $0 |
 | Primary provider | OpenAI `gpt-4o-mini`, hard-capped in the OpenAI dashboard | ≤ $5, typically cents |
 | Vector search, database, tracing | off by default | $0 |
 
@@ -159,7 +159,7 @@ using:
 
 ```json
 {"status": "healthy", "checks": {"cache": "memory", "ai_providers": "configured: openai, groq",
- "default_model": "gpt-4o-mini", "fallback_chain": ["groq:llama-3.1-8b-instant"]}}
+ "default_model": "gpt-4o-mini", "fallback_chain": ["groq:openai/gpt-oss-20b"]}}
 ```
 
 Try the API directly:
@@ -197,7 +197,7 @@ for the full list with comments. The ones that matter:
 | `OPENAI_API_KEY` | | primary provider (required unless another key is set) |
 | `GROQ_API_KEY` | | free-tier fallback provider |
 | `DEFAULT_MODEL` | `gpt-4o-mini` | legacy ids such as `gpt-3.5-turbo` are mapped forward |
-| `FALLBACK_MODELS` | `groq:llama-3.1-8b-instant` | comma-separated `provider:model` chain |
+| `FALLBACK_MODELS` | `groq:openai/gpt-oss-20b` | comma-separated `provider:model` chain; retired ids such as `llama-3.1-8b-instant` are mapped forward |
 | `REDIS_URL` | unset | set to use Redis; unreachable or unset falls back to memory |
 | `SEMANTIC_CACHE_ENABLED` | `false` | TF-IDF similarity matching (loads scikit-learn) |
 | `ENABLE_VECTOR_SEARCH` | `false` | Pinecone retrieval; nothing imports Pinecone unless true |

@@ -11,7 +11,7 @@ backend degrades gracefully and reports what it is using on `/health`.
 | Frontend | Vercel Hobby (this app) | same |
 | Backend API | Render free tier, one uvicorn worker | any container host |
 | Response cache | in-process LRU (per worker, resets on deploy) | Redis via `REDIS_URL` |
-| Providers | OpenAI `gpt-4o-mini` → Groq `llama-3.1-8b-instant` failover | any subset of OpenAI / Anthropic / Groq |
+| Providers | OpenAI `gpt-4o-mini` → Groq `openai/gpt-oss-20b` failover | any subset of OpenAI / Anthropic / Groq |
 | Vector search | off (`ENABLE_VECTOR_SEARCH=false`) | Pinecone behind the flag |
 
 ## Vercel project settings
@@ -45,7 +45,7 @@ See `render.yaml` at the repo root for the full list with defaults. The ones tha
 | `GROQ_API_KEY` | free-tier fallback provider (optional but recommended for the failover demo) |
 | `CORS_ORIGINS` | JSON array containing your Vercel origin, e.g. `["https://chatbot-ai-system.vercel.app"]` |
 | `DEFAULT_MODEL` | `gpt-4o-mini` |
-| `FALLBACK_MODELS` | `groq:llama-3.1-8b-instant` |
+| `FALLBACK_MODELS` | `groq:openai/gpt-oss-20b` |
 | `DEMO_*` | per-IP rate limits, token cap, history cap, daily token budget |
 | `DEMO_FAILURE_TOGGLE_ENABLED` | `true` shows the "Simulate provider failure" switch; the UI then sends `X-Demo-Simulate-Failure: 1` |
 | `REDIS_URL` | leave unset on the free tier; the in-process cache is used automatically |
@@ -79,7 +79,7 @@ curl -N -X POST https://chatbot-ai-system.onrender.com/api/v1/chat/completions \
 Expected `/health`:
 
 ```json
-{"status": "healthy", "checks": {"cache": "memory", "ai_providers": "configured: openai, groq", "default_model": "gpt-4o-mini", "fallback_chain": ["groq:llama-3.1-8b-instant"]}}
+{"status": "healthy", "checks": {"cache": "memory", "ai_providers": "configured: openai, groq", "default_model": "gpt-4o-mini", "fallback_chain": ["groq:openai/gpt-oss-20b"]}}
 ```
 
 Errors are always `{"error": {"code", "message", "provider", "request_id"}}` with a real

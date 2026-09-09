@@ -45,7 +45,7 @@ harder to explain."
 **Click:** tick **Simulate provider failure** (top right). Ask a *new* question, e.g.
 *"Name three failure modes of an LLM provider call."*
 
-**Point at:** the chip: `groq · llama-3.1-8b-instant` and the amber badge
+**Point at:** the chip: `groq · openai/gpt-oss-20b` and the amber badge
 `failover: openai → groq (simulated)`. Hover it: `openai/gpt-4o-mini: 503 simulated_outage`.
 
 **Say:**

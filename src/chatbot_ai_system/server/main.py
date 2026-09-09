@@ -23,6 +23,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from chatbot_ai_system import __version__
 from chatbot_ai_system.api.errors import ErrorEnvelopeMiddleware, error_payload
+from chatbot_ai_system.api.metrics import metrics_response
 from chatbot_ai_system.api.routes import api_router
 from chatbot_ai_system.config.settings import settings
 
@@ -174,6 +175,10 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(RequestIDMiddleware)
+    # Prometheus request count + latency histogram (http_requests_total, http_request_duration_seconds).
+    from chatbot_ai_system.middleware.metrics import MetricsMiddleware
+
+    app.add_middleware(MetricsMiddleware)
     app.add_middleware(SlowAPIMiddleware)
 
     # Add exception handlers
@@ -326,15 +331,13 @@ def create_app() -> FastAPI:
             content=health_status,
         )
 
-    @app.get("/metrics")
+    @app.get("/metrics", include_in_schema=False)
     async def metrics():
-        """Basic metrics endpoint for monitoring."""
-        uptime = time.time() - app.state.start_time if hasattr(app.state, "start_time") else 0
-        return {
-            "uptime_seconds": uptime,
-            "environment": settings.environment,
-            "version": __version__,
-        }
+        """Prometheus exposition: request count/latency, cache hits/misses, chat lookups.
+
+        Counters are per worker and reset on deploy, like the in-process cache (ADR 0001).
+        """
+        return metrics_response()
 
     @app.get("/")
     async def root():

@@ -279,14 +279,13 @@ class TestHealthEndpoints:
 
     @pytest.mark.asyncio
     async def test_metrics_endpoint(self, async_http_client):
-        """/metrics is a JSON summary, not Prometheus exposition (see TEST_TRIAGE escalation)."""
+        """/metrics is Prometheus exposition (TEST_TRIAGE escalation 4, resolved)."""
         response = await async_http_client.get("/metrics")
 
         assert response.status_code == 200
-        assert "application/json" in response.headers["content-type"]
-        data = response.json()
-        assert "uptime_seconds" in data
-        assert "version" in data
+        assert response.headers["content-type"].startswith("text/plain")
+        assert "http_requests_total" in response.text
+        assert "cache_hits_total" in response.text
 
 
 class TestCacheEndpoints:

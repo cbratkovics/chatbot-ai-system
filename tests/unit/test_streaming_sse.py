@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from chatbot_ai_system.providers.base import RateLimitError
+from chatbot_ai_system.providers.catalog import estimate_cost_usd
 
 BODY = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "stream please"}], "stream": True}
 
@@ -55,10 +56,41 @@ def test_second_identical_stream_is_a_cache_hit(client: TestClient, fake_chat_pr
 
     assert [e["event"] for e in events] == ["meta", "delta", "done"]
     assert events[0]["data"]["cache"]["status"] == "hit"
+    assert events[0]["data"]["cache"]["match"] == "exact"
     assert events[1]["data"]["content"] == fake_chat_provider.reply
-    assert events[-1]["data"]["cache"]["similarity"] == 1.0
-    assert events[-1]["data"]["cost_usd"] == 0.0
+    done = events[-1]["data"]
+    assert done["cache"]["similarity"] == 1.0 and done["cache"]["match"] == "exact"
+    assert done["cache"]["semantic"] == "disabled"  # flag off in tests
+    assert done["cache"]["age_seconds"] >= 0
+    assert done["cost_usd"] == 0.0
+    # Money not spent: list price of the usage the original miss paid for (5 in, 2 out).
+    assert done["cost_avoided_usd"] == estimate_cost_usd("gpt-4o-mini", 5, 2) > 0
+    assert done["usage"]["source"] == "provider"  # carried over from the original miss
+    assert done["embedding"]["tokens"] == 0 and done["embedding"]["cost_usd"] == 0.0
     assert fake_chat_provider.calls == 1  # provider not called again
+
+
+def test_hit_preserves_an_estimated_usage_source(client: TestClient, fake_chat_provider, monkeypatch):
+    """A Groq-style answer with no usage is estimated; a later hit must not relabel it 'provider'."""
+    from chatbot_ai_system.api import chat as chat_api
+
+    async def stream_without_usage(messages, model, temperature=0.7, max_tokens=None, **kw):
+        from chatbot_ai_system.providers.base import StreamChunk
+
+        fake_chat_provider.calls += 1
+        yield StreamChunk(content="no usage here", is_final=False)
+
+    monkeypatch.setattr(fake_chat_provider, "stream", stream_without_usage)
+    with client.stream("POST", "/api/v1/chat/completions", json=BODY) as res:
+        first = parse_sse(res.read().decode())[-1]["data"]
+    with client.stream("POST", "/api/v1/chat/completions", json=BODY) as res:
+        second = parse_sse(res.read().decode())[-1]["data"]
+
+    assert first["usage"]["source"] == "estimated"
+    assert second["cache"]["status"] == "hit" and second["usage"]["source"] == "estimated"
+    assert second["cost_avoided_usd"] == chat_api.estimate_cost_usd(
+        "gpt-4o-mini", first["usage"]["prompt_tokens"], first["usage"]["completion_tokens"]
+    )
 
 
 def test_stream_error_before_first_token_is_an_error_event(client: TestClient, fake_chat_provider):
@@ -80,4 +112,5 @@ def test_non_stream_response_carries_the_same_telemetry(client: TestClient, fake
     t = res.json()["telemetry"]
     assert t["provider"] == "openai" and t["streamed"] is False
     assert t["cache"]["status"] == "miss" and t["cache"]["backend"] == "memory"
+    assert t["cache"]["match"] is None and t["cost_avoided_usd"] == 0.0
     assert t["usage"]["prompt_tokens"] == 5 and t["cost_usd"] is not None

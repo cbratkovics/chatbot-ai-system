@@ -4,6 +4,10 @@ Request path: guardrails -> cache lookup -> provider chain -> cache store -> res
 Every step is reported in ``telemetry`` (provider, model, cache HIT/MISS, latency, tokens,
 estimated cost, per-provider attempts) so the UI can show what actually happened.
 
+Cache lookup is exact-key first. With ``SEMANTIC_CACHE_ENABLED`` an exact miss is followed by
+an embedding comparison against prompts this worker has answered (ADR 0007); a semantic HIT
+reports its real similarity, the embedding it paid for, and the provider cost it avoided.
+
 Streaming uses Server-Sent Events over the same POST endpoint (``"stream": true``):
 
     event: meta   -> {request_id, model, provider, cache}
@@ -31,6 +35,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ..cache.cache_key_generator import CacheKeyGenerator
 from ..cache.memory_cache import MemoryCache
 from ..cache.redis_cache import RedisCache
+from ..cache.semantic_match import (
+    Embedder,
+    OpenAIEmbedder,
+    SemanticIndex,
+    namespace_for,
+    normalise,
+    split_context,
+)
 from ..config import Settings, get_settings
 from ..providers.anthropic_provider import AnthropicProvider
 from ..providers.base import (
@@ -45,6 +57,7 @@ from ..providers.catalog import (
     MODEL_CATALOG,
     PROVIDERS,
     estimate_cost_usd,
+    estimate_embedding_cost_usd,
     models_for,
     provider_for,
     resolve_model,
@@ -60,6 +73,7 @@ from ..providers.groq_provider import GroqProvider
 from ..providers.openai_provider import OpenAIProvider
 from .errors import classify_provider_error, error_payload, error_response, provider_error_response
 from .guardrails import DemoGuard, GuardrailConfig, GuardrailError, client_ip_from_headers
+from .metrics import record_cache_outcome
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +83,12 @@ CacheBackend = Union[RedisCache, MemoryCache]
 cache: Optional[CacheBackend] = None
 cache_key_generator: Optional[CacheKeyGenerator] = None
 demo_guard: Optional[DemoGuard] = None
+semantic_index: Optional[SemanticIndex] = None
+embedder: Optional[Embedder] = None
 
 SIMULATE_FAILURE_HEADER = "x-demo-simulate-failure"
+TENANT_HEADER = "x-tenant-id"
+PUBLIC_TENANT = "public"
 
 router = APIRouter(
     prefix="/chat",
@@ -272,11 +290,39 @@ async def get_cache(settings: Settings) -> Optional[CacheBackend]:
     if cache is None and settings.cache_enabled:
         cache = await build_cache(settings)
     if cache_key_generator is None:
-        cache_key_generator = CacheKeyGenerator(
-            semantic_cache_enabled=settings.semantic_cache_enabled,
-            similarity_threshold=settings.semantic_cache_threshold,
-        )
+        # Exact keys only. Paraphrase matching is the embedding index below (ADR 0007), not the
+        # TF-IDF path in CacheKeyGenerator, which would put scikit-learn on the boot path.
+        cache_key_generator = CacheKeyGenerator(semantic_cache_enabled=False)
     return cache
+
+
+def get_semantic(settings: Settings) -> Tuple[Optional[SemanticIndex], Optional[Embedder]]:
+    """Semantic index and embedder when the flag is on and an OpenAI key exists, else (None, None)."""
+    global semantic_index, embedder
+    if not settings.semantic_cache_enabled or not settings.cache_enabled:
+        return None, None
+    if semantic_index is None:
+        semantic_index = SemanticIndex(max_entries=settings.semantic_cache_max_entries)
+    if embedder is None and settings.openai_api_key:
+        embedder = OpenAIEmbedder(
+            api_key=settings.openai_api_key.get_secret_value(),
+            model=settings.semantic_cache_embedding_model,
+            timeout_seconds=settings.semantic_cache_embedding_timeout_seconds,
+        )
+    return semantic_index, embedder
+
+
+def semantic_status(settings: Settings) -> Dict[str, Any]:
+    """What /chat/health reports about paraphrase matching."""
+    index, emb = get_semantic(settings)
+    return {
+        "enabled": settings.semantic_cache_enabled,
+        "backend": "openai-embeddings" if emb is not None else None,
+        "embedding_model": getattr(emb, "model", None),
+        "threshold": settings.semantic_cache_threshold if settings.semantic_cache_enabled else None,
+        "index_entries": len(index) if index is not None else 0,
+        "max_entries": index.max_entries if index is not None else settings.semantic_cache_max_entries,
+    }
 
 
 async def initialize_cache(settings: Settings) -> Optional[CacheBackend]:
@@ -337,6 +383,8 @@ class PreparedRequest:
     cache_key: str
     bypass_cache: bool
     simulate_failure: bool
+    tenant: str = PUBLIC_TENANT
+    lookup: Optional["Lookup"] = None
 
 
 def _simulate_requested(http_request: Request, settings: Settings) -> bool:
@@ -400,8 +448,13 @@ async def _prepare(
 
     backend = await get_cache(settings)
     assert cache_key_generator is not None
+    # Cache keys are scoped by tenant when a client identifies one; the public demo has none.
+    tenant = (http_request.headers.get(TENANT_HEADER) or "").strip() or PUBLIC_TENANT
     cache_key = cache_key_generator.generate_key(
-        [{"role": m.role, "content": m.content} for m in messages], model_name, temperature
+        [{"role": m.role, "content": m.content} for m in messages],
+        model_name,
+        temperature,
+        user_id=None if tenant == PUBLIC_TENANT else tenant,
     )
     bypass = (cache_control or "").lower() in ("no-cache", "no-store")
 
@@ -417,7 +470,105 @@ async def _prepare(
         cache_key=cache_key,
         bypass_cache=bypass,
         simulate_failure=_simulate_requested(http_request, settings),
+        tenant=tenant,
     )
+
+
+# --------------------------------------------------------------------------- cache lookup
+@dataclass
+class Lookup:
+    """Outcome of the exact-then-semantic cache lookup for one request."""
+
+    status: str  # hit | miss | bypass
+    hit: Optional[Dict[str, Any]] = None
+    match: Optional[str] = None  # exact | semantic (only on a hit)
+    # 1.0 on an exact hit; cosine on a semantic hit; nearest candidate's score on a miss
+    similarity: Optional[float] = None
+    semantic: str = "disabled"  # disabled | not_needed | hit | miss | unavailable
+    matched_key: Optional[str] = None
+    threshold: Optional[float] = None
+    namespace: Optional[str] = None
+    prompt: Optional[str] = None
+    vector: Any = None  # embedding of ``prompt``; reused when the answer is stored
+    embedding_model: Optional[str] = None
+    embedding_tokens: int = 0
+    embedding_ms: Optional[float] = None
+    embedding_cost_usd: float = 0.0
+
+    def cache_block(self, backend_name: str) -> Dict[str, Any]:
+        block: Dict[str, Any] = {
+            "status": self.status,
+            "backend": backend_name,
+            "match": self.match,
+            "similarity": self.similarity,
+            "semantic": self.semantic,
+            "matched_key": self.matched_key,
+            "threshold": self.threshold,
+        }
+        if self.hit and self.hit.get("cached_at"):
+            block["age_seconds"] = round(time.time() - float(self.hit["cached_at"]), 1)
+        return block
+
+
+async def _lookup(ctx: PreparedRequest, settings: Settings) -> Lookup:
+    """Exact key first (free). On an exact miss, embed the final user turn and search the index."""
+    if ctx.backend is None or ctx.bypass_cache:
+        return Lookup(status="bypass", semantic="not_needed")
+
+    threshold = settings.semantic_cache_threshold if settings.semantic_cache_enabled else None
+    exact = await ctx.backend.get_cached_response(ctx.cache_key)
+    if exact:
+        return Lookup(
+            status="hit",
+            hit=exact,
+            match="exact",
+            similarity=1.0,
+            semantic="not_needed" if settings.semantic_cache_enabled else "disabled",
+            matched_key=ctx.cache_key,
+            threshold=threshold,
+        )
+
+    index, emb = get_semantic(settings)
+    if index is None:
+        return Lookup(status="miss", semantic="disabled")
+
+    context, prompt = split_context(ctx.messages)
+    lookup = Lookup(
+        status="miss",
+        semantic="unavailable",
+        threshold=settings.semantic_cache_threshold,
+        namespace=namespace_for(ctx.tenant, ctx.model_name, ctx.temperature, context),
+        prompt=normalise(prompt or ""),
+    )
+    if emb is None or not lookup.prompt:
+        return lookup  # no key configured, or nothing to embed: exact-match behaviour
+
+    try:
+        result = await emb.embed(lookup.prompt)
+    except Exception as exc:  # noqa: BLE001 - any embedding failure degrades to exact-match
+        logger.warning("Semantic cache unavailable (%s); exact-match only", exc)
+        return lookup
+
+    lookup.vector = result.vector
+    lookup.embedding_model = result.model
+    lookup.embedding_tokens = result.tokens
+    lookup.embedding_ms = result.latency_ms
+    lookup.embedding_cost_usd = estimate_embedding_cost_usd(result.model, result.tokens) or 0.0
+    lookup.semantic = "miss"
+
+    nearest = index.nearest(lookup.namespace or "", result.vector)
+    if nearest is None:
+        return lookup
+    lookup.similarity = nearest.similarity
+    if nearest.similarity < settings.semantic_cache_threshold:
+        return lookup
+    entry = await ctx.backend.get_cached_response(nearest.cache_key)
+    if not entry:
+        index.remove(nearest.cache_key)  # expired or evicted underneath the index
+        return lookup
+    lookup.status, lookup.hit, lookup.match = "hit", entry, "semantic"
+    lookup.semantic, lookup.matched_key = "hit", nearest.cache_key
+    return lookup
 
 
 def _telemetry(
@@ -434,22 +585,29 @@ def _telemetry(
 ) -> Dict[str, Any]:
     """The per-message chip. Every field here is something the UI can show honestly."""
     latency_ms = round((time.perf_counter() - ctx.started) * 1000, 1)
+    lookup = ctx.lookup or Lookup(status=cache_status, semantic="disabled")
     prompt_tokens = (usage or {}).get("prompt_tokens", 0)
     completion_tokens = (usage or {}).get("completion_tokens", 0)
-    cost = None if cache_status == "hit" else estimate_cost_usd(model, prompt_tokens, completion_tokens)
+    list_price = estimate_cost_usd(model, prompt_tokens, completion_tokens)
+    # A hit pays only for its embedding lookup (0 on an exact hit); a miss pays provider + embedding.
+    provider_cost = 0.0 if cache_status == "hit" else list_price
+    cost = None if provider_cost is None else round(provider_cost + lookup.embedding_cost_usd, 10)
     return {
         "request_id": ctx.request_id,
         "provider": provider,
         "model": model,
-        "cache": {
-            "status": cache_status,
-            "backend": cache_backend_name(),
-            "similarity": 1.0 if cache_status == "hit" else None,
-        },
+        "cache": lookup.cache_block(cache_backend_name()),
         "latency_ms": latency_ms,
         "ttfb_ms": ttfb_ms,
         "usage": {**(usage or {}), "source": usage_source if usage else "none"},
-        "cost_usd": 0.0 if cache_status == "hit" else cost,
+        "cost_usd": cost,
+        "cost_avoided_usd": (list_price or 0.0) if cache_status == "hit" else 0.0,
+        "embedding": {
+            "model": lookup.embedding_model,
+            "tokens": lookup.embedding_tokens,
+            "latency_ms": lookup.embedding_ms,
+            "cost_usd": lookup.embedding_cost_usd,
+        },
         "attempts": [a.to_dict() for a in attempts],
         "failover": any(a.outcome == "failed" for a in attempts) and attempts[-1].outcome == "ok",
         "simulated_failure": any(a.error_code == SIMULATED_OUTAGE for a in attempts),
@@ -457,11 +615,32 @@ def _telemetry(
     }
 
 
-async def _store(ctx: PreparedRequest, content: str, model: str, provider: str, usage: Any) -> None:
-    if ctx.backend is not None and not ctx.bypass_cache and content:
-        await ctx.backend.cache_response(
-            ctx.cache_key,
-            {"content": content, "model": model, "provider": provider, "usage": usage},
+async def _store(
+    ctx: PreparedRequest,
+    content: str,
+    model: str,
+    provider: str,
+    usage: Any,
+    usage_source: str = "provider",
+) -> None:
+    """Cache the answer under its exact key and, when embedded, index the prompt for paraphrases."""
+    if ctx.backend is None or ctx.bypass_cache or not content:
+        return
+    await ctx.backend.cache_response(
+        ctx.cache_key,
+        {
+            "content": content,
+            "model": model,
+            "provider": provider,
+            "usage": usage,
+            "usage_source": usage_source,
+            "cached_at": time.time(),
+        },
+    )
+    lookup = ctx.lookup
+    if lookup is not None and lookup.vector is not None and semantic_index is not None:
+        semantic_index.add(
+            lookup.namespace or "", ctx.cache_key, lookup.prompt or "", lookup.vector
         )
 
 
@@ -491,7 +670,7 @@ def _json_response(
         usage=usage,
         cached=cached,
         cache_key=ctx.cache_key,
-        similarity_score=1.0 if cached else None,
+        similarity_score=telemetry["cache"].get("similarity") if cached else None,
         cache=telemetry["cache"] | {"key": ctx.cache_key},
         attempts=telemetry["attempts"],
         latency_ms=telemetry["latency_ms"],
@@ -513,10 +692,10 @@ async def chat_completion(
         return prepared
     ctx = prepared
 
-    # Cache lookup (exact match on normalised prompt) is shared by both paths.
-    hit: Optional[Dict[str, Any]] = None
-    if ctx.backend is not None and not ctx.bypass_cache:
-        hit = await ctx.backend.get_cached_response(ctx.cache_key)
+    # Cache lookup (exact key, then semantic when enabled) is shared by both paths.
+    ctx.lookup = await _lookup(ctx, settings)
+    record_cache_outcome(ctx.lookup.status, ctx.lookup.match or "", ctx.lookup.semantic)
+    hit = ctx.lookup.hit
 
     if request.stream:
         return StreamingResponse(
@@ -533,7 +712,7 @@ async def chat_completion(
             model=hit.get("model", ctx.model_name),
             cache_status="hit",
             usage=hit.get("usage"),
-            usage_source="provider",
+            usage_source=hit.get("usage_source", "provider"),
             attempts=[],
             streamed=False,
         )
@@ -574,7 +753,7 @@ async def chat_completion(
         usage = estimate_usage(ctx.messages, response.content)
         usage_source = "estimated"
     ctx.guard.record_usage(usage.get("total_tokens", 0))
-    await _store(ctx, response.content, response.model, provider_name, usage)
+    await _store(ctx, response.content, response.model, provider_name, usage, usage_source)
 
     telemetry = _telemetry(
         ctx,
@@ -612,13 +791,14 @@ async def _sse(
     if hit:
         model = hit.get("model", ctx.model_name)
         provider = hit.get("provider", "cache")
+        lookup = ctx.lookup or Lookup(status="hit", hit=hit, match="exact", similarity=1.0)
         yield _sse_event(
             "meta",
             {
                 "request_id": ctx.request_id,
                 "model": model,
                 "provider": provider,
-                "cache": {"status": "hit", "backend": cache_backend_name(), "key": ctx.cache_key},
+                "cache": lookup.cache_block(cache_backend_name()) | {"key": ctx.cache_key},
             },
         )
         yield _sse_event("delta", {"content": hit.get("content", "")})
@@ -630,7 +810,7 @@ async def _sse(
                 model=model,
                 cache_status="hit",
                 usage=hit.get("usage"),
-                usage_source="provider",
+                usage_source=hit.get("usage_source", "provider"),
                 attempts=[],
                 streamed=True,
                 ttfb_ms=round((time.perf_counter() - ctx.started) * 1000, 1),
@@ -661,11 +841,10 @@ async def _sse(
                         "request_id": ctx.request_id,
                         "model": model,
                         "provider": provider_name,
-                        "cache": {
-                            "status": cache_status,
-                            "backend": cache_backend_name(),
-                            "key": ctx.cache_key,
-                        },
+                        "cache": (ctx.lookup or Lookup(status=cache_status)).cache_block(
+                            cache_backend_name()
+                        )
+                        | {"key": ctx.cache_key},
                         "attempts": [a.to_dict() for a in attempts],
                     },
                 )
@@ -714,7 +893,7 @@ async def _sse(
         usage = estimate_usage(ctx.messages, content)
         usage_source = "estimated"
     ctx.guard.record_usage(usage.get("total_tokens", 0))
-    await _store(ctx, content, model, provider_name, usage)
+    await _store(ctx, content, model, provider_name, usage, usage_source)
     telemetry = _telemetry(
         ctx,
         provider=provider_name,
@@ -762,6 +941,7 @@ async def health_check(settings: Settings = Depends(get_settings)) -> Dict[str, 
         "default_model": resolve_model(settings.default_model),
         "fallback_chain": [f"{p}:{m}" for p, m in settings.fallback_chain],
         "cache": getattr(backend, "backend", "disabled") if backend else "disabled",
+        "semantic_cache": semantic_status(settings),
         "streaming": "sse",
         "guardrails": get_guard(settings).snapshot(),
         "demo": {
@@ -830,6 +1010,8 @@ async def clear_cache(
         count = await backend.invalidate_cache(pattern=pattern)
     else:
         count = -1 if await backend.clear_all() else 0
+    if semantic_index is not None:
+        semantic_index.clear()
     return {
         "status": "success",
         "cleared_items": count,
@@ -847,6 +1029,7 @@ __all__ = [
     "build_chain",
     "build_cache",
     "get_cache",
+    "get_semantic",
     "initialize_cache",
     "cache_backend_name",
     "estimate_tokens",

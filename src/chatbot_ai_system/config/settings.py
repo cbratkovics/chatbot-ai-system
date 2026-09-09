@@ -74,7 +74,21 @@ class Settings(BaseSettings):
     cache_compression_threshold: int = Field(
         default=1024, validation_alias="CACHE_COMPRESSION_THRESHOLD"
     )
+    # Semantic (paraphrase) matching on the demo path, ADR 0007: exact-key lookup first, then
+    # OpenAI embeddings compared in an in-process index. Threshold is set from the eval sweep
+    # in evals/results/latest.json, not by hand.
     semantic_cache_enabled: bool = Field(default=False, validation_alias="SEMANTIC_CACHE_ENABLED")
+    semantic_cache_max_entries: int = Field(
+        default=512, validation_alias="SEMANTIC_CACHE_MAX_ENTRIES"
+    )
+    semantic_cache_embedding_model: str = Field(
+        default="text-embedding-3-small", validation_alias="SEMANTIC_CACHE_EMBEDDING_MODEL"
+    )
+    semantic_cache_embedding_timeout_seconds: float = Field(
+        default=5.0, validation_alias="SEMANTIC_CACHE_EMBEDDING_TIMEOUT_SECONDS"
+    )
+    # Committed eval artifact served by GET /api/v1/evals/latest; defaults to the repo file.
+    evals_results_path: Optional[str] = Field(default=None, validation_alias="EVALS_RESULTS_PATH")
     cache_circuit_breaker_enabled: bool = Field(
         default=True, validation_alias="CACHE_CIRCUIT_BREAKER_ENABLED"
     )

@@ -1,6 +1,7 @@
 # ADR 0001: Redis is optional; in-process LRU cache is the fallback
 
-**Status:** accepted (2026-09-08)
+**Status:** accepted (2026-09-08); the exact-match-only cache decision is superseded by
+[ADR 0007](0007-semantic-cache-on-the-demo-path.md). Redis remains optional with the memory fallback.
 
 ## Context
 

@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 # Import our new chat router
 from chatbot_ai_system.api.chat import router as chat_router
+from chatbot_ai_system.api.evals import router as evals_router
 
 # Create main API router with versioning
 api_router = APIRouter(
@@ -16,6 +17,7 @@ api_router = APIRouter(
 
 # Include the chat router
 api_router.include_router(chat_router, tags=["Chat"])
+api_router.include_router(evals_router, tags=["Evals"])
 
 
 # Additional API-level endpoints

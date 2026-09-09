@@ -34,7 +34,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.4.5"
+    "eslint-config-next": "15.4.5",
+    "vitest": "^3.2.7"
   },
   "overrides": {
     "prismjs": "^1.30.0"

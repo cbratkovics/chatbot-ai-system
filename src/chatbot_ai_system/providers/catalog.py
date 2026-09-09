@@ -4,6 +4,7 @@ Why: the model list used to live in three places and had drifted (retired Claude
 models, no gpt-4o-mini). One table, imported everywhere.
 """
 
+import re
 from typing import Dict, List, Optional
 
 # model id -> provider name
@@ -66,10 +67,46 @@ MODEL_PRICES: Dict[str, tuple[float, float]] = {
 }
 
 
+_SNAPSHOT_SUFFIX = re.compile(r"-\d{4}-\d{2}-\d{2}$")
+
+
+def price_model_for(model: str) -> Optional[str]:
+    """Catalogue id whose list price applies to ``model``.
+
+    Providers answer with dated snapshot ids (``gpt-4o-mini-2024-07-18``) that are billed as the
+    alias they belong to. Exact match first, then the id with a trailing date removed, then the
+    longest catalogue id that prefixes it. None when nothing applies.
+    """
+    if model in MODEL_PRICES:
+        return model
+    undated = _SNAPSHOT_SUFFIX.sub("", model)
+    if undated in MODEL_PRICES:
+        return undated
+    prefixes = [m for m in MODEL_PRICES if model.startswith(m + "-")]
+    return max(prefixes, key=len) if prefixes else None
+
+
 def estimate_cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> Optional[float]:
     """Estimated USD cost of one call, or None when the model has no price entry."""
-    prices = MODEL_PRICES.get(model)
+    priced = price_model_for(model)
+    prices = MODEL_PRICES.get(priced) if priced else None
     if prices is None:
         return None
     price_in, price_out = prices
     return round((prompt_tokens * price_in + completion_tokens * price_out) / 1_000_000, 8)
+
+
+# Embedding list prices in USD per 1M input tokens. Used for the semantic-cache lookup cost
+# that a semantic HIT still pays (ADR 0007).
+EMBEDDING_PRICES: Dict[str, float] = {
+    "text-embedding-3-small": 0.02,
+    "text-embedding-3-large": 0.13,
+}
+
+
+def estimate_embedding_cost_usd(model: str, tokens: int) -> Optional[float]:
+    """Estimated USD cost of one embedding call, or None when the model has no price entry."""
+    price = EMBEDDING_PRICES.get(model)
+    if price is None:
+        return None
+    return round(tokens * price / 1_000_000, 10)

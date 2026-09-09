@@ -34,8 +34,13 @@ services:
         value: true
       - key: CACHE_TTL_SECONDS
         value: 3600
+      # Paraphrase matching via OpenAI embeddings (ADR 0007). Threshold comes from the eval sweep.
       - key: SEMANTIC_CACHE_ENABLED
-        value: false
+        value: true
+      - key: SEMANTIC_CACHE_THRESHOLD
+        value: 0.85
+      - key: SEMANTIC_CACHE_MAX_ENTRIES
+        value: 512
       - key: ENABLE_VECTOR_SEARCH
         value: false
       - key: DEMO_GUARDRAILS_ENABLED

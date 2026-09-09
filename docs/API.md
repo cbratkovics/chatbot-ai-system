@@ -374,12 +374,40 @@ Response includes pagination metadata:
 GET /metrics
 ```
 
-Returns Prometheus-formatted metrics:
+Prometheus exposition format (`text/plain; version=0.0.4`) from the default `prometheus_client`
+registry. The families the demo populates:
+
+| Family | Type | Labels | Source |
+|---|---|---|---|
+| `http_requests_total` | counter | `method`, `endpoint`, `status` | `MetricsMiddleware` |
+| `http_request_duration_seconds` | histogram | `method`, `endpoint` | `MetricsMiddleware` |
+| `cache_hits_total`, `cache_misses_total` | counter | | one increment per chat request, after the semantic lookup settles |
+| `chat_cache_lookups_total` | counter | `result` = `exact_hit`, `semantic_hit`, `miss`, `bypass`, `semantic_unavailable` | `api/chat.py` |
+
 ```
-# HELP chatbot_requests_total Total number of requests
-# TYPE chatbot_requests_total counter
-chatbot_requests_total{method="GET",endpoint="/health",status="200"} 1234
+# TYPE http_requests_total counter
+http_requests_total{endpoint="/api/v1/chat/completions",method="POST",status="200"} 12.0
+# TYPE cache_hits_total counter
+cache_hits_total 4.0
 ```
+
+**Caveat.** Counters live in the worker process. The demo runs one worker on Render's free
+tier, so they are complete for that worker but reset to zero on every deploy and every
+free-tier sleep/wake cycle, exactly like the in-process cache (ADR 0001). For durable series,
+scrape them into Prometheus; the configs under `infrastructure/monitoring` do that for the
+full stack. The `/evals` page shows this caveat as a footnote.
+
+## Eval Results Endpoint
+
+```http
+GET /api/v1/evals/latest
+```
+
+Serves the committed artifact `evals/results/latest.json` written by `make evals`
+(ADR 0006). Responses carry an `ETag` and `Cache-Control: public, max-age=300`; send
+`If-None-Match` to get a `304`. When no artifact has been committed the response is a `404`
+with the standard error envelope and `code: "evals_not_found"`, so a client can fall back to
+its own build-time copy and label which source it is showing.
 
 ## SDK Examples
 

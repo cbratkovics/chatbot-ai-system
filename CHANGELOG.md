@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 79 failing integration tests triaged: fixtures repaired, drift fixed, 19 tests for APIs that never existed deleted with git evidence (`docs/TEST_TRIAGE.md`).
 
 ### Added
+- Semantic (paraphrase) cache on the demo path: exact key first, then OpenAI embeddings in a bounded in-process index scoped by tenant, model, temperature and prior conversation; degrades to exact-match with `cache.semantic = "unavailable"` (ADR 0007, supersedes the exact-match-only part of ADR 0001).
+- Telemetry additions on `done` / JSON: `cost_avoided_usd`, `cache.match`, real `cache.similarity`, `cache.semantic`, `cache.matched_key`, `cache.threshold`, `cache.age_seconds`, `embedding {model, tokens, latency_ms, cost_usd}`; a hit now preserves the original `usage.source` instead of relabelling an estimate as provider-reported.
+- `GET /api/v1/evals/latest` serving the committed eval artifact with ETag / 304 / 404 envelope.
+- `/metrics` is real Prometheus exposition: `http_requests_total`, `http_request_duration_seconds`, `cache_hits_total`, `cache_misses_total`, `chat_cache_lookups_total{result}` (TEST_TRIAGE escalation 4 resolved). Per-worker, reset on deploy; documented in `docs/API.md`.
 - Provider failover chain with per-request attempt log; Groq via the OpenAI-compatible endpoint (no new SDK).
 - SSE streaming on `POST /api/v1/chat/completions` (ADR 0005) and a per-message telemetry chip in the UI.
 - Demo guardrails: per-IP limits, token caps, daily budget (ADR 0004); env-gated "simulate provider failure" toggle.

@@ -255,7 +255,8 @@ class RedisCache:
                 # Update stats
                 self.stats.hits += 1
                 self.stats.total_requests += 1
-                cache_hits.inc()
+                # cache_hits_total is counted once per chat request in api/metrics.py, after
+                # the semantic lookup has settled, so an exact miss + semantic hit is one hit.
 
                 latency = time.time() - start_time
                 cache_latency.observe(latency)
@@ -276,7 +277,6 @@ class RedisCache:
             # Cache miss
             self.stats.misses += 1
             self.stats.total_requests += 1
-            cache_misses.inc()
 
             latency = time.time() - start_time
             cache_latency.observe(latency)

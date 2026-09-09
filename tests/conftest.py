@@ -96,10 +96,14 @@ def _reset_chat_singletons():
     chat_api.demo_guard = None
     chat_api.cache = MemoryCache(ttl_seconds=3600, max_entries=512)
     chat_api.cache_key_generator = None
+    chat_api.semantic_index = None
+    chat_api.embedder = None
     yield
     chat_api.demo_guard = None
     chat_api.cache = None
     chat_api.cache_key_generator = None
+    chat_api.semantic_index = None
+    chat_api.embedder = None
 
 
 @pytest.fixture

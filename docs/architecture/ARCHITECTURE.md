@@ -6,82 +6,79 @@ The AI Chatbot System is an enterprise-grade, multi-tenant platform that provide
 
 ## Architecture Diagram
 
+Two views. The first is what actually runs at the public demo URL; the second is the full
+deployment the codebase supports. Anything in the second that is not in the first is opt-in
+through configuration and is not exercised by the demo.
+
+### What runs in the demo (Vercel Hobby + Render free tier, $0/month infrastructure)
+
 ```mermaid
-graph TB
-    subgraph "Client Layer"
-        Web[Web Application]
-        Mobile[Mobile App]
-        API[API Clients]
-    end
-
-    subgraph "API Gateway"
-        LB[Load Balancer]
-        RateLimit[Rate Limiter]
-        Auth[Authentication]
-    end
-
-    subgraph "Application Layer"
-        FastAPI[FastAPI Server]
-        WebSocket[WebSocket Manager]
-        StreamHandler[Stream Handler]
-    end
-
-    subgraph "Core Services"
-        ModelFactory[Model Factory]
-        CacheManager[Cache Manager]
-        TenantManager[Tenant Manager]
-        AuthService[Auth Service]
-    end
-
-    subgraph "Model Providers"
-        OpenAI[OpenAI Provider]
-        Anthropic[Anthropic Provider]
-        Llama[Llama Provider]
-        Fallback[Fallback Handler]
-    end
-
-    subgraph "Data Layer"
-        PostgreSQL[(PostgreSQL)]
-        Redis[(Redis Cache)]
-        S3[S3 Storage]
-    end
-
-    subgraph "Monitoring"
-        Prometheus[Prometheus]
-        Grafana[Grafana]
-        Jaeger[Jaeger Tracing]
-    end
-
-    Web --> LB
-    Mobile --> LB
-    API --> LB
-
-    LB --> RateLimit
-    RateLimit --> Auth
-    Auth --> FastAPI
-
-    FastAPI --> WebSocket
-    FastAPI --> StreamHandler
-
-    FastAPI --> ModelFactory
-    FastAPI --> CacheManager
-    FastAPI --> TenantManager
-    FastAPI --> AuthService
-
-    ModelFactory --> OpenAI
-    ModelFactory --> Anthropic
-    ModelFactory --> Llama
-    ModelFactory --> Fallback
-
-    CacheManager --> Redis
-    TenantManager --> PostgreSQL
-    AuthService --> PostgreSQL
-    AuthService --> Redis
-
-    FastAPI --> Prometheus
-    Prometheus --> Grafana
-    FastAPI --> Jaeger
+flowchart LR
+    UI[Next.js UI on Vercel<br/>SSE client + telemetry chip] -->|POST /api/v1/chat/completions<br/>stream: true| API[FastAPI on Render<br/>one uvicorn worker]
+    API --> GUARD[Demo guardrails<br/>per-IP + daily token budget]
+    GUARD --> CACHE[In-process LRU cache<br/>exact-match keys]
+    CACHE -->|miss| CHAIN[Provider chain<br/>failover on 401/402/429/5xx/timeout]
+    CHAIN -->|primary| OAI[OpenAI gpt-4o-mini]
+    CHAIN -.->|fallback| GROQ[Groq llama-3.1-8b-instant<br/>OpenAI-compatible endpoint]
+    CHAIN --> TEL[telemetry: provider, model,<br/>cache, latency, tokens, cost, attempts]
+    TEL --> UI
 ```
+
+### Full deployment (everything the repository supports)
+
+```mermaid
+flowchart TB
+    subgraph Clients
+        UI[Next.js UI]
+        WSC[WebSocket client]
+        REST[REST / SDK clients]
+    end
+    subgraph Backend["FastAPI backend"]
+        MW[Error envelope, CORS, request id, rate limit]
+        CHAT[Chat route: guardrails, cache, provider chain, SSE]
+        WS[WebSocket endpoint /ws/chat]
+        AUTH[Auth + tenants routers]
+    end
+    subgraph Providers
+        OAI[OpenAI]
+        ANTH[Anthropic]
+        GROQ[Groq]
+    end
+    subgraph Optional["Optional, config-gated"]
+        REDIS[(Redis cache<br/>REDIS_URL)]
+        PINE[(Pinecone vector search<br/>ENABLE_VECTOR_SEARCH)]
+        PG[(PostgreSQL<br/>DATABASE_URL)]
+        SEM[TF-IDF semantic cache<br/>SEMANTIC_CACHE_ENABLED]
+    end
+    subgraph Observability
+        PROM[Prometheus]
+        GRAF[Grafana]
+        JAEG[Jaeger]
+    end
+    UI --> MW
+    WSC --> WS
+    REST --> MW
+    MW --> CHAT
+    MW --> AUTH
+    CHAT --> OAI
+    CHAT --> ANTH
+    CHAT --> GROQ
+    WS --> OAI
+    CHAT -.-> REDIS
+    CHAT -.-> SEM
+    CHAT -.-> PINE
+    AUTH -.-> PG
+    Backend -.-> PROM
+    PROM -.-> GRAF
+    Backend -.-> JAEG
+```
+
+Legend: solid arrows run in the demo; dashed arrows are available but off by default. The
+`infrastructure/` package (multi-region routing, global load balancing) is a design sketch and is
+labelled as such in its module docstrings; it is not deployed anywhere.
+
+Decisions behind this shape are recorded in [`docs/adr/`](../adr/README.md).
+
 
 ## Component Architecture
 

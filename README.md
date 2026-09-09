@@ -1,4 +1,4 @@
-# Multi-Tenant AI Chat Platform
+# Multi-Provider AI Chat Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
@@ -6,523 +6,237 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![CI Pipeline](https://github.com/cbratkovics/chatbot-ai-system/actions/workflows/ci.yml/badge.svg)](https://github.com/cbratkovics/chatbot-ai-system/actions)
-[![codecov](https://codecov.io/gh/cbratkovics/chatbot-ai-system/branch/main/graph/badge.svg)](https://codecov.io/gh/cbratkovics/chatbot-ai-system)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-## 🌐 Live Demo
+A FastAPI + Next.js chat service that shows its own engineering on screen: every answer
+carries a telemetry chip with the provider that answered, the model, cache HIT/MISS, latency,
+token counts, estimated cost, and the failover log for that request.
 
-**Try it now:** [chatbot-ai-system.vercel.app](https://chatbot-ai-system.vercel.app)
+## Live demo
 
-> Demo instance uses limited API quotas. For full features, deploy your own instance following the Quick Start below.
+**[chatbot-ai-system.vercel.app](https://chatbot-ai-system.vercel.app)** — backend on Render's
+free tier, so the first request after 15 idle minutes takes 30–60 s while the instance wakes.
+The UI says so while it waits.
 
----
+<!--
+  GIF placeholder. Record a ~15 s clip of: (1) a streamed answer, (2) the same question again
+  showing "cache HIT", (3) the "Simulate provider failure" toggle producing a "failover" chip.
+  Suggested tools: Kap or QuickTime + gifski, 1280x800, <5 MB. Save as docs/images/demo.gif and
+  replace this comment with:  ![15-second demo](docs/images/demo.gif)
+-->
 
-## Overview
+### What to try (3 minutes)
 
-Production-ready multi-tenant AI chatbot platform with intelligent LLM orchestration, WebSocket streaming, and reliable failover patterns. Built for performance and cost efficiency through semantic caching and provider redundancy.
+1. **Ask anything.** Watch the answer stream token by token. The chip under it shows
+   `openai · gpt-4o-mini`, `cache MISS`, latency, `in / out` tokens, and the estimated cost.
+2. **Ask the exact same question again.** The chip flips to `cache HIT`, `$0.00`, and the
+   latency drops to single-digit milliseconds. Nothing was sent to a provider.
+3. **Tick "Simulate provider failure"** (top right) and ask again. The primary provider is forced
+   to fail with a 503 and the request fails over to Groq; the chip shows
+   `failover: openai → groq (simulated)`. The error on the primary is real code path, the outage
+   is the only thing simulated.
+4. **Break it on purpose.** Send eleven messages inside a minute and read the `429 rate_limited`
+   banner with its request id. Errors are structured, never "Request failed".
 
-**Built as a reusable template** - Easily customize for different use cases (customer support, code assistant, education, etc.) with pre-configured templates.
+The full walkthrough with talking points is in [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
 
----
+### Runs for ~$0/month
 
-## What This Project Demonstrates
+| Component | Service | Monthly cost |
+|---|---|---|
+| Frontend | Vercel Hobby | $0 |
+| Backend API | Render free tier, one worker | $0 |
+| Response cache | in-process LRU (Redis optional) | $0 |
+| Fallback provider | Groq free tier, `llama-3.1-8b-instant` | $0 |
+| Primary provider | OpenAI `gpt-4o-mini`, hard-capped in the OpenAI dashboard | ≤ $5, typically cents |
+| Vector search, database, tracing | off by default | $0 |
 
-This project showcases production-grade LLMOps and AI engineering skills:
+Spend is bounded twice: demo guardrails (10 req/min and 40 req/day per IP, 400 output tokens,
+150k tokens/day total) and a hard limit on the OpenAI account. At list price, the whole daily
+token budget on `gpt-4o-mini` is under $0.10.
 
-| Skill | Implementation | Location |
-|-------|---------------|----------|
-| **Multi-Provider Orchestration** | Unified interface for OpenAI, Anthropic, Llama, Gemini with intelligent routing | [`src/chatbot_ai_system/orchestration/`](src/chatbot_ai_system/orchestration/) |
-| **Semantic Caching** | Redis-backed semantic similarity caching with configurable thresholds | [`src/chatbot_ai_system/cache/`](src/chatbot_ai_system/cache/) |
-| **WebSocket Streaming** | Real-time token-by-token streaming over WebSocket | [`src/chatbot_ai_system/websocket/`](src/chatbot_ai_system/websocket/) |
-| **Multi-Tenancy & Auth** | Tenant isolation, JWT authentication, rate limiting | [`src/chatbot_ai_system/middleware/`](src/chatbot_ai_system/middleware/) |
-| **Observability** | Prometheus, Grafana, Jaeger distributed tracing | [`monitoring/`](monitoring/) |
-| **Infrastructure as Code** | Kubernetes manifests, Docker Compose, CI/CD | [`infrastructure/`](infrastructure/), [`k8s/`](k8s/) |
-| **Template Architecture** | Reusable configurations for multiple use cases | [`use-cases/`](use-cases/) |
+## What the demo proves
 
-**[View full architecture documentation →](docs/architecture/ARCHITECTURE.md)**
+| Claim | Where it lives | How the demo shows it |
+|---|---|---|
+| Provider failover on 401/402/429/5xx/timeout | [`providers/chain.py`](src/chatbot_ai_system/providers/chain.py) | `attempts[]` in every response; the failure toggle |
+| Optional infrastructure, visible degradation | [`cache/memory_cache.py`](src/chatbot_ai_system/cache/memory_cache.py), [`vector_store/__init__.py`](src/chatbot_ai_system/vector_store/__init__.py) | `/health` reports `cache: memory`; app boots with one key and nothing else |
+| Exact-match response cache | [`api/chat.py`](src/chatbot_ai_system/api/chat.py) | `cache HIT`, `$0.00` on repeat questions |
+| Streaming over plain HTTP | [`api/chat.py`](src/chatbot_ai_system/api/chat.py) (SSE) | live token stream, `ttfb` in the chip |
+| Structured errors with real status codes | [`api/errors.py`](src/chatbot_ai_system/api/errors.py) | `402 provider_quota_exhausted [openai]: … · request <id>` |
+| Cost control without a database | [`api/guardrails.py`](src/chatbot_ai_system/api/guardrails.py) | friendly 429s; `/chat/health` shows tokens used today |
 
----
+Design decisions are recorded as short ADRs in [`docs/adr/`](docs/adr/README.md). The diagnosis
+that started this work is in [`docs/DIAGNOSIS.md`](docs/DIAGNOSIS.md).
 
-## Key Features
+## Architecture
 
-- **Multi-Provider Orchestration**: Intelligent routing between OpenAI, Anthropic, Llama, and Gemini with automatic failover
-- **WebSocket Streaming**: Token-by-token response streaming over WebSocket connections
-- **Cost Optimization**: Semantic caching to avoid repeat provider calls for similar prompts
-- **Production Patterns**: Circuit breakers, rate limiting, health monitoring, and comprehensive observability
-- **Multi-Tenancy Support**: Complete tenant isolation with usage tracking and horizontal scaling
-- **Template-Ready**: Pre-configured use cases (customer support, code assistant) for rapid deployment
+Solid arrows run in the demo. Dashed arrows are available in the codebase and off by default.
+Two full views, one per deployment, are in
+[`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md).
 
----
+```mermaid
+flowchart LR
+    UI[Next.js UI<br/>SSE client + telemetry chip] -->|POST /api/v1/chat/completions| API[FastAPI<br/>error envelope, CORS, request id]
+    API --> GUARD[Demo guardrails]
+    GUARD --> CACHE[Cache: in-process LRU]
+    CACHE -.->|REDIS_URL| REDIS[(Redis)]
+    CACHE -->|miss| CHAIN[Provider chain]
+    CHAIN -->|primary| OAI[OpenAI gpt-4o-mini]
+    CHAIN -->|fallback| GROQ[Groq llama-3.1-8b]
+    CHAIN -.->|ANTHROPIC_API_KEY| ANTH[Anthropic]
+    CHAIN -.->|ENABLE_VECTOR_SEARCH| PINE[(Pinecone)]
+    CHAIN --> TEL[telemetry] --> UI
+```
 
-## Measured Behavior
+## Measured behaviour
 
-This repository publishes one measured artifact: provider failover timing.
+Every number in this section comes from a committed artifact produced by a script in this
+repository. There are no other performance claims in this README.
 
-`tests/test_provider_failover.py` exercises the failover path against mock providers with
-configurable failure modes (timeout, rate limit, server error), timing the orchestration logic with
-`time.perf_counter()` across 10 runs per scenario. Results are written to
-[`benchmarks/results/`](benchmarks/results/).
+### Live demo benchmark
+
+`scripts/bench_demo.py` sends 20 requests (5 distinct prompts, each repeated 4 times) to the
+live API, paced under the demo rate limit, and writes
+[`benchmarks/results/bench_demo_latest.json`](benchmarks/results/bench_demo_latest.json).
+
+| Metric | Value |
+|---|---|
+| Cache hit rate | *run the script* |
+| Latency P50 / P95, cache miss | *run the script* |
+| Latency P50 / P95, cache hit | *run the script* |
+| Failovers observed | *run the script* |
+
+```bash
+poetry run python scripts/bench_demo.py                      # live demo, ~2.5 min at 9 req/min
+poetry run python scripts/bench_demo.py --base-url http://localhost:8000 --rpm 0 --runs 40
+poetry run python scripts/bench_demo.py --simulate-failure   # with DEMO_FAILURE_TOGGLE_ENABLED=true
+```
+
+The table above is filled in by hand from the JSON the script writes, and only from that.
+Latencies are client-observed from the machine that ran the script.
+
+### Failover control-flow timing
+
+`tests/test_provider_failover.py` times the failover logic of the older `ProviderOrchestrator`
+against mocked providers with a synthetic 50 ms base response. It measures detection, timeout
+handling, and provider switching, not real provider latency.
 
 | Scenario | Runs | Average failover | P95 failover |
-|----------|------|------------------|--------------|
+|---|---|---|---|
 | Timeout | 10 | 262.2 ms | 262.9 ms |
 | Rate limit | 10 | 113.3 ms | 114.4 ms |
 | Server error | 10 | 112.7 ms | 113.2 ms |
 
-Source: [`failover_timing_latest.json`](benchmarks/results/failover_timing_latest.json)
+Source: [`benchmarks/results/failover_timing_latest.json`](benchmarks/results/failover_timing_latest.json).
+Regenerate with `BENCHMARK_RESULTS_DIR=benchmarks/results poetry run pytest tests/test_provider_failover.py`
+(ordinary test runs write to a gitignored `benchmarks/results/tmp/`).
 
-**Scope of this measurement.** These numbers time the failover control flow (detection, timeout
-handling, retry, provider switch) against mocked providers with a synthetic 50 ms base response
-time. They are not provider-to-provider latencies in production, and they say nothing about
-end-to-end response time under real API conditions.
+### Test suite
 
-**Reproduce it:** `pytest tests/test_provider_failover.py`
+`poetry run pytest tests/` — 316 passed, 0 failures, 2 strict `xfail`s that document known gaps
+(listed in [`docs/TEST_TRIAGE.md`](docs/TEST_TRIAGE.md)). Line coverage measured by
+`pytest --cov=chatbot_ai_system` is **31%**: the demo path is covered, the full-deployment
+modules (multi-tenancy, orchestration strategies, observability) largely are not.
 
-### Running your own benchmarks
-
-The repository includes load-test harnesses that require a running instance and real API keys:
-
-- `benchmarks/performance_test.py` - latency and throughput against a live server
-- `benchmarks/load_tests/k6_api_test.js`, `k6_websocket_test.js` - k6 load tests
-- `benchmarks/load_tests/locust_scenarios.py` - Locust scenarios
-- `benchmarks/run_benchmarks.py` - orchestrates the above (requires k6, locust, docker)
-
-No results from these harnesses are committed to this repository. Latency, throughput, cache hit
-rate, and cost figures depend entirely on hardware, network, model selection, and workload, so any
-numbers you need should come from your own run.
-
----
-
-## 🚀 Quick Start
-
-### Docker Compose (Recommended)
-
-The fastest way to get started:
+## Quick start
 
 ```bash
-# 1. Clone and configure
 git clone https://github.com/cbratkovics/chatbot-ai-system.git
 cd chatbot-ai-system
-cp .env.example .env
-# Add your API keys to .env
-
-# 2. Start all services
-docker compose up -d
-
-# 3. Access the application
-# Frontend:  http://localhost:3000
-# API Docs:  http://localhost:8000/docs
-# Health:    http://localhost:8000/health
-```
-
-<details>
-<summary><strong>Alternative: Local Development (Poetry + npm)</strong></summary>
-
-For active development with hot reload:
-
-```bash
-# Backend
+cp .env.example .env            # add OPENAI_API_KEY (and GROQ_API_KEY for failover)
 poetry install
-cp .env.example .env
-# Add your API keys to .env
 poetry run uvicorn chatbot_ai_system.server.main:app --reload
 
-# Frontend (new terminal)
-cd frontend
-npm ci
-cp .env.example .env.local
-# Configure API URLs in .env.local
-npm run dev
+# in another terminal
+cd frontend && npm ci && cp .env.example .env.local && npm run dev
 ```
 
-**Access:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+No Redis, database, or vector store is needed. `GET /health` tells you what the instance is
+using:
 
-</details>
+```json
+{"status": "healthy", "checks": {"cache": "memory", "ai_providers": "configured: openai, groq",
+ "default_model": "gpt-4o-mini", "fallback_chain": ["groq:llama-3.1-8b-instant"]}}
+```
 
-<details>
-<summary><strong>Template Mode: Use Case Quick Start</strong></summary>
-
-Deploy a pre-configured chatbot for specific use cases:
+Try the API directly:
 
 ```bash
-# Example: Customer Support Template
-cp use-cases/customer-support/.env.example .env
-cp use-cases/customer-support/system-prompt.txt src/chatbot_ai_system/config/
+curl -X POST http://localhost:8000/api/v1/chat/completions -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Say hi in three words."}]}'
 
-# Customize branding in .env
-# Then start with docker compose up -d
+curl -N -X POST http://localhost:8000/api/v1/chat/completions -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Count to five."}],"stream":true}'
 ```
 
-**Available Templates:**
-- [`customer-support/`](use-cases/customer-support/) - Professional customer service assistant
-- More templates coming soon!
+<details>
+<summary><strong>Docker Compose</strong></summary>
 
-See [`use-cases/`](use-cases/) for template documentation.
+```bash
+cp .env.example .env
+docker compose up -d      # backend, frontend, Redis, Postgres (the last two are optional extras)
+```
+
+Images live in [`docker/dockerfiles/`](docker/dockerfiles/) (`Dockerfile`, `Dockerfile.production`,
+`Dockerfile.test`) and [`frontend/Dockerfile`](frontend/Dockerfile).
 
 </details>
-
----
-
-## Architecture
-
-```mermaid
-flowchart TB
-    subgraph "Client Layer"
-        UI[Next.js UI]
-        WS[WebSocket Client]
-        REST[REST Client]
-    end
-
-    subgraph "API Gateway"
-        LB[Load Balancer]
-        ASGI[FastAPI Server]
-    end
-
-    subgraph "Core Services"
-        MW[Middleware Stack]
-        ORCH[Provider Orchestrator]
-        CACHE[Semantic Cache]
-    end
-
-    subgraph "Providers"
-        OAI[OpenAI API]
-        ANTH[Anthropic API]
-        LLAMA[Meta Llama]
-        GEM[Google Gemini]
-    end
-
-    subgraph "Storage"
-        REDIS[(Redis Cache)]
-        PG[(PostgreSQL)]
-    end
-
-    subgraph "Observability"
-        PROM[Prometheus]
-        GRAF[Grafana]
-        TRACE[Jaeger]
-    end
-
-    UI --> LB
-    WS --> LB
-    REST --> LB
-    LB --> ASGI
-    ASGI --> MW
-    MW --> ORCH
-    MW --> CACHE
-    ORCH --> OAI
-    ORCH --> ANTH
-    ORCH --> LLAMA
-    ORCH --> GEM
-    CACHE --> REDIS
-    MW --> PG
-    ASGI --> PROM
-    PROM --> GRAF
-    ASGI --> TRACE
-
-    style UI fill:#e1f5fe
-    style ASGI fill:#c8e6c9
-    style ORCH fill:#ffccbc
-    style REDIS fill:#ffecb3
-    style PROM fill:#f8bbd0
-```
-
----
 
 ## Configuration
 
-### Environment Variables
+Everything is an environment variable with a safe default; see [`.env.example`](.env.example)
+for the full list with comments. The ones that matter:
 
-```env
-# Required API Keys
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | | primary provider (required unless another key is set) |
+| `GROQ_API_KEY` | | free-tier fallback provider |
+| `DEFAULT_MODEL` | `gpt-4o-mini` | legacy ids such as `gpt-3.5-turbo` are mapped forward |
+| `FALLBACK_MODELS` | `groq:llama-3.1-8b-instant` | comma-separated `provider:model` chain |
+| `REDIS_URL` | unset | set to use Redis; unreachable or unset falls back to memory |
+| `SEMANTIC_CACHE_ENABLED` | `false` | TF-IDF similarity matching (loads scikit-learn) |
+| `ENABLE_VECTOR_SEARCH` | `false` | Pinecone retrieval; nothing imports Pinecone unless true |
+| `DEMO_*` | see file | per-IP limits, token cap, history cap, daily budget |
+| `DEMO_FAILURE_TOGGLE_ENABLED` | `false` | shows the failure switch; header `X-Demo-Simulate-Failure: 1` |
 
-# Infrastructure
-REDIS_URL=redis://localhost:6379/0
-DATABASE_URL=postgresql://user:pass@localhost/chatbot
+Deployment notes for Render and Vercel: [`render.yaml`](render.yaml) and
+[`frontend/DEPLOYMENT.md`](frontend/DEPLOYMENT.md).
 
-# Performance Tuning
-RATE_LIMIT_REQUESTS=100
-CACHE_TTL_SECONDS=3600
-SEMANTIC_CACHE_THRESHOLD=0.85
-REQUEST_TIMEOUT=30
-
-# Feature Flags
-ENABLE_STREAMING=true
-ENABLE_FAILOVER=true
-ENABLE_SEMANTIC_CACHE=true
-
-# Frontend Configuration (in frontend/.env.local)
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
-NEXT_PUBLIC_APP_NAME="AI Chat System"
-```
-
-**Full configuration guide:** [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) (if exists)
-
----
-
-## Production Deployment
-
-This project is production-ready and can be deployed to Vercel + Render in under 30 minutes.
-
-### Quick Deploy to Vercel + Render (Recommended)
-
-**Infrastructure:**
-- **Vercel**: Next.js frontend hosting (Free tier)
-- **Render**: FastAPI backend + Redis cache ($14/month)
-- **Total Cost**: $14/month + AI API usage
-
-**Steps:**
-
-1. **Deploy Backend to Render:**
-   - Connect your GitHub repository to Render
-   - Render auto-detects `render.yaml` configuration
-   - Set environment variables (OPENAI_API_KEY, ANTHROPIC_API_KEY)
-   - Deploy Redis instance ($7/month)
-
-2. **Deploy Frontend to Vercel:**
-   ```bash
-   cd frontend
-   vercel --prod
-   ```
-   - Set environment variables in Vercel dashboard:
-     - `NEXT_PUBLIC_API_URL`: Your Render backend URL
-     - `NEXT_PUBLIC_WS_URL`: Your Render WebSocket URL
-
-3. **Update CORS:**
-   - Add your Vercel domain to `CORS_ORIGINS` in Render dashboard
-
-**Documentation:**
-- Full deployment guide: [`docs/PRODUCTION_DEPLOYMENT.md`](docs/PRODUCTION_DEPLOYMENT.md)
-- Production checklist: [`docs/DEPLOYMENT_CHECKLIST.md`](docs/DEPLOYMENT_CHECKLIST.md)
-
-**Production URLs** (after deployment):
-- Frontend: `https://your-app.vercel.app`
-- Backend API: `https://your-backend.onrender.com`
-- API Docs: `https://your-backend.onrender.com/docs`
-
-<details>
-<summary><strong>Alternative: Docker Deployment</strong></summary>
+## Quality gates
 
 ```bash
-# Build production image
-docker build -f docker/dockerfiles/Dockerfile.production -t chatbot-ai-system:latest .
-
-# Run with production compose
-docker compose -f docker-compose.prod.yml up -d
+poetry run ruff check .
+poetry run mypy src/ --ignore-missing-imports
+poetry run pytest tests/
+cd frontend && npx tsc --noEmit && npm run build
 ```
 
-</details>
+Tests that need a live service are marked `live` and skip unless `TEST_BASE_URL`,
+`TEST_REDIS_URL`, or `TEST_DATABASE_URL` is set.
 
-<details>
-<summary><strong>Alternative: Kubernetes Deployment</strong></summary>
+## What is in the repository beyond the demo
 
-```bash
-# Apply Kubernetes configurations
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/configmap.yaml
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/ingress.yaml
-```
+The demo path is `api/chat.py`, `providers/chain.py`, `cache/memory_cache.py`,
+`api/guardrails.py`, `api/errors.py`, and the frontend. The rest of `src/chatbot_ai_system/`
+(about 34k lines in total) is the full-deployment surface: WebSocket streaming with its own
+protocol, a provider orchestrator with load-balancing strategies and circuit breakers,
+multi-tenancy and auth routers, Redis and Pinecone integrations, Prometheus/Grafana/Jaeger
+configuration under `monitoring/`, Terraform under `infrastructure/`, and use-case templates
+under `use-cases/`. Modules that are design sketches rather than runnable code say so in their
+first line (`infrastructure/global_routing.py`, `providers/provider_a.py`, `providers/provider_b.py`,
+`infrastructure/connection_pool.py`). Known gaps in that surface are listed honestly in
+[`docs/TEST_TRIAGE.md`](docs/TEST_TRIAGE.md#escalations-places-where-the-code-not-the-test-looks-wrong).
 
-**Kubernetes documentation:** [`docs/kubernetes/README.md`](docs/kubernetes/README.md) (if exists)
+## Technology
 
-</details>
-
-### Scaling Considerations
-
-- **Horizontal Scaling**: Stateless design supports multiple replicas
-- **Database**: PostgreSQL with read replicas for high availability
-- **Cache**: Redis Cluster for distributed caching
-- **Load Balancing**: Nginx or cloud load balancer
-- **Monitoring**: Prometheus + Grafana dashboards included
-
----
-
-## Testing & Validation
-
-```bash
-# Run all quality checks
-make lint          # Code linting with ruff
-make type-check    # Type checking with mypy
-make test          # Unit tests with pytest
-make test-cov      # Tests with coverage report
-
-# Individual test suites
-poetry run pytest tests/unit -v           # Unit tests
-poetry run pytest tests/integration -v    # Integration tests
-poetry run pytest tests/e2e -v           # End-to-end tests
-
-# Load testing
-k6 run benchmarks/load_tests/k6_api_test.js
-k6 run benchmarks/load_tests/k6_websocket_test.js
-
-# Verify benchmark claims
-python benchmarks/verify_metrics.py
-```
-
-**CI/CD:** All tests run automatically on pull requests via [GitHub Actions](.github/workflows/ci.yml)
-
----
-
-## Monitoring & Observability
-
-### Metrics Collection
-- **Prometheus**: Application and system metrics
-- **Grafana**: Real-time dashboards and alerts
-- **Jaeger**: Distributed tracing for request flows
-
-### Key Metrics Tracked
-- Request latency (P50, P95, P99)
-- Provider availability and failover events
-- Cache hit rates and cost savings
-- Token usage and rate limiting
-- WebSocket connection metrics
-
-**Access monitoring:**
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
-- Jaeger: `http://localhost:16686`
-
----
-
-## Security Features
-
-- **Authentication**: JWT-based with refresh tokens
-- **Rate Limiting**: Token bucket algorithm per tenant
-- **Input Validation**: Pydantic models with strict validation
-- **Secrets Management**: Environment-based configuration
-- **CORS Protection**: Configurable origin restrictions
-- **Content Filtering**: Optional content moderation
-
-**Security documentation:** [`docs/security/SECURITY.md`](docs/security/SECURITY.md)
-
----
-
-## Technology Stack
-
-### Backend
-- **Framework**: FastAPI 0.104+ (async Python 3.12+)
-- **LLM Providers**: OpenAI, Anthropic, Meta Llama, Google Gemini
-- **Caching**: Redis with semantic similarity
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Message Queue**: Redis Streams
-
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **UI**: Tailwind CSS + shadcn/ui components
-- **State Management**: React Context + Hooks
-- **WebSocket**: Native WebSocket API
-
-### Infrastructure
-- **Containerization**: Docker, Docker Compose
-- **Orchestration**: Kubernetes-ready
-- **CI/CD**: GitHub Actions
-- **Monitoring**: Prometheus, Grafana, Jaeger
-- **Deployment**: Vercel (frontend) + Render (backend)
-
----
-
-## Project Structure
-
-```
-├── src/chatbot_ai_system/    # Backend application
-│   ├── server/               # FastAPI app and routes
-│   ├── providers/            # LLM provider implementations
-│   ├── orchestration/        # Routing and failover logic
-│   ├── cache/                # Semantic caching system
-│   ├── middleware/           # Auth, rate limiting, tracing
-│   ├── websocket/            # WebSocket handlers
-│   └── config/               # Configuration management
-├── frontend/                 # Next.js frontend
-│   ├── app/                  # Next.js 14 app directory
-│   ├── components/           # React components
-│   └── config/               # Frontend configuration
-├── use-cases/                # Pre-configured templates
-│   └── customer-support/     # Customer support template
-├── benchmarks/               # Performance testing suite
-│   ├── results/              # Benchmark results
-│   └── load_tests/           # k6 load tests
-├── tests/                    # Test suites
-│   ├── unit/                 # Unit tests
-│   ├── integration/          # Integration tests
-│   └── e2e/                  # End-to-end tests
-├── docs/                     # Documentation
-│   ├── architecture/         # Architecture docs
-│   ├── security/             # Security docs
-│   └── deployment/           # Deployment guides
-├── docker/                   # Docker configurations
-│   ├── dockerfiles/          # Dockerfile variants
-│   └── compose/              # Docker Compose files
-├── k8s/                      # Kubernetes manifests
-├── infrastructure/           # IaC and deployment configs
-└── monitoring/               # Monitoring configurations
-```
-
----
-
-## Contributing
-
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct, development process, and how to submit pull requests.
-
-**Key areas for contribution:**
-- New AI provider integrations
-- Additional use-case templates
-- Performance optimizations
-- Documentation improvements
-- Bug fixes and feature requests
-
-**Community standards:**
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Security Policy](SECURITY.md)
-
----
-
-## Acknowledgments
-
-Built with excellent open-source tools:
-
-- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
-- [Next.js](https://nextjs.org/) - React framework for production
-- [Redis](https://redis.io/) - In-memory data structure store
-- [PostgreSQL](https://www.postgresql.org/) - Robust relational database
-- [Prometheus](https://prometheus.io/) & [Grafana](https://grafana.com/) - Monitoring stack
-- OpenAI & Anthropic for powerful LLM APIs
-
----
+FastAPI 0.104 on Python 3.12, Pydantic 2, the `openai` SDK (also used for Groq via its
+OpenAI-compatible endpoint), `anthropic` SDK, `redis` (optional), `tiktoken` for token
+estimates. Frontend: Next.js 15, React 19, TypeScript, Tailwind CSS 3.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
+MIT. See [LICENSE](LICENSE).
 
 ## Contact
 
-**Christopher J. Bratkovics**
-- **LinkedIn:** [linkedin.com/in/cbratkovics](https://linkedin.com/in/cbratkovics)
-- **Portfolio:** [cbratkovics.dev](https://cbratkovics.dev)
-- **GitHub:** [@cbratkovics](https://github.com/cbratkovics)
-
----
-
-## Project Stats
-
-- **Lines of Code**: ~15,000+
-- **Test Coverage**: 85%+
-- **Docker Images**: Backend, Frontend, Monitoring Stack
-- **Supported Providers**: OpenAI, Anthropic, Meta Llama, Google Gemini
-- **Concurrency**: Async request handling with WebSocket connection pooling
-- **Deployment**: Docker Compose, Kubernetes manifests, and CI/CD workflows included
-
----
-
-⭐ **Star this repo** if you find it useful!
-
-Built with ❤️ for production AI systems
+**Christopher J. Bratkovics** · [linkedin.com/in/cbratkovics](https://linkedin.com/in/cbratkovics) · [cbratkovics.dev](https://cbratkovics.dev) · [@cbratkovics](https://github.com/cbratkovics)

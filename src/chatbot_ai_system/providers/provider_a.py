@@ -1,4 +1,10 @@
-"""Provider A implementation with comprehensive error handling."""
+"""DESIGN SKETCH - NOT WIRED INTO THE APPLICATION.
+
+Example provider implementation against a hypothetical HTTP API.
+
+It imports aiohttp, which are not project dependencies, so it cannot be imported at runtime and
+is excluded from the demo and the test suite. It is kept as an architecture artifact only.
+"""
 
 import asyncio
 import json

@@ -275,37 +275,39 @@ class StreamingOpenAIMixin(StreamingMixin):
                 raise ValueError("OpenAI client not initialized")
             stream = await client.chat.completions.create(**request_params)
 
-            # Process stream
+            # Process stream. With stream_options.include_usage the provider sends one trailing
+            # chunk that has usage and an empty choices list; without it, the stream just ends.
+            finish_reason: Optional[str] = None
+            usage: Optional[Dict[str, int]] = None
             async for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
+                chunk_usage = getattr(chunk, "usage", None)
+                if chunk_usage:
+                    usage = {
+                        "prompt_tokens": chunk_usage.prompt_tokens,
+                        "completion_tokens": chunk_usage.completion_tokens,
+                        "total_tokens": chunk_usage.total_tokens,
+                    }
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                if choice.delta and choice.delta.content:
+                    content = choice.delta.content
                     total_tokens += 1  # Approximate
-
                     yield await self._process_stream_chunk(
                         content, chunk_index, model, start_time, total_tokens
                     )
-
                     chunk_index += 1
+                if choice.finish_reason:
+                    finish_reason = choice.finish_reason
 
-                # Check for finish reason
-                if chunk.choices and chunk.choices[0].finish_reason:
-                    # Final chunk with usage info
-                    usage = None
-                    if hasattr(chunk, "usage"):
-                        usage = {
-                            "prompt_tokens": chunk.usage.prompt_tokens,
-                            "completion_tokens": chunk.usage.completion_tokens,
-                            "total_tokens": chunk.usage.total_tokens,
-                        }
-
-                    yield StreamChunk(
-                        content="",
-                        index=chunk_index,
-                        model=model,
-                        finish_reason=chunk.choices[0].finish_reason,
-                        is_final=True,
-                        usage=usage,
-                    )
+            yield StreamChunk(
+                content="",
+                index=chunk_index,
+                model=model,
+                finish_reason=finish_reason or "stop",
+                is_final=True,
+                usage=usage,
+            )
 
             # Update statistics
             duration = time.time() - start_time

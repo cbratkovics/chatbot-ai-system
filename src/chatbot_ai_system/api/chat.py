@@ -1,16 +1,35 @@
-"""
-Chat API endpoint with provider factory pattern and Redis caching.
+"""Chat API: provider failover chain, optional cache, demo guardrails, SSE streaming.
+
+Request path: guardrails -> cache lookup -> provider chain -> cache store -> response.
+Every step is reported in ``telemetry`` (provider, model, cache HIT/MISS, latency, tokens,
+estimated cost, per-provider attempts) so the UI can show what actually happened.
+
+Streaming uses Server-Sent Events over the same POST endpoint (``"stream": true``):
+
+    event: meta   -> {request_id, model, provider, cache}
+    event: delta  -> {content}
+    event: done   -> telemetry
+    event: error  -> {error: {...}}
+
+SSE was chosen over the WebSocket path for the demo because it is a plain HTTP response:
+it survives Render's free-tier proxy without long-lived-connection issues, needs no
+reconnection protocol, and is trivially curl-able.
 """
 
+import json
 import logging
+import time
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple, Union
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..cache.cache_key_generator import CacheKeyGenerator
+from ..cache.memory_cache import MemoryCache
 from ..cache.redis_cache import RedisCache
 from ..config import Settings, get_settings
 from ..providers.anthropic_provider import AnthropicProvider
@@ -20,466 +39,779 @@ from ..providers.base import (
     ChatMessage,
     ModelNotFoundError,
     ProviderError,
-    RateLimitError,
-    TimeoutError,
+    StreamChunk,
 )
+from ..providers.catalog import (
+    MODEL_CATALOG,
+    PROVIDERS,
+    estimate_cost_usd,
+    models_for,
+    provider_for,
+    resolve_model,
+)
+from ..providers.chain import (
+    SIMULATED_OUTAGE,
+    Attempt,
+    ChainExhaustedError,
+    ProviderChain,
+    StreamStart,
+)
+from ..providers.groq_provider import GroqProvider
 from ..providers.openai_provider import OpenAIProvider
+from .errors import classify_provider_error, error_payload, error_response, provider_error_response
+from .guardrails import DemoGuard, GuardrailConfig, GuardrailError, client_ip_from_headers
 
 logger = logging.getLogger(__name__)
 
-# Initialize cache components
-redis_cache: Optional[RedisCache] = None
-cache_key_generator: Optional[CacheKeyGenerator] = None
+CacheBackend = Union[RedisCache, MemoryCache]
 
-# Create router
+# Process-wide singletons, built lazily so tests and lifespan both work.
+cache: Optional[CacheBackend] = None
+cache_key_generator: Optional[CacheKeyGenerator] = None
+demo_guard: Optional[DemoGuard] = None
+
+SIMULATE_FAILURE_HEADER = "x-demo-simulate-failure"
+
 router = APIRouter(
     prefix="/chat",
     tags=["chat"],
     responses={
-        404: {"description": "Not found"},
-        429: {"description": "Rate limit exceeded"},
-        500: {"description": "Internal server error"},
+        402: {"description": "Provider quota exhausted"},
+        404: {"description": "Model not found"},
+        429: {"description": "Rate limit or demo budget exceeded"},
+        502: {"description": "Upstream provider error"},
     },
 )
 
 
+# --------------------------------------------------------------------------- models
 class ChatCompletionRequest(BaseModel):
     """Chat completion request model."""
 
     messages: List[Dict[str, str]] = Field(..., description="List of messages in the conversation")
-    model: str = Field(..., description="Model identifier")
+    model: str = Field("default", description="Model identifier, or 'default'")
     temperature: Optional[float] = Field(0.7, ge=0.0, le=2.0, description="Sampling temperature")
     max_tokens: Optional[int] = Field(None, gt=0, le=8192, description="Maximum tokens in response")
     system_prompt: Optional[str] = Field(None, description="System prompt for context")
     conversation_history: Optional[List[Dict[str, str]]] = Field(
         None, description="Previous messages in the conversation"
     )
+    stream: bool = Field(False, description="Stream the answer as Server-Sent Events")
 
     @field_validator("messages")
     @classmethod
     def validate_messages(cls, v):
         """Validate and sanitize messages."""
-        if not v or len(v) == 0:
+        if not v:
             raise ValueError("Messages cannot be empty")
-        # Validate each message has required fields
         for msg in v:
             if not msg.get("role") or not msg.get("content"):
                 raise ValueError("Each message must have 'role' and 'content' fields")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "What is the capital of France?"},
-                ],
-                "model": "gpt-3.5-turbo",
+                "messages": [{"role": "user", "content": "What is the capital of France?"}],
+                "model": "gpt-4o-mini",
                 "temperature": 0.7,
                 "max_tokens": 150,
-                "conversation_history": [
-                    {"role": "user", "content": "Hello"},
-                    {"role": "assistant", "content": "Hi there!"},
-                ],
+                "stream": False,
             }
         }
+    )
 
 
 class ChatCompletionResponse(BaseModel):
-    """Chat completion response model."""
+    """Chat completion response (OpenAI-shaped plus telemetry)."""
 
     id: str = Field(..., description="Unique request identifier")
     object: str = Field(default="chat.completion", description="Object type")
     created: int = Field(..., description="Creation timestamp")
-    model: str = Field(..., description="Model used")
+    model: str = Field(..., description="Model that produced the answer")
+    provider: str = Field(..., description="Provider that produced the answer")
     choices: List[Dict[str, Any]] = Field(..., description="Response choices")
     usage: Optional[Dict[str, int]] = Field(None, description="Token usage statistics")
-    cached: bool = Field(False, description="Whether response was cached")
+    cached: bool = Field(False, description="Whether response was served from cache")
     cache_key: Optional[str] = Field(None, description="Cache key used")
-    similarity_score: Optional[float] = Field(
-        None, description="Similarity score for semantic cache hit"
+    similarity_score: Optional[float] = Field(None, description="1.0 for an exact-match hit")
+    cache: Dict[str, Any] = Field(default_factory=dict, description="Cache status/backend")
+    attempts: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Per-provider attempt log for this request"
+    )
+    latency_ms: float = Field(0.0, description="Server-side wall time")
+    telemetry: Dict[str, Any] = Field(
+        default_factory=dict, description="What answered, from where, at what cost"
     )
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": "550e8400-e29b-41d4-a716-446655440000",
-                "object": "chat.completion",
-                "created": 1711018800,
-                "model": "gpt-3.5-turbo",
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": "The capital of France is Paris.",
-                        },
-                        "finish_reason": "stop",
-                    }
-                ],
-                "usage": {"prompt_tokens": 10, "completion_tokens": 15, "total_tokens": 25},
-                "cached": False,
-                "cache_key": "chat:v1:gpt-3.5-turbo:abc123...",
-                "similarity_score": None,
-            }
-        }
+
+# --------------------------------------------------------------------------- wiring
+def make_provider(provider_name: str, settings: Settings) -> BaseProvider:
+    """Build a provider client or raise AuthenticationError when its key is missing."""
+    timeout = settings.request_timeout
+    retries = settings.max_retries
+    if provider_name == "openai":
+        if not settings.openai_api_key:
+            raise AuthenticationError(
+                "OpenAI API key not configured (OPENAI_API_KEY)", provider="openai", status_code=401
+            )
+        return OpenAIProvider(
+            api_key=settings.openai_api_key.get_secret_value(),
+            timeout=timeout,
+            max_retries=retries,
+        )
+    if provider_name == "anthropic":
+        if not settings.anthropic_api_key:
+            raise AuthenticationError(
+                "Anthropic API key not configured (ANTHROPIC_API_KEY)",
+                provider="anthropic",
+                status_code=401,
+            )
+        return AnthropicProvider(
+            api_key=settings.anthropic_api_key.get_secret_value(),
+            timeout=timeout,
+            max_retries=retries,
+        )
+    if provider_name == "groq":
+        if not settings.groq_api_key:
+            raise AuthenticationError(
+                "Groq API key not configured (GROQ_API_KEY)", provider="groq", status_code=401
+            )
+        return GroqProvider(
+            api_key=settings.groq_api_key.get_secret_value(),
+            timeout=timeout,
+            max_retries=retries,
+            base_url=settings.groq_base_url,
+        )
+    raise ModelNotFoundError(f"Unknown provider '{provider_name}'", provider=None, status_code=404)
 
 
 class ProviderFactory:
-    """Factory for creating AI provider instances."""
+    """Thin compatibility facade over the catalogue."""
 
-    # Model to provider mapping
-    MODEL_PROVIDER_MAP = {
-        # OpenAI models
-        "gpt-3.5-turbo": "openai",
-        "gpt-3.5-turbo-16k": "openai",
-        "gpt-4": "openai",
-        "gpt-4-turbo-preview": "openai",
-        "gpt-4-32k": "openai",
-        "gpt-4-1106-preview": "openai",
-        "gpt-4-0125-preview": "openai",
-        # Anthropic models
-        "claude-3-opus-20240229": "anthropic",
-        "claude-3-sonnet-20240229": "anthropic",
-        "claude-3-haiku-20240307": "anthropic",
-        "claude-2.1": "anthropic",
-        "claude-2.0": "anthropic",
-        "claude-instant-1.2": "anthropic",
-    }
+    MODEL_PROVIDER_MAP = MODEL_CATALOG
 
     @classmethod
     def create_provider(cls, model: str, settings: Settings) -> BaseProvider:
-        """
-        Create a provider instance based on the model.
-
-        Args:
-            model: Model identifier
-            settings: Application settings
-
-        Returns:
-            BaseProvider: Provider instance
-
-        Raises:
-            ModelNotFoundError: If model is not supported
-            AuthenticationError: If API key is not configured
-        """
-        # Handle "default" model
         if model == "default":
             model = settings.default_model
-
-        # Determine provider from model
-        provider_name = cls.MODEL_PROVIDER_MAP.get(model)
-
+        model = resolve_model(model)
+        provider_name = provider_for(model)
         if not provider_name:
             raise ModelNotFoundError(
-                f"Model '{model}' is not supported. Supported models: {list(cls.MODEL_PROVIDER_MAP.keys())}",
+                f"Model '{model}' is not supported. Supported models: {list(MODEL_CATALOG)}",
                 provider=None,
                 status_code=404,
             )
-
-        # Create provider instance
-        if provider_name == "openai":
-            if not settings.has_openai_key:
-                raise AuthenticationError(
-                    "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.",
-                    provider="openai",
-                    status_code=401,
-                )
-            if not settings.openai_api_key:
-                raise ValueError("OpenAI API key not configured")
-
-            return OpenAIProvider(
-                api_key=settings.openai_api_key.get_secret_value(),
-                timeout=settings.request_timeout,
-                max_retries=settings.max_retries,
-            )
-
-        elif provider_name == "anthropic":
-            if not settings.has_anthropic_key:
-                raise AuthenticationError(
-                    "Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable.",
-                    provider="anthropic",
-                    status_code=401,
-                )
-            if not settings.anthropic_api_key:
-                raise ValueError("Anthropic API key not configured")
-
-            return AnthropicProvider(
-                api_key=settings.anthropic_api_key.get_secret_value(),
-                timeout=settings.request_timeout,
-                max_retries=settings.max_retries,
-            )
-
-        else:
-            raise ValueError(f"Unknown provider: {provider_name}")
+        return make_provider(provider_name, settings)
 
     @classmethod
     def get_supported_models(cls) -> List[str]:
-        """Get list of all supported models."""
-        return list(cls.MODEL_PROVIDER_MAP.keys())
+        return list(MODEL_CATALOG)
 
     @classmethod
     def get_provider_for_model(cls, model: str) -> Optional[str]:
-        """Get provider name for a model."""
-        return cls.MODEL_PROVIDER_MAP.get(model)
+        return provider_for(model)
 
 
+def build_chain(settings: Settings, simulate_primary_failure: bool = False) -> ProviderChain:
+    return ProviderChain(
+        make_provider=lambda name: make_provider(name, settings),
+        fallbacks=settings.fallback_chain if settings.enable_fallback else [],
+        simulate_primary_failure=simulate_primary_failure,
+    )
+
+
+def get_guard(settings: Settings) -> DemoGuard:
+    global demo_guard
+    if demo_guard is None:
+        demo_guard = DemoGuard(
+            GuardrailConfig(
+                enabled=settings.demo_guardrails_enabled,
+                per_minute=settings.demo_rate_limit_per_minute,
+                per_day=settings.demo_rate_limit_per_day,
+                max_tokens=settings.demo_max_tokens,
+                max_history_messages=settings.demo_max_history_messages,
+                daily_token_budget=settings.demo_daily_token_budget,
+            )
+        )
+    return demo_guard
+
+
+async def build_cache(settings: Settings) -> Optional[CacheBackend]:
+    """Redis when configured and reachable within the connect timeout, else memory."""
+    if not settings.cache_enabled:
+        return None
+    if settings.redis_url:
+        redis_cache = RedisCache(
+            redis_url=settings.redis_url,
+            max_connections=settings.redis_max_connections,
+            ttl_seconds=settings.cache_ttl_seconds,
+            compression_threshold=settings.cache_compression_threshold,
+            enable_compression=settings.cache_compression_enabled,
+            enable_circuit_breaker=settings.cache_circuit_breaker_enabled,
+            connect_timeout_seconds=settings.cache_connect_timeout_seconds,
+        )
+        try:
+            await redis_cache.connect()
+            return redis_cache
+        except Exception as exc:  # noqa: BLE001 - any connect failure means "use memory"
+            logger.warning(
+                "Redis unavailable (%s); falling back to in-process memory cache", exc
+            )
+    else:
+        logger.warning("REDIS_URL not set; using in-process memory cache")
+    return MemoryCache(
+        ttl_seconds=settings.cache_ttl_seconds, max_entries=settings.memory_cache_max_entries
+    )
+
+
+async def get_cache(settings: Settings) -> Optional[CacheBackend]:
+    """Return the process cache, building it on first use."""
+    global cache, cache_key_generator
+    if cache is None and settings.cache_enabled:
+        cache = await build_cache(settings)
+    if cache_key_generator is None:
+        cache_key_generator = CacheKeyGenerator(
+            semantic_cache_enabled=settings.semantic_cache_enabled,
+            similarity_threshold=settings.semantic_cache_threshold,
+        )
+    return cache
+
+
+async def initialize_cache(settings: Settings) -> Optional[CacheBackend]:
+    """Startup hook: build the cache and report which backend won."""
+    return await get_cache(settings)
+
+
+def cache_backend_name() -> str:
+    return getattr(cache, "backend", "disabled") if cache else "disabled"
+
+
+# --------------------------------------------------------------------------- token estimate
+_encoder: Any = None
+_encoder_failed = False
+
+
+def estimate_tokens(text: str) -> int:
+    """Token count via tiktoken (cl100k) when available, else a 4-chars-per-token estimate.
+
+    Providers that do not report usage on streams (Groq) get this estimate; the telemetry
+    marks it ``source: "estimated"`` so nobody mistakes it for a bill.
+    """
+    global _encoder, _encoder_failed
+    if not text:
+        return 0
+    if _encoder is None and not _encoder_failed:
+        try:
+            import tiktoken
+
+            _encoder = tiktoken.get_encoding("cl100k_base")
+        except Exception:  # noqa: BLE001 - offline or missing cache: fall back
+            _encoder_failed = True
+    if _encoder is not None:
+        try:
+            return len(_encoder.encode(text))
+        except Exception:  # noqa: BLE001
+            pass
+    return max(1, len(text) // 4)
+
+
+def estimate_usage(messages: List[ChatMessage], output: str) -> Dict[str, int]:
+    prompt = estimate_tokens("\n".join(f"{m.role}: {m.content}" for m in messages))
+    completion = estimate_tokens(output)
+    return {"prompt_tokens": prompt, "completion_tokens": completion, "total_tokens": prompt + completion}
+
+
+# --------------------------------------------------------------------------- request context
+@dataclass
+class PreparedRequest:
+    request_id: str
+    started: float
+    guard: DemoGuard
+    model_name: str
+    messages: List[ChatMessage]
+    temperature: float
+    max_tokens: int
+    backend: Optional[CacheBackend]
+    cache_key: str
+    bypass_cache: bool
+    simulate_failure: bool
+
+
+def _simulate_requested(http_request: Request, settings: Settings) -> bool:
+    """True when the demo failure toggle is enabled and this request (or the env) asks for it."""
+    if not settings.demo_failure_toggle_enabled:
+        return False
+    if settings.demo_simulate_primary_failure:
+        return True
+    value = (http_request.headers.get(SIMULATE_FAILURE_HEADER) or "").strip().lower()
+    return value in ("1", "true", "yes", "on")
+
+
+async def _prepare(
+    request: ChatCompletionRequest,
+    http_request: Request,
+    settings: Settings,
+    cache_control: Optional[str],
+) -> Union[PreparedRequest, JSONResponse]:
+    """Guardrails, model resolution, message assembly, cache key. Errors come back as JSON."""
+    request_id = getattr(http_request.state, "request_id", None) or str(uuid.uuid4())
+    started = time.perf_counter()
+
+    guard = get_guard(settings)
+    client_ip = client_ip_from_headers(
+        http_request.headers.get("x-forwarded-for"),
+        http_request.client.host if http_request.client else None,
+    )
+    try:
+        guard.check(client_ip)
+    except GuardrailError as exc:
+        return error_response(
+            exc.status_code,
+            exc.code,
+            exc.message,
+            request_id=request_id,
+            headers={"Retry-After": str(exc.retry_after)},
+        )
+
+    requested_model = settings.default_model if request.model in ("", "default") else request.model
+    model_name = resolve_model(requested_model)
+    if model_name != requested_model:
+        logger.warning("Legacy model id %r mapped to %r", requested_model, model_name)
+    if provider_for(model_name) is None:
+        return error_response(
+            status.HTTP_404_NOT_FOUND,
+            "model_not_found",
+            f"Model '{model_name}' is not supported. Supported models: {list(MODEL_CATALOG)}",
+            request_id=request_id,
+        )
+
+    messages: List[ChatMessage] = []
+    if request.system_prompt:
+        messages.append(ChatMessage(role="system", content=request.system_prompt))
+    for msg in request.conversation_history or []:
+        messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
+    for msg in request.messages:
+        messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
+    messages = guard.trim_history(messages)
+    max_tokens = guard.clamp_max_tokens(request.max_tokens)
+    temperature = request.temperature if request.temperature is not None else 0.7
+
+    backend = await get_cache(settings)
+    assert cache_key_generator is not None
+    cache_key = cache_key_generator.generate_key(
+        [{"role": m.role, "content": m.content} for m in messages], model_name, temperature
+    )
+    bypass = (cache_control or "").lower() in ("no-cache", "no-store")
+
+    return PreparedRequest(
+        request_id=request_id,
+        started=started,
+        guard=guard,
+        model_name=model_name,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        backend=backend,
+        cache_key=cache_key,
+        bypass_cache=bypass,
+        simulate_failure=_simulate_requested(http_request, settings),
+    )
+
+
+def _telemetry(
+    ctx: PreparedRequest,
+    *,
+    provider: str,
+    model: str,
+    cache_status: str,
+    usage: Optional[Dict[str, int]],
+    usage_source: str,
+    attempts: List[Attempt],
+    streamed: bool,
+    ttfb_ms: Optional[float] = None,
+) -> Dict[str, Any]:
+    """The per-message chip. Every field here is something the UI can show honestly."""
+    latency_ms = round((time.perf_counter() - ctx.started) * 1000, 1)
+    prompt_tokens = (usage or {}).get("prompt_tokens", 0)
+    completion_tokens = (usage or {}).get("completion_tokens", 0)
+    cost = None if cache_status == "hit" else estimate_cost_usd(model, prompt_tokens, completion_tokens)
+    return {
+        "request_id": ctx.request_id,
+        "provider": provider,
+        "model": model,
+        "cache": {
+            "status": cache_status,
+            "backend": cache_backend_name(),
+            "similarity": 1.0 if cache_status == "hit" else None,
+        },
+        "latency_ms": latency_ms,
+        "ttfb_ms": ttfb_ms,
+        "usage": {**(usage or {}), "source": usage_source if usage else "none"},
+        "cost_usd": 0.0 if cache_status == "hit" else cost,
+        "attempts": [a.to_dict() for a in attempts],
+        "failover": any(a.outcome == "failed" for a in attempts) and attempts[-1].outcome == "ok",
+        "simulated_failure": any(a.error_code == SIMULATED_OUTAGE for a in attempts),
+        "streamed": streamed,
+    }
+
+
+async def _store(ctx: PreparedRequest, content: str, model: str, provider: str, usage: Any) -> None:
+    if ctx.backend is not None and not ctx.bypass_cache and content:
+        await ctx.backend.cache_response(
+            ctx.cache_key,
+            {"content": content, "model": model, "provider": provider, "usage": usage},
+        )
+
+
+def _json_response(
+    ctx: PreparedRequest,
+    *,
+    content: str,
+    model: str,
+    provider: str,
+    usage: Optional[Dict[str, int]],
+    finish_reason: str,
+    cached: bool,
+    telemetry: Dict[str, Any],
+) -> ChatCompletionResponse:
+    return ChatCompletionResponse(
+        id=ctx.request_id,
+        created=int(datetime.utcnow().timestamp()),
+        model=model,
+        provider=provider,
+        choices=[
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": finish_reason,
+            }
+        ],
+        usage=usage,
+        cached=cached,
+        cache_key=ctx.cache_key,
+        similarity_score=1.0 if cached else None,
+        cache=telemetry["cache"] | {"key": ctx.cache_key},
+        attempts=telemetry["attempts"],
+        latency_ms=telemetry["latency_ms"],
+        telemetry=telemetry,
+    )
+
+
+# --------------------------------------------------------------------------- routes
 @router.post("/completions", response_model=ChatCompletionResponse)
 async def chat_completion(
     request: ChatCompletionRequest,
+    http_request: Request,
     settings: Settings = Depends(get_settings),
     cache_control: Optional[str] = Header(None),
-    x_user_id: Optional[str] = Header(None),
-) -> ChatCompletionResponse:
-    """
-    Generate a chat completion using the specified model.
+) -> Any:
+    """Generate a chat completion (JSON, or SSE when ``stream`` is true)."""
+    prepared = await _prepare(request, http_request, settings, cache_control)
+    if isinstance(prepared, JSONResponse):
+        return prepared
+    ctx = prepared
 
-    Args:
-        request: Chat completion request
-        settings: Application settings
+    # Cache lookup (exact match on normalised prompt) is shared by both paths.
+    hit: Optional[Dict[str, Any]] = None
+    if ctx.backend is not None and not ctx.bypass_cache:
+        hit = await ctx.backend.get_cached_response(ctx.cache_key)
 
-    Returns:
-        ChatCompletionResponse: The completion response
+    if request.stream:
+        return StreamingResponse(
+            _sse(ctx, settings, hit),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
-    Raises:
-        HTTPException: If an error occurs
-    """
-    # Generate request ID
-    request_id = str(uuid.uuid4())
+    if hit:
+        logger.info("Cache hit", extra={"request_id": ctx.request_id, "key": ctx.cache_key[:40]})
+        telemetry = _telemetry(
+            ctx,
+            provider=hit.get("provider", "cache"),
+            model=hit.get("model", ctx.model_name),
+            cache_status="hit",
+            usage=hit.get("usage"),
+            usage_source="provider",
+            attempts=[],
+            streamed=False,
+        )
+        return _json_response(
+            ctx,
+            content=hit.get("content", ""),
+            model=hit.get("model", ctx.model_name),
+            provider=hit.get("provider", "cache"),
+            usage=hit.get("usage"),
+            finish_reason=hit.get("finish_reason", "stop"),
+            cached=True,
+            telemetry=telemetry,
+        )
 
-    logger.info(
-        "Chat completion request",
-        extra={
-            "request_id": request_id,
-            "model": request.model,
-            "message_count": len(request.messages),
-            "temperature": request.temperature,
-        },
+    chain = build_chain(settings, simulate_primary_failure=ctx.simulate_failure)
+    try:
+        response, attempts = await chain.complete(
+            messages=ctx.messages,
+            model=ctx.model_name,
+            temperature=ctx.temperature,
+            max_tokens=ctx.max_tokens,
+        )
+    except ChainExhaustedError as exc:
+        logger.error("All providers failed: %s", exc.message, extra={"request_id": ctx.request_id})
+        return provider_error_response(
+            exc.primary_error, ctx.request_id, attempts=[a.to_dict() for a in exc.attempts]
+        )
+    except ProviderError as exc:
+        logger.error("Provider error: %s", exc.message, extra={"request_id": ctx.request_id})
+        return provider_error_response(exc, ctx.request_id)
+
+    # Report the chain slot that answered ("openai", "groq"), not the client object's own
+    # label, so JSON and SSE telemetry agree and tests with fake providers stay honest.
+    provider_name = attempts[-1].provider if attempts else response.provider
+    usage = response.usage
+    usage_source = "provider"
+    if not usage:
+        usage = estimate_usage(ctx.messages, response.content)
+        usage_source = "estimated"
+    ctx.guard.record_usage(usage.get("total_tokens", 0))
+    await _store(ctx, response.content, response.model, provider_name, usage)
+
+    telemetry = _telemetry(
+        ctx,
+        provider=provider_name,
+        model=response.model,
+        cache_status="bypass" if ctx.bypass_cache or ctx.backend is None else "miss",
+        usage=usage,
+        usage_source=usage_source,
+        attempts=attempts,
+        streamed=False,
+    )
+    logger.info("Chat completion successful", extra={"request_id": ctx.request_id, **telemetry})
+    return _json_response(
+        ctx,
+        content=response.content,
+        model=response.model,
+        provider=provider_name,
+        usage=usage,
+        finish_reason=response.finish_reason or "stop",
+        cached=False,
+        telemetry=telemetry,
     )
 
-    try:
-        # Resolve model name
-        model_name = request.model
-        if model_name == "default":
-            model_name = settings.default_model
 
-        # Create provider
-        provider = ProviderFactory.create_provider(model_name, settings)
+def _sse_event(event: str, data: Dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
-        # Prepare messages
-        messages = []
 
-        # Add system prompt if provided
-        if request.system_prompt:
-            messages.append(ChatMessage(role="system", content=request.system_prompt))
+async def _sse(
+    ctx: PreparedRequest, settings: Settings, hit: Optional[Dict[str, Any]]
+) -> AsyncIterator[str]:
+    """Server-Sent Events body: meta, delta*, done | error."""
+    cache_status = "bypass" if ctx.bypass_cache or ctx.backend is None else "miss"
 
-        # Add conversation history if provided
-        if request.conversation_history:
-            for msg in request.conversation_history:
-                messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
-
-        # Convert request messages to ChatMessage objects
-        for msg in request.messages:
-            messages.append(ChatMessage(role=msg["role"], content=msg["content"]))
-
-        # Generate completion
-        response = await provider.chat(
-            messages=messages,
-            model=model_name,
-            temperature=request.temperature or 0.7,
-            max_tokens=request.max_tokens,
-        )
-
-        # Update response with our request ID
-        response.request_id = request_id
-
-        # Create API response in OpenAI format
-        api_response = ChatCompletionResponse(
-            id=response.request_id,
-            created=int(datetime.utcnow().timestamp()),
-            model=response.model,
-            choices=[
-                {
-                    "index": 0,
-                    "message": {"role": "assistant", "content": response.content},
-                    "finish_reason": "stop",
-                }
-            ],
-            usage=response.usage,
-            cached=response.cached,
-            cache_key=getattr(response, "cache_key", None),
-            similarity_score=getattr(response, "similarity_score", None),
-        )
-
-        logger.info(
-            "Chat completion successful",
-            extra={
-                "request_id": request_id,
-                "model": response.model,
-                "usage": response.usage,
-                "cached": response.cached,
+    if hit:
+        model = hit.get("model", ctx.model_name)
+        provider = hit.get("provider", "cache")
+        yield _sse_event(
+            "meta",
+            {
+                "request_id": ctx.request_id,
+                "model": model,
+                "provider": provider,
+                "cache": {"status": "hit", "backend": cache_backend_name(), "key": ctx.cache_key},
             },
         )
-
-        return api_response
-
-    except AuthenticationError as e:
-        logger.error(f"Authentication error: {e}", extra={"request_id": request_id})
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    except ModelNotFoundError as e:
-        logger.error(f"Model not found: {e}", extra={"request_id": request_id})
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-
-    except RateLimitError as e:
-        logger.error(f"Rate limit exceeded: {e}", extra={"request_id": request_id})
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=str(e),
-            headers={"Retry-After": str(e.details.get("retry_after", 60))},
+        yield _sse_event("delta", {"content": hit.get("content", "")})
+        yield _sse_event(
+            "done",
+            _telemetry(
+                ctx,
+                provider=provider,
+                model=model,
+                cache_status="hit",
+                usage=hit.get("usage"),
+                usage_source="provider",
+                attempts=[],
+                streamed=True,
+                ttfb_ms=round((time.perf_counter() - ctx.started) * 1000, 1),
+            ),
         )
+        return
 
-    except TimeoutError as e:
-        logger.error(f"Request timeout: {e}", extra={"request_id": request_id})
-        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail=str(e))
-
-    except ProviderError as e:
-        logger.error(f"Provider error: {e}", extra={"request_id": request_id})
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-    except Exception as e:
-        logger.error(
-            "Unexpected error in chat completion", extra={"request_id": request_id}, exc_info=True
+    chain = build_chain(settings, simulate_primary_failure=ctx.simulate_failure)
+    attempts: List[Attempt] = []
+    parts: List[str] = []
+    provider_name = "unknown"
+    model = ctx.model_name
+    usage: Optional[Dict[str, int]] = None
+    ttfb_ms: Optional[float] = None
+    try:
+        async for item in chain.stream(
+            ctx.messages,
+            ctx.model_name,
+            attempts,
+            temperature=ctx.temperature,
+            max_tokens=ctx.max_tokens,
+        ):
+            if isinstance(item, StreamStart):
+                provider_name, model = item.provider, item.model
+                yield _sse_event(
+                    "meta",
+                    {
+                        "request_id": ctx.request_id,
+                        "model": model,
+                        "provider": provider_name,
+                        "cache": {
+                            "status": cache_status,
+                            "backend": cache_backend_name(),
+                            "key": ctx.cache_key,
+                        },
+                        "attempts": [a.to_dict() for a in attempts],
+                    },
+                )
+                continue
+            chunk: StreamChunk = item
+            if chunk.content:
+                if ttfb_ms is None:
+                    ttfb_ms = round((time.perf_counter() - ctx.started) * 1000, 1)
+                parts.append(chunk.content)
+                yield _sse_event("delta", {"content": chunk.content})
+            if chunk.is_final and chunk.usage:
+                usage = chunk.usage.model_dump(exclude={"total_cost"})
+    except ChainExhaustedError as exc:
+        status_code, code = classify_provider_error(exc.primary_error)
+        yield _sse_event(
+            "error",
+            error_payload(
+                code,
+                exc.primary_error.message,
+                provider=exc.primary_error.provider,
+                request_id=ctx.request_id,
+                status_code=status_code,
+                attempts=[a.to_dict() for a in exc.attempts],
+            ),
         )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(e)}",
+        return
+    except ProviderError as exc:
+        status_code, code = classify_provider_error(exc)
+        yield _sse_event(
+            "error",
+            error_payload(
+                code,
+                exc.message,
+                provider=exc.provider,
+                request_id=ctx.request_id,
+                status_code=status_code,
+                attempts=[a.to_dict() for a in attempts],
+                partial_content="".join(parts) or None,
+            ),
         )
+        return
+
+    content = "".join(parts)
+    usage_source = "provider"
+    if not usage:
+        usage = estimate_usage(ctx.messages, content)
+        usage_source = "estimated"
+    ctx.guard.record_usage(usage.get("total_tokens", 0))
+    await _store(ctx, content, model, provider_name, usage)
+    telemetry = _telemetry(
+        ctx,
+        provider=provider_name,
+        model=model,
+        cache_status=cache_status,
+        usage=usage,
+        usage_source=usage_source,
+        attempts=attempts,
+        streamed=True,
+        ttfb_ms=ttfb_ms,
+    )
+    logger.info("Chat stream complete", extra={"request_id": ctx.request_id, **telemetry})
+    yield _sse_event("done", telemetry)
 
 
 @router.get("/models")
 async def get_supported_models(settings: Settings = Depends(get_settings)) -> Dict[str, Any]:
-    """
-    Get list of supported models.
-
-    Returns:
-        Dict containing supported models and their providers
-    """
-    models = ProviderFactory.get_supported_models()
-
-    # Group by provider
-    models_by_provider: Dict[str, List[str]] = {}
-    for model in models:
-        provider = ProviderFactory.get_provider_for_model(model)
-        if provider:
-            if provider not in models_by_provider:
-                models_by_provider[provider] = []
-            models_by_provider[provider].append(model)
-
-    # Check which providers are configured
-    configured_providers = []
-    if settings.has_openai_key:
-        configured_providers.append("openai")
-    if settings.has_anthropic_key:
-        configured_providers.append("anthropic")
-
+    """Models the demo can actually serve, default first, plus the full catalogue."""
+    configured = settings.configured_providers
+    available = [
+        {"id": m, "provider": p, "configured": p in configured} for m, p in MODEL_CATALOG.items()
+    ]
+    serving = [m for m in available if m["configured"]] or available
+    default_model = resolve_model(settings.default_model)
+    serving.sort(key=lambda m: 0 if m["id"] == default_model else 1)
     return {
-        "models": models,
-        "models_by_provider": models_by_provider,
-        "configured_providers": configured_providers,
-        "total_models": len(models),
+        "default_model": default_model,
+        "models": serving,
+        "models_by_provider": {p: models_for(p) for p in PROVIDERS},
+        "configured_providers": configured,
+        "fallback_chain": [f"{p}:{m}" for p, m in settings.fallback_chain],
+        "total_models": len(MODEL_CATALOG),
     }
 
 
 @router.get("/health")
 async def health_check(settings: Settings = Depends(get_settings)) -> Dict[str, Any]:
-    """
-    Health check endpoint for the chat service.
-
-    Returns:
-        Dict with health status
-    """
+    """Chat-service health: providers, cache backend, guardrail budget, demo switches."""
+    backend = await get_cache(settings)
     return {
-        "status": "healthy",
+        "status": "healthy" if settings.configured_providers else "degraded",
         "service": "chat",
         "timestamp": datetime.utcnow().isoformat(),
-        "providers_configured": {
-            "openai": settings.has_openai_key,
-            "anthropic": settings.has_anthropic_key,
+        "providers_configured": {p: p in settings.configured_providers for p in PROVIDERS},
+        "default_model": resolve_model(settings.default_model),
+        "fallback_chain": [f"{p}:{m}" for p, m in settings.fallback_chain],
+        "cache": getattr(backend, "backend", "disabled") if backend else "disabled",
+        "streaming": "sse",
+        "guardrails": get_guard(settings).snapshot(),
+        "demo": {
+            "failure_toggle_enabled": settings.demo_failure_toggle_enabled,
+            "simulate_primary_failure": settings.demo_simulate_primary_failure,
+            "simulate_header": SIMULATE_FAILURE_HEADER,
         },
-        "cache_enabled": settings.cache_enabled,
     }
 
 
-# Cache management endpoints
+# --------------------------------------------------------------------------- cache admin
+def _require_cache() -> CacheBackend:
+    if cache is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Cache is not enabled or not available",
+        )
+    return cache
 
 
 @router.post("/cache/warm")
 async def warm_cache(
     common_queries: List[Dict[str, Any]], settings: Settings = Depends(get_settings)
 ) -> Dict[str, Any]:
-    """
-    Warm the cache with common queries.
-
-    Args:
-        common_queries: List of common query/response pairs
-        settings: Application settings
-
-    Returns:
-        Dict with warming results
-    """
-    if not settings.cache_enabled or not redis_cache:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Cache is not enabled or not available",
-        )
-
-    try:
-        count = await redis_cache.warm_cache(common_queries)
-        return {
-            "status": "success",
-            "warmed_items": count,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-    except Exception as e:
-        logger.error(f"Error warming cache: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to warm cache: {str(e)}",
-        )
+    """Warm the cache with common query/response pairs."""
+    await get_cache(settings)
+    backend = _require_cache()
+    count = await backend.warm_cache(common_queries)
+    return {"status": "success", "warmed_items": count, "timestamp": datetime.utcnow().isoformat()}
 
 
 @router.get("/cache/stats")
 async def get_cache_stats(settings: Settings = Depends(get_settings)) -> Dict[str, Any]:
-    """
-    Get cache statistics.
-
-    Returns:
-        Dict with cache statistics
-    """
-    if not settings.cache_enabled or not redis_cache:
+    """Cache statistics and health."""
+    backend = await get_cache(settings)
+    if backend is None:
         return {"cache_enabled": False, "message": "Cache is not enabled or not available"}
-
-    try:
-        stats = await redis_cache.get_stats()
-        health = await redis_cache.health_check()
-
-        return {
-            "cache_enabled": True,
-            "stats": stats.to_dict(),
-            "health": health,
-            "configuration": {
-                "ttl_seconds": settings.cache_ttl_seconds,
-                "compression_enabled": settings.cache_compression_enabled,
-                "compression_threshold": settings.cache_compression_threshold,
-                "semantic_cache_enabled": settings.semantic_cache_enabled,
-                "semantic_threshold": settings.semantic_cache_threshold,
-            },
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-    except Exception as e:
-        logger.error(f"Error getting cache stats: {e}")
-        return {"cache_enabled": True, "error": str(e), "timestamp": datetime.utcnow().isoformat()}
+    stats = await backend.get_stats()
+    return {
+        "cache_enabled": True,
+        "backend": backend.backend,
+        "stats": stats.to_dict(),
+        "health": await backend.health_check(),
+        "configuration": {
+            "ttl_seconds": settings.cache_ttl_seconds,
+            "semantic_cache_enabled": settings.semantic_cache_enabled,
+            "semantic_threshold": settings.semantic_cache_threshold,
+        },
+        "timestamp": datetime.utcnow().isoformat(),
+    }
 
 
 @router.delete("/cache")
@@ -489,101 +821,35 @@ async def clear_cache(
     user_id: Optional[str] = None,
     settings: Settings = Depends(get_settings),
 ) -> Dict[str, Any]:
-    """
-    Clear cached items.
-
-    Args:
-        pattern: Optional pattern to match keys
-        model: Optional model to clear cache for
-        user_id: Optional user ID to clear cache for
-        settings: Application settings
-
-    Returns:
-        Dict with clear results
-    """
-    if not settings.cache_enabled or not redis_cache:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Cache is not enabled or not available",
-        )
-
-    try:
-        # Generate pattern if model or user_id specified
-        if model or user_id:
-            if cache_key_generator:
-                pattern = cache_key_generator.generate_pattern(model, user_id)
-
-        # Clear cache
-        if pattern:
-            count = await redis_cache.invalidate_cache(pattern=pattern)
-        else:
-            # Clear all
-            success = await redis_cache.clear_all()
-            count = -1 if success else 0
-
-        return {
-            "status": "success",
-            "cleared_items": count,
-            "pattern": pattern,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-    except Exception as e:
-        logger.error(f"Error clearing cache: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear cache: {str(e)}",
-        )
+    """Clear cached items, optionally by glob pattern or model/user."""
+    await get_cache(settings)
+    backend = _require_cache()
+    if (model or user_id) and cache_key_generator:
+        pattern = cache_key_generator.generate_pattern(model, user_id)
+    if pattern:
+        count = await backend.invalidate_cache(pattern=pattern)
+    else:
+        count = -1 if await backend.clear_all() else 0
+    return {
+        "status": "success",
+        "cleared_items": count,
+        "pattern": pattern,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
 
 
-# Initialize cache on module load
-async def initialize_cache(settings: Settings):
-    """Initialize Redis cache and key generator."""
-    global redis_cache, cache_key_generator
-
-    if settings.cache_enabled:
-        try:
-            # Create Redis cache instance
-            redis_cache = RedisCache(
-                redis_url=settings.redis_url,
-                max_connections=settings.redis_max_connections,
-                ttl_seconds=settings.cache_ttl_seconds,
-                compression_threshold=settings.cache_compression_threshold,
-                enable_compression=settings.cache_compression_enabled,
-                enable_circuit_breaker=settings.cache_circuit_breaker_enabled,
-            )
-
-            # Connect to Redis
-            await redis_cache.connect()
-
-            # Create cache key generator
-            cache_key_generator = CacheKeyGenerator(
-                semantic_cache_enabled=settings.semantic_cache_enabled,
-                similarity_threshold=settings.semantic_cache_threshold,
-            )
-
-            logger.info("Cache system initialized successfully")
-
-            # Warm cache if enabled
-            if settings.cache_warming_enabled:
-                # Define common queries for warming
-                common_queries = [
-                    {
-                        "key": "chat:v1:gpt-3.5-turbo:common_hello",
-                        "response": {
-                            "content": "Hello! How can I assist you today?",
-                            "model": "gpt-3.5-turbo",
-                            "usage": {
-                                "prompt_tokens": 10,
-                                "completion_tokens": 10,
-                                "total_tokens": 20,
-                            },
-                        },
-                        "ttl": 7200,
-                    }
-                ]
-                await redis_cache.warm_cache(common_queries)
-
-        except Exception as e:
-            logger.error(f"Failed to initialize cache: {e}")
-            redis_cache = None
-            cache_key_generator = None
+__all__ = [
+    "router",
+    "ChatCompletionRequest",
+    "ChatCompletionResponse",
+    "ProviderFactory",
+    "make_provider",
+    "build_chain",
+    "build_cache",
+    "get_cache",
+    "initialize_cache",
+    "cache_backend_name",
+    "estimate_tokens",
+    "SIMULATE_FAILURE_HEADER",
+    "Tuple",
+]

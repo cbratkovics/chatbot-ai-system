@@ -1,7 +1,7 @@
 """Settings configuration"""
 import json
-from typing import Optional, List
-from pydantic import Field, field_validator, SecretStr
+from typing import List, Optional, Tuple
+from pydantic import AliasChoices, Field, field_validator, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
@@ -15,6 +15,9 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
         validate_assignment=True,
+        # Fields declare env aliases; allow Settings(field_name=...) too, so tests and
+        # programmatic construction are not silently ignored.
+        populate_by_name=True,
     )
 
     # Application
@@ -38,9 +41,17 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[SecretStr] = Field(
         default=None, validation_alias="ANTHROPIC_API_KEY"
     )
+    groq_api_key: Optional[SecretStr] = Field(default=None, validation_alias="GROQ_API_KEY")
+    groq_base_url: str = Field(
+        default="https://api.groq.com/openai/v1", validation_alias="GROQ_BASE_URL"
+    )
 
-    # Redis
-    redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
+    # Redis (optional: unset or unreachable -> in-process memory cache)
+    redis_url: Optional[str] = Field(default=None, validation_alias="REDIS_URL")
+    cache_connect_timeout_seconds: float = Field(
+        default=2.0, validation_alias="CACHE_CONNECT_TIMEOUT_SECONDS"
+    )
+    memory_cache_max_entries: int = Field(default=512, validation_alias="MEMORY_CACHE_MAX_ENTRIES")
     redis_max_connections: int = Field(default=50, validation_alias="REDIS_MAX_CONNECTIONS")
 
     # Rate Limiting
@@ -51,7 +62,9 @@ class Settings(BaseSettings):
     api_key: Optional[str] = Field(default=None, validation_alias="API_KEY")
     # Cache
     cache_enabled: bool = Field(default=True, validation_alias="CACHE_ENABLED")
-    cache_ttl_seconds: int = Field(default=3600, validation_alias="CACHE_TTL_SECONDS")
+    cache_ttl_seconds: int = Field(
+        default=3600, validation_alias=AliasChoices("CACHE_TTL_SECONDS", "CACHE_TTL")
+    )
     semantic_cache_threshold: float = Field(
         default=0.85, validation_alias="SEMANTIC_CACHE_THRESHOLD"
     )
@@ -61,23 +74,50 @@ class Settings(BaseSettings):
     cache_compression_threshold: int = Field(
         default=1024, validation_alias="CACHE_COMPRESSION_THRESHOLD"
     )
-    semantic_cache_enabled: bool = Field(default=True, validation_alias="SEMANTIC_CACHE_ENABLED")
+    semantic_cache_enabled: bool = Field(default=False, validation_alias="SEMANTIC_CACHE_ENABLED")
     cache_circuit_breaker_enabled: bool = Field(
         default=True, validation_alias="CACHE_CIRCUIT_BREAKER_ENABLED"
     )
     cache_warming_enabled: bool = Field(default=False, validation_alias="CACHE_WARMING_ENABLED")
 
     # Model Defaults
-    default_model: str = Field(default="gpt-3.5-turbo", validation_alias="DEFAULT_MODEL")
+    default_model: str = Field(default="gpt-4o-mini", validation_alias="DEFAULT_MODEL")
     default_temperature: float = Field(default=0.7, validation_alias="DEFAULT_TEMPERATURE")
     default_max_tokens: int = Field(default=2048, validation_alias="DEFAULT_MAX_TOKENS")
-    openai_model: str = Field(default="gpt-3.5-turbo", validation_alias="OPENAI_MODEL")
+    openai_model: str = Field(default="gpt-4o-mini", validation_alias="OPENAI_MODEL")
     anthropic_model: str = Field(
-        default="claude-3-haiku-20240307", validation_alias="ANTHROPIC_MODEL"
+        default="claude-3-5-haiku-latest", validation_alias="ANTHROPIC_MODEL"
+    )
+    groq_model: str = Field(default="llama-3.1-8b-instant", validation_alias="GROQ_MODEL")
+    # Comma-separated "provider:model" pairs tried in order after the primary fails.
+    fallback_models: str = Field(
+        default="groq:llama-3.1-8b-instant", validation_alias="FALLBACK_MODELS"
     )
     default_provider: str = Field(default="openai", validation_alias="DEFAULT_PROVIDER")
     enable_fallback: bool = Field(default=True, validation_alias="ENABLE_FALLBACK")
-    max_retries: int = Field(default=3, validation_alias="MAX_RETRIES")
+    max_retries: int = Field(default=2, validation_alias="MAX_RETRIES")
+
+    # Demo guardrails (in-process, no database)
+    demo_guardrails_enabled: bool = Field(default=True, validation_alias="DEMO_GUARDRAILS_ENABLED")
+    demo_rate_limit_per_minute: int = Field(
+        default=10, validation_alias="DEMO_RATE_LIMIT_PER_MINUTE"
+    )
+    demo_rate_limit_per_day: int = Field(default=40, validation_alias="DEMO_RATE_LIMIT_PER_DAY")
+    demo_max_tokens: int = Field(default=400, validation_alias="DEMO_MAX_TOKENS")
+    demo_max_history_messages: int = Field(
+        default=8, validation_alias="DEMO_MAX_HISTORY_MESSAGES"
+    )
+    demo_daily_token_budget: int = Field(
+        default=150_000, validation_alias="DEMO_DAILY_TOKEN_BUDGET"
+    )
+    # Demo-only failover switch. When the toggle is enabled, a request carrying the header
+    # X-Demo-Simulate-Failure: 1 makes the primary provider fail with a 503 before it is called.
+    demo_failure_toggle_enabled: bool = Field(
+        default=False, validation_alias="DEMO_FAILURE_TOGGLE_ENABLED"
+    )
+    demo_simulate_primary_failure: bool = Field(
+        default=False, validation_alias="DEMO_SIMULATE_PRIMARY_FAILURE"
+    )
 
     # Database
     database_url: Optional[str] = Field(default=None, validation_alias="DATABASE_URL")
@@ -171,6 +211,33 @@ class Settings(BaseSettings):
     @property
     def has_anthropic_key(self) -> bool:
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_groq_key(self) -> bool:
+        return bool(self.groq_api_key)
+
+    @property
+    def configured_providers(self) -> List[str]:
+        names = []
+        if self.has_openai_key:
+            names.append("openai")
+        if self.has_anthropic_key:
+            names.append("anthropic")
+        if self.has_groq_key:
+            names.append("groq")
+        return names
+
+    @property
+    def fallback_chain(self) -> List[Tuple[str, str]]:
+        """Parse FALLBACK_MODELS into (provider, model) pairs; malformed entries are dropped."""
+        pairs: List[Tuple[str, str]] = []
+        for item in (self.fallback_models or "").split(","):
+            item = item.strip()
+            if ":" in item:
+                provider, model = item.split(":", 1)
+                if provider.strip() and model.strip():
+                    pairs.append((provider.strip(), model.strip()))
+        return pairs
 
     @property
     def has_pinecone_key(self) -> bool:

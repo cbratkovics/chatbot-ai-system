@@ -12,6 +12,7 @@ from anthropic import AuthenticationError as AnthropicAuthError
 from anthropic import NotFoundError
 from anthropic import RateLimitError as AnthropicRateLimitError
 
+from .catalog import models_for
 from .base import (
     AuthenticationError,
     BaseProvider,
@@ -22,6 +23,7 @@ from .base import (
     RateLimitError,
     StreamChunk,
     TimeoutError,
+    QuotaExceededError,
 )
 from .streaming_mixin import StreamingAnthropicMixin
 
@@ -31,14 +33,7 @@ logger = logging.getLogger(__name__)
 class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
     """Anthropic provider implementation with streaming support."""
 
-    SUPPORTED_MODELS = [
-        "claude-3-opus-20240229",
-        "claude-3-sonnet-20240229",
-        "claude-3-haiku-20240307",
-        "claude-2.1",
-        "claude-2.0",
-        "claude-instant-1.2",
-    ]
+    SUPPORTED_MODELS = models_for("anthropic")
 
     def __init__(self, api_key: str, timeout: int = 30, max_retries: int = 3) -> None:
         """
@@ -239,6 +234,15 @@ class AnthropicProvider(BaseProvider, StreamingAnthropicMixin):
                     raise ProviderError("Failed to connect to Anthropic API", provider="anthropic")
 
             except APIError as e:
+                if "credit balance" in str(e).lower():
+                    logger.error(f"Anthropic quota exhausted: {e}")
+                    raise QuotaExceededError(
+                        "anthropic account has no remaining credits",
+                        provider="anthropic",
+                        status_code=402,
+                        error_code="insufficient_quota",
+                        retryable=False,
+                    )
                 last_error = e
                 # For general API errors, retry if it might be transient
                 if attempt < self.max_retries - 1 and getattr(e, "status_code", 500) >= 500:

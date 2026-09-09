@@ -18,7 +18,7 @@ install: ## Install backend (Poetry) and frontend (npm ci) dependencies
 
 # ---- run ---------------------------------------------------------------------
 dev: ## Run the API with hot reload on :8000 (no Redis or keys needed to boot)
-	$(POETRY) run uvicorn chatbot_ai_system.server.main:app --reload --host 0.0.0.0 --port 8000
+	$(POETRY) run uvicorn chatbot_ai_system.server.main:app --reload --host 0.0.0.0 --port 8000 --timeout-keep-alive 65
 
 dev-frontend: ## Run the Next.js dev server on :3000
 	cd frontend && npm run dev

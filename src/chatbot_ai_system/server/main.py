@@ -14,16 +14,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from chatbot_ai_system import __version__
 from chatbot_ai_system.api.errors import ErrorEnvelopeMiddleware, error_payload
 from chatbot_ai_system.api.metrics import metrics_response
+from chatbot_ai_system.api.ratelimit import RateLimitMiddleware
 from chatbot_ai_system.api.routes import api_router
 from chatbot_ai_system.config.settings import settings
 
@@ -35,42 +33,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Create rate limiter
-limiter = Limiter(
-    key_func=get_remote_address, default_limits=[f"{settings.rate_limit_requests}/minute"]
-)
 
 
-class RequestIDMiddleware(BaseHTTPMiddleware):
-    """Middleware to add request ID to all requests."""
+class RequestIDMiddleware:
+    """Attach a request id to every request (``request.state.request_id``) and response header.
 
-    async def dispatch(self, request: Request, call_next):
-        # Generate or extract request ID
-        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-        request.state.request_id = request_id
+    Pure ASGI, not ``BaseHTTPMiddleware``: see ``ErrorEnvelopeMiddleware`` for why those break
+    streaming responses on keep-alive connections.
+    """
 
-        # Process request
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        request_id = Headers(scope=scope).get("x-request-id") or str(uuid.uuid4())
+        scope.setdefault("state", {})["request_id"] = request_id
         start_time = time.time()
-        response = await call_next(request)
-        process_time = time.time() - start_time
+        status_code = 0
 
-        # Add headers to response
-        response.headers["X-Request-ID"] = request_id
-        response.headers["X-Process-Time"] = str(process_time)
+        async def send_with_id(message: Message) -> None:
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+                headers = MutableHeaders(raw=message["headers"])
+                headers["X-Request-ID"] = request_id
+                headers["X-Process-Time"] = str(time.time() - start_time)
+            await send(message)
 
-        # Log request
-        logger.info(
-            "Request processed",
-            extra={
-                "request_id": request_id,
-                "method": request.method,
-                "path": request.url.path,
-                "status_code": response.status_code,
-                "process_time": process_time,
-            },
-        )
-
-        return response
+        try:
+            await self.app(scope, receive, send_with_id)
+        finally:
+            logger.info(
+                "Request processed",
+                extra={
+                    "request_id": request_id,
+                    "method": scope.get("method"),
+                    "path": scope.get("path"),
+                    "status_code": status_code,
+                    "process_time": time.time() - start_time,
+                },
+            )
 
 
 @asynccontextmanager
@@ -158,10 +163,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Add rate limiting
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
     # Middleware. Starlette wraps in reverse order: the first add_middleware call is the
     # innermost. ErrorEnvelopeMiddleware goes first so it sits *inside* CORS and its
     # 500s still carry CORS headers.
@@ -179,7 +180,15 @@ def create_app() -> FastAPI:
     from chatbot_ai_system.middleware.metrics import MetricsMiddleware
 
     app.add_middleware(MetricsMiddleware)
-    app.add_middleware(SlowAPIMiddleware)
+    # Coarse per-IP limit, outermost. Every middleware in this stack is pure ASGI on purpose:
+    # any Starlette BaseHTTPMiddleware here (slowapi's included) made uvicorn close streaming
+    # responses on keep-alive connections after 5 s (tests/unit/test_keepalive_streaming.py).
+    app.add_middleware(
+        RateLimitMiddleware,
+        limit=settings.rate_limit_requests,
+        period=settings.rate_limit_period,
+        enabled=settings.rate_limit_enabled,
+    )
 
     # Add exception handlers
     @app.exception_handler(StarletteHTTPException)

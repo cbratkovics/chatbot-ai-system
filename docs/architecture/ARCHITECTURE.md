@@ -19,7 +19,7 @@ flowchart LR
     GUARD --> CACHE[In-process LRU cache<br/>exact-match keys]
     CACHE -->|miss| CHAIN[Provider chain<br/>failover on 401/402/429/5xx/timeout]
     CHAIN -->|primary| OAI[OpenAI gpt-4o-mini]
-    CHAIN -.->|fallback| GROQ[Groq llama-3.1-8b-instant<br/>OpenAI-compatible endpoint]
+    CHAIN -.->|fallback| GROQ[Groq openai/gpt-oss-20b<br/>OpenAI-compatible endpoint]
     CHAIN --> TEL[telemetry: provider, model,<br/>cache, latency, tokens, cost, attempts]
     TEL --> UI
 ```

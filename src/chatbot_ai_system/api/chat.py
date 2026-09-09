@@ -698,10 +698,17 @@ async def chat_completion(
     hit = ctx.lookup.hit
 
     if request.stream:
+        # Content-Encoding: identity opts this response out of GZipMiddleware. Browsers send
+        # Accept-Encoding: gzip, and Starlette's streaming gzip only flushes when zlib's buffer
+        # fills, so every token would otherwise arrive in one burst at the end of the answer.
         return StreamingResponse(
             _sse(ctx, settings, hit),
             media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Content-Encoding": "identity",
+            },
         )
 
     if hit:

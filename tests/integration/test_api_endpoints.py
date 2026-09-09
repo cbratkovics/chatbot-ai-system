@@ -7,7 +7,7 @@ under test. See docs/TEST_TRIAGE.md for why each test looks the way it does.
 import pytest
 
 # Models that exist in the current catalogue (providers/catalog.py), one per provider.
-CATALOGUE_MODELS = ["gpt-4o-mini", "claude-3-5-haiku-latest", "llama-3.1-8b-instant"]
+CATALOGUE_MODELS = ["gpt-4o-mini", "claude-3-5-haiku-latest", "openai/gpt-oss-20b"]
 
 
 class TestChatEndpoints:

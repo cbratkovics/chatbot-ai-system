@@ -1,11 +1,15 @@
-"""Metrics middleware for Prometheus."""
+"""Prometheus request metrics middleware (pure ASGI).
+
+Records ``http_requests_total{method,endpoint,status}`` and
+``http_request_duration_seconds{method,endpoint}``; the duration covers the whole response,
+including a streamed body. Pure ASGI rather than ``BaseHTTPMiddleware``: those make uvicorn close
+streaming responses on keep-alive connections after 5 s.
+"""
 
 import time
-from collections.abc import Callable
 
-from fastapi import Request, Response
 from prometheus_client import Counter, Gauge, Histogram
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 # Define metrics
 REQUEST_COUNT = Counter(
@@ -26,38 +30,35 @@ ACTIVE_REQUESTS = Gauge(
 )
 
 
-class MetricsMiddleware(BaseHTTPMiddleware):
-    """Collect metrics for Prometheus."""
+class MetricsMiddleware:
+    """Collect request count and latency for Prometheus."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Track request metrics."""
-        # Skip metrics endpoint to avoid recursion
-        if request.url.path == "/metrics":
-            return await call_next(request)
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
 
-        # Track active requests
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        # Skip the metrics endpoint itself and non-HTTP traffic (websockets, lifespan).
+        if scope["type"] != "http" or scope.get("path") == "/metrics":
+            await self.app(scope, receive, send)
+            return
+
+        method = scope.get("method", "")
+        endpoint = scope.get("path", "")
+        status = 0
+        start_time = time.time()
         ACTIVE_REQUESTS.inc()
 
-        # Track request duration
-        start_time = time.time()
+        async def send_observing(message: Message) -> None:
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+            await send(message)
 
         try:
-            response = await call_next(request)
-            duration = time.time() - start_time
-
-            # Record metrics
-            REQUEST_COUNT.labels(
-                method=request.method,
-                endpoint=request.url.path,
-                status=response.status_code,
-            ).inc()
-
-            REQUEST_DURATION.labels(
-                method=request.method,
-                endpoint=request.url.path,
-            ).observe(duration)
-
-            return response
-
+            await self.app(scope, receive, send_observing)
         finally:
+            REQUEST_COUNT.labels(method=method, endpoint=endpoint, status=status).inc()
+            REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(
+                time.time() - start_time
+            )
             ACTIVE_REQUESTS.dec()

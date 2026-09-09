@@ -10,6 +10,8 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/15")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-anthropic-key")
+# Never let a developer's real Groq key from .env turn a unit test into a live failover call.
+os.environ.setdefault("GROQ_API_KEY", "")
 
 import asyncio
 from typing import AsyncIterator, Iterator

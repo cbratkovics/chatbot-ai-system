@@ -20,7 +20,8 @@ entry in order, and records every attempt in the response.
 | Other 4xx (bad request, content filter) | return immediately; the caller must change the request |
 | Quota errors | never retried in place; they are permanent until billing changes |
 
-- The primary is OpenAI `gpt-4o-mini`; the fallback is Groq `llama-3.1-8b-instant` through the
+- The primary is OpenAI `gpt-4o-mini`; the fallback is Groq `openai/gpt-oss-20b` (Groq retired
+  `llama-3.1-8b-instant` for free-tier use on 2026-08-16; the old id is a legacy alias) through the
   OpenAI-compatible endpoint, so no new SDK was needed.
 - Streaming fails over only before the first token. Once bytes are on the wire, switching
   providers would splice two answers together, so a mid-stream error is reported in-band instead.

@@ -10,7 +10,7 @@ services:
     plan: free
     buildCommand: "pip install poetry && poetry install --only main"
     # One worker: the free tier has 512 MB and in-process caches/limits are per worker.
-    startCommand: "poetry run uvicorn chatbot_ai_system.server.main:app --host 0.0.0.0 --port $PORT --workers 1"
+    startCommand: "poetry run uvicorn chatbot_ai_system.server.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 65"
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -25,7 +25,7 @@ services:
       - key: DEFAULT_MODEL
         value: gpt-4o-mini
       - key: FALLBACK_MODELS
-        value: groq:llama-3.1-8b-instant
+        value: groq:openai/gpt-oss-20b
       - key: REQUEST_TIMEOUT
         value: 30
       - key: MAX_RETRIES

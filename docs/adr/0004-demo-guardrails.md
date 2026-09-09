@@ -31,4 +31,6 @@ provider does not report it.
 - State is per worker and resets on redeploy; a determined attacker could get a fresh budget by
   waiting for a deploy. Acceptable for a demo, documented as such, and the OpenAI hard cap is the
   real backstop.
-- The legacy `slowapi` limiter (100 req/min for all routes) remains as a coarse outer layer.
+- A coarse outer limit (100 req/min per IP for all routes, `api/ratelimit.py`) remains. It replaced
+  the `slowapi` middleware, whose `BaseHTTPMiddleware` base closed streaming responses on
+  keep-alive connections after 5 s under uvicorn (`tests/unit/test_keepalive_streaming.py`).

@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..providers.base import (
     AuthenticationError,
@@ -109,25 +109,44 @@ def provider_error_response(
     )
 
 
-class ErrorEnvelopeMiddleware(BaseHTTPMiddleware):
+class ErrorEnvelopeMiddleware:
     """Catch anything unhandled *inside* the CORS boundary.
 
     FastAPI's ``Exception`` handler runs in ServerErrorMiddleware, outside CORSMiddleware,
     so its 500 has no CORS headers and the browser cannot read it. This middleware is
     registered inside CORS, so the browser always gets a readable envelope.
+
+    Pure ASGI on purpose: with Starlette ``BaseHTTPMiddleware`` layers in the stack, a
+    streaming response on a reused keep-alive connection is closed by uvicorn's 5 s
+    keep-alive timer mid-stream (reproduced with uvicorn 0.24 / Starlette 0.27; see
+    ``tests/unit/test_keepalive_streaming.py``). Every middleware in this app is plain ASGI.
     """
 
-    async def dispatch(self, request: Request, call_next):
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        started = False
+
+        async def send_tracking(message: Message) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
         try:
-            return await call_next(request)
+            await self.app(scope, receive, send_tracking)
         except Exception as exc:  # noqa: BLE001 - this is the last line of defence
-            request_id = getattr(request.state, "request_id", None)
+            request_id = scope.get("state", {}).get("request_id")
             logger.error(
                 "Unhandled error: %s", exc, extra={"request_id": request_id}, exc_info=True
             )
-            return error_response(
-                500,
-                "internal_error",
-                "Internal server error",
-                request_id=request_id,
+            if started:
+                raise  # headers are on the wire; nothing readable can replace them
+            response = error_response(
+                500, "internal_error", "Internal server error", request_id=request_id
             )
+            await response(scope, receive, send)

@@ -16,9 +16,10 @@ MODEL_CATALOG: Dict[str, str] = {
     # Anthropic
     "claude-3-5-haiku-latest": "anthropic",
     "claude-sonnet-4-5": "anthropic",
-    # Groq (OpenAI-compatible endpoint, free tier)
-    "llama-3.1-8b-instant": "groq",
-    "llama-3.3-70b-versatile": "groq",
+    # Groq (OpenAI-compatible endpoint, free tier). The Llama ids Groq retired for free-tier
+    # use on 2026-08-16 are legacy aliases below, mapped to the replacements Groq named.
+    "openai/gpt-oss-20b": "groq",
+    "openai/gpt-oss-120b": "groq",
 }
 
 PROVIDERS: List[str] = ["openai", "anthropic", "groq"]
@@ -36,6 +37,10 @@ LEGACY_ALIASES: Dict[str, str] = {
     "claude-3-haiku-20240307": "claude-3-5-haiku-latest",
     "claude-3-sonnet-20240229": "claude-sonnet-4-5",
     "claude-3-opus-20240229": "claude-sonnet-4-5",
+    # Groq deprecations (console.groq.com/docs/deprecations): shut down 2026-08-16 for free and
+    # developer tiers; the API now answers 404 model_not_found for them.
+    "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile": "openai/gpt-oss-120b",
 }
 
 
@@ -62,8 +67,8 @@ MODEL_PRICES: Dict[str, tuple[float, float]] = {
     "gpt-4.1-mini": (0.40, 1.60),
     "claude-3-5-haiku-latest": (0.80, 4.00),
     "claude-sonnet-4-5": (3.00, 15.00),
-    "llama-3.1-8b-instant": (0.05, 0.08),
-    "llama-3.3-70b-versatile": (0.59, 0.79),
+    "openai/gpt-oss-20b": (0.075, 0.30),
+    "openai/gpt-oss-120b": (0.15, 0.60),
 }
 
 

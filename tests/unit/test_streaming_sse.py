@@ -114,3 +114,14 @@ def test_non_stream_response_carries_the_same_telemetry(client: TestClient, fake
     assert t["cache"]["status"] == "miss" and t["cache"]["backend"] == "memory"
     assert t["cache"]["match"] is None and t["cost_avoided_usd"] == 0.0
     assert t["usage"]["prompt_tokens"] == 5 and t["cost_usd"] is not None
+
+
+def test_stream_is_never_gzipped_even_when_the_client_accepts_gzip(client: TestClient, fake_chat_provider):
+    """Browsers send Accept-Encoding: gzip. Starlette's streaming gzip buffers until zlib flushes,
+    which turned the live token stream into one burst at the end; SSE must opt out."""
+    with client.stream(
+        "POST", "/api/v1/chat/completions", json=BODY, headers={"Accept-Encoding": "gzip, deflate, br"}
+    ) as res:
+        assert res.headers.get("content-encoding") == "identity"
+        body = res.read()
+    assert b"event: delta" in body and b"event: done" in body

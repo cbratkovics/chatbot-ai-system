@@ -102,10 +102,10 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(
         default="claude-3-5-haiku-latest", validation_alias="ANTHROPIC_MODEL"
     )
-    groq_model: str = Field(default="llama-3.1-8b-instant", validation_alias="GROQ_MODEL")
+    groq_model: str = Field(default="openai/gpt-oss-20b", validation_alias="GROQ_MODEL")
     # Comma-separated "provider:model" pairs tried in order after the primary fails.
     fallback_models: str = Field(
-        default="groq:llama-3.1-8b-instant", validation_alias="FALLBACK_MODELS"
+        default="groq:openai/gpt-oss-20b", validation_alias="FALLBACK_MODELS"
     )
     default_provider: str = Field(default="openai", validation_alias="DEFAULT_PROVIDER")
     enable_fallback: bool = Field(default=True, validation_alias="ENABLE_FALLBACK")
@@ -243,14 +243,20 @@ class Settings(BaseSettings):
 
     @property
     def fallback_chain(self) -> List[Tuple[str, str]]:
-        """Parse FALLBACK_MODELS into (provider, model) pairs; malformed entries are dropped."""
+        """Parse FALLBACK_MODELS into (provider, model) pairs; malformed entries are dropped.
+
+        Model ids go through the catalogue's legacy aliases, so a retired id in an old env
+        file (``groq:llama-3.1-8b-instant``) resolves to its replacement instead of 404ing.
+        """
+        from ..providers.catalog import resolve_model
+
         pairs: List[Tuple[str, str]] = []
         for item in (self.fallback_models or "").split(","):
             item = item.strip()
             if ":" in item:
                 provider, model = item.split(":", 1)
                 if provider.strip() and model.strip():
-                    pairs.append((provider.strip(), model.strip()))
+                    pairs.append((provider.strip(), resolve_model(model.strip())))
         return pairs
 
     @property

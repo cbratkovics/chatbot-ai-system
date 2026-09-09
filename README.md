@@ -144,12 +144,15 @@ modules (multi-tenancy, orchestration strategies, observability) largely are not
 git clone https://github.com/cbratkovics/chatbot-ai-system.git
 cd chatbot-ai-system
 cp .env.example .env            # add OPENAI_API_KEY (and GROQ_API_KEY for failover)
-poetry install
-poetry run uvicorn chatbot_ai_system.server.main:app --reload
+make install                    # poetry install + npm ci
+make dev                        # API on :8000 with hot reload
 
 # in another terminal
-cd frontend && npm ci && cp .env.example .env.local && npm run dev
+cp frontend/.env.example frontend/.env.local
+make dev-frontend               # UI on :3000
 ```
+
+`make` with no arguments lists every target.
 
 No Redis, database, or vector store is needed. `GET /health` tells you what the instance is
 using:
@@ -174,11 +177,13 @@ curl -N -X POST http://localhost:8000/api/v1/chat/completions -H 'Content-Type: 
 
 ```bash
 cp .env.example .env
-docker compose up -d      # backend, frontend, Redis, Postgres (the last two are optional extras)
+make up          # backend, frontend, Redis, Postgres from docker-compose.yml
+make up-full     # adds nginx, Prometheus, Grafana from docker/docker-compose.prod.yml
+make down
 ```
 
-Images live in [`docker/dockerfiles/`](docker/dockerfiles/) (`Dockerfile`, `Dockerfile.production`,
-`Dockerfile.test`) and [`frontend/Dockerfile`](frontend/Dockerfile).
+Backend images live in [`docker/dockerfiles/`](docker/dockerfiles/); the frontend image in
+[`frontend/Dockerfile`](frontend/Dockerfile) exists for this stack only (the demo frontend runs on Vercel).
 
 </details>
 
@@ -205,26 +210,47 @@ Deployment notes for Render and Vercel: [`render.yaml`](render.yaml) and
 ## Quality gates
 
 ```bash
-poetry run ruff check .
-poetry run mypy src/ --ignore-missing-imports
-poetry run pytest tests/
-cd frontend && npx tsc --noEmit && npm run build
+make check            # ruff + mypy + pytest
+make build-frontend   # tsc + next build
 ```
+
+Equivalent to `poetry run ruff check .`, `poetry run mypy src/ --ignore-missing-imports`,
+`poetry run pytest tests/`, and `cd frontend && npx tsc --noEmit && npm run build`.
 
 Tests that need a live service are marked `live` and skip unless `TEST_BASE_URL`,
 `TEST_REDIS_URL`, or `TEST_DATABASE_URL` is set.
 
-## What is in the repository beyond the demo
+## Project structure
 
-The demo path is `api/chat.py`, `providers/chain.py`, `cache/memory_cache.py`,
-`api/guardrails.py`, `api/errors.py`, and the frontend. The rest of `src/chatbot_ai_system/`
-(about 34k lines in total) is the full-deployment surface: WebSocket streaming with its own
-protocol, a provider orchestrator with load-balancing strategies and circuit breakers,
-multi-tenancy and auth routers, Redis and Pinecone integrations, Terraform, Helm charts, and the
-Prometheus/Grafana/Jaeger configuration under `infrastructure/` (its README says what is and is
-not exercised). Modules that are design sketches rather than runnable code say so in their
-first line (`infrastructure/global_routing.py`, `providers/provider_a.py`, `providers/provider_b.py`,
-`infrastructure/connection_pool.py`). Known gaps in that surface are listed honestly in
+```
+├── src/chatbot_ai_system/   # backend package (see below)
+├── frontend/                # Next.js 15 UI (Vercel); Dockerfile is for the local compose stack only
+├── tests/                   # unit, integration (live-service tests gated by env vars), contract, e2e, load
+├── docs/                    # ADRs, diagnosis, test triage, demo script, audits
+├── docker/                  # backend Dockerfiles, prod compose, nginx and redis configs
+├── infrastructure/          # Terraform, Helm/k8s, monitoring stack: full deployment only, not the demo
+├── benchmarks/              # harnesses and the committed results the README cites
+├── scripts/                 # bench_demo.py
+├── docker-compose.yml       # local dev stack: make up
+├── render.yaml              # Render blueprint for the demo backend
+└── Makefile                 # make help
+```
+
+`src/chatbot_ai_system/`, one level down. The demo path is the first row; the rest is the
+full-deployment surface (about 34k lines) and is not exercised by the public demo.
+
+| package | role |
+|---|---|
+| `api/` (`chat.py`, `errors.py`, `guardrails.py`), `providers/` (`chain.py`, `catalog.py`, `openai_provider.py`, `groq_provider.py`, `anthropic_provider.py`), `cache/` (`memory_cache.py`, `redis_cache.py`), `config/`, `server/` | **the demo**: routing, failover, cache, guardrails, SSE, app factory |
+| `websocket/`, `ws_handlers/`, `streaming/` | WebSocket streaming with its own protocol |
+| `orchestration/`, `orchestrator/`, `reliability/` | orchestrator with load-balancing strategies, circuit breakers, retry policies |
+| `auth/`, `tenancy/`, `middleware/`, `database/`, `models/`, `schemas/` | multi-tenancy, JWT auth, ORM models |
+| `vector_store/` | Pinecone retrieval behind `ENABLE_VECTOR_SEARCH` |
+| `monitoring/`, `telemetry/`, `metrics.py` | Prometheus metrics and tracing hooks |
+| `finops/`, `benchmarks/`, `sdk/`, `cli.py`, `integrations/`, `services/`, `utils/`, `v1/`, `core/` | cost tracking, client SDK, CLI, and older parallel implementations |
+| `infrastructure/` | design sketches, labelled `DESIGN SKETCH - NOT WIRED` in their first line |
+
+Known gaps in the full-deployment surface are listed in
 [`docs/TEST_TRIAGE.md`](docs/TEST_TRIAGE.md#escalations-places-where-the-code-not-the-test-looks-wrong).
 
 ## Technology

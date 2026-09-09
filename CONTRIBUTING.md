@@ -4,70 +4,59 @@ Thank you for helping improve this project! Please read this guide before openin
 
 ## Project Overview
 
-**Purpose:** Production-ready, multi-tenant AI chat system with provider orchestration, streaming, caching, and full observability. Built as a reusable template for multiple use cases.
+**Purpose:** A multi-provider AI chat service whose engineering is visible on screen: provider failover, an optional cache, SSE streaming, demo guardrails, and per-message telemetry. The public demo runs on Render + Vercel for ~$0/month; the repository also carries a larger full-deployment surface that the demo does not exercise.
 
 **Core Values:**
 - **Clarity** - Clear code and documentation
 - **Reproducibility** - Consistent, reproducible builds and tests
 - **Security** - No secrets in git
-- **Evidence** - Data-backed claims and benchmarks
-- **Reusability** - Template-first design for easy customization
+- **Evidence** - Every number in the README comes from a committed artifact
 
 ## Prerequisites
 
 - **Python** 3.12+
 - **Poetry** ≥ 2.0
 - **Node.js** 20 LTS (for frontend)
-- **Docker** (optional, for Redis and local infrastructure)
+- **Docker** (optional: only for `make up`; the API boots with no Redis or database)
 - **Git** (for version control)
 
 ## Project Structure
 
 ```
-├── src/chatbot_ai_system/      # Backend: FastAPI, providers, caching
-│   └── config/                 # Configuration system (new!)
-├── frontend/                   # Next.js TypeScript UI
-│   └── config/                 # Frontend config extraction (new!)
-├── tests/                      # Unit, integration, e2e, load tests
-├── benchmarks/                 # Performance benchmarking
-├── docs/                       # Documentation
-└── scripts/                    # Automation and utilities
+├── src/chatbot_ai_system/   # backend package; demo path is api/, providers/, cache/, config/, server/
+├── frontend/                # Next.js 15 UI
+├── tests/                   # unit, integration, contract, e2e, load_testing
+├── docs/                    # ADRs (docs/adr/), diagnosis, test triage, demo script, audits
+├── docker/                  # backend Dockerfiles, docker-compose.prod.yml, nginx/ and redis/ configs
+├── infrastructure/          # Terraform, Helm/k8s, monitoring: full deployment only
+├── benchmarks/              # harnesses + committed results
+├── scripts/                 # bench_demo.py
+├── docker-compose.yml       # local dev stack (make up)
+├── render.yaml              # Render blueprint for the demo backend
+└── Makefile                 # make help lists every target
 ```
+
+The README's "Project structure" section describes `src/chatbot_ai_system/` one level deeper.
 
 ## Local Development Setup
 
 ### Backend + Frontend Setup
 
 ```bash
-# 1. Clone and navigate
 git clone https://github.com/cbratkovics/chatbot-ai-system.git
 cd chatbot-ai-system
 
-# 2. Install dependencies
-poetry install
+make install                      # poetry install + (cd frontend && npm ci)
+cp .env.example .env              # add OPENAI_API_KEY; GROQ_API_KEY enables failover
+cp frontend/.env.example frontend/.env.local
+poetry run pre-commit install     # optional
 
-# 3. Set up environment
-cp .env.example .env
-# Add your API keys to .env
-
-# 4. Install pre-commit hooks
-poetry run pre-commit install
-
-# 5. Start Redis (choose one)
-docker compose up -d redis
-# OR
-docker run -p 6379:6379 redis:7-alpine
-
-# 6. Start backend server
-poetry run uvicorn chatbot_ai_system.server.main:app --reload
-
-# 7. In another terminal, start frontend
-cd frontend
-cp .env.example .env.local
-# Configure frontend URLs in .env.local
-npm ci
-npm run dev
+make dev                          # API on http://localhost:8000 (hot reload)
+make dev-frontend                 # UI on http://localhost:3000, in a second terminal
 ```
+
+Redis is optional. Without `REDIS_URL` the API uses its in-process cache and `/health` says
+`cache: memory`. `make up` starts the full local stack in Docker if you want Redis and Postgres.
 
 Visit:
 - **Frontend:** http://localhost:3000
@@ -78,21 +67,15 @@ Visit:
 Run these checks before pushing any changes:
 
 ```bash
-# Run all pre-commit hooks (formatters/linters)
-poetry run pre-commit run -a
-
-# Lint with ruff
-poetry run ruff check .
-
-# Type checking
-poetry run mypy src/ --ignore-missing-imports
-
-# Run tests
-poetry run pytest tests/ -v
-
-# Check test coverage
-poetry run pytest --cov=src --cov-report=term
+make check            # ruff check + mypy src/ + pytest tests/  (what CI runs)
+make build-frontend   # tsc --noEmit + next build
+make test-cov         # pytest with coverage
+make format           # ruff format
 ```
+
+Tests that need a live service carry `@pytest.mark.live("<ENV_VAR>")` and skip unless
+`TEST_BASE_URL`, `TEST_REDIS_URL`, or `TEST_DATABASE_URL` is set. Unit tests never touch Redis:
+`tests/conftest.py` gives every test a fresh in-process cache.
 
 **All checks should pass before opening a PR.**
 
@@ -106,13 +89,11 @@ Create short-lived branches using these naming conventions:
 - `refactor/<area>` - Code refactoring
 - `test/<scope>` - Test additions/modifications
 - `chore/<task>` - Maintenance tasks
-- `template/<use-case>` - New use-case templates
 
 **Examples:**
 - `feat/add-gemini-provider`
 - `fix/redis-connection-timeout`
 - `docs/update-deployment-guide`
-- `template/code-assistant`
 
 ## Commit Conventions
 
@@ -126,13 +107,11 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `chore:` Maintenance tasks
 - `ci:` CI/CD changes
 - `perf:` Performance improvements
-- `template:` New or updated use-case template
 
 **Examples:**
 - `feat: add provider retry logic with exponential backoff`
 - `fix: resolve WebSocket connection drops on idle`
-- `docs: add configuration guide for use-case templates`
-- `template: add education-tutor use case`
+- `docs: add ADR for provider failover policy`
 
 ## Pull Request Guidelines
 
@@ -189,37 +168,18 @@ Update these files when applicable:
 - `frontend/.env.example` - New frontend configuration options
 
 
-## Configuration System
+## Configuration
 
-This project uses environment-based configuration for flexibility.
+Everything is an environment variable with a safe default, read by
+`src/chatbot_ai_system/config/settings.py` (pydantic-settings). Env aliases are upper-case
+(`DEFAULT_MODEL`); `.env` and real environment variables win over keyword arguments, so tests
+construct `Settings(_env_file=None, DEFAULT_MODEL=...)` when they need an explicit value.
 
-### Backend Configuration
-Located in `src/chatbot_ai_system/config/use_case_config.py`:
-
-```python
-from chatbot_ai_system.config import use_case_config
-
-# Access configuration
-print(use_case_config.USE_CASE_NAME)
-print(use_case_config.ALLOWED_MODELS)
-```
-
-### Frontend Configuration
-Located in `frontend/config/app.config.ts`:
-
-```typescript
-import { AppConfig } from '@/config/app.config';
-
-// Use configuration
-const apiUrl = AppConfig.api.baseURL;
-const appName = AppConfig.branding.name;
-```
-
-When adding new configuration options:
-1. Add to the appropriate config file
-2. Update `.env.example` files
-3. Document in `docs/CONFIGURATION.md` (if exists)
-4. Provide sensible defaults
+When adding an option:
+1. Add the field with an env alias and a default that keeps the demo working without it.
+2. Document it in `.env.example` (and `frontend/.env.example` for `NEXT_PUBLIC_*`).
+3. Add it to `render.yaml` only if the demo needs a non-default value.
+4. If it changes behaviour worth explaining in an interview, write an ADR in `docs/adr/`.
 
 ## Security
 
@@ -254,12 +214,12 @@ For security-related PRs:
 For performance-related PRs, include benchmark results:
 
 ```bash
-# Run specific benchmarks
-poetry run pytest tests/test_provider_failover.py
-
-# Results saved to benchmarks/results/*.json
-# Include before/after comparison in PR description
+make evidence   # failover control-flow timing -> benchmarks/results/ (the committed artifact)
+make bench      # 20 requests against the live demo -> benchmarks/results/bench_demo_latest.json
 ```
+
+Plain test runs write to the gitignored `benchmarks/results/tmp/`; only these targets and
+explicit scripts write to the committed files.
 
 **Performance PR Requirements:**
 - Baseline metrics (before changes)
@@ -270,31 +230,27 @@ poetry run pytest tests/test_provider_failover.py
 ## Testing
 
 ### Test Structure
-- `tests/unit/` - Unit tests (fast, isolated)
-- `tests/integration/` - Integration tests (with Redis, DB)
+- `tests/unit/` - Unit tests (fast, hermetic; fake provider and in-process cache)
+- `tests/integration/` - In-process integration tests; live-service ones are marked `live`
 - `tests/e2e/` - End-to-end tests (full stack)
 - `tests/load_testing/` - Performance/load tests
 - `tests/contract/` - API contract tests
 
+How the integration suite was triaged, and which known gaps are encoded as strict `xfail`s,
+is in `docs/TEST_TRIAGE.md`.
+
 ### Writing Tests
 
 ```bash
-# Run all tests
-poetry run pytest
-
-# Run specific test file
-poetry run pytest tests/unit/test_providers.py
-
-# Run with coverage
-poetry run pytest --cov=src --cov-report=html
-
-# Run only fast tests
-poetry run pytest -m "not slow"
+make test                                        # everything
+poetry run pytest tests/unit/test_provider_chain.py -q   # one file
+make test-cov                                    # with coverage
+TEST_BASE_URL=http://localhost:8000 poetry run pytest tests/integration/test_websocket_flow.py
 ```
 
 ### Test Guidelines
 - Write tests for all new features
-- Maintain >80% code coverage
+- Cover the demo path fully; measured line coverage for the whole package is reported in the README, not promised
 - Use fixtures for common setup
 - Mock external API calls
 - Add integration tests for critical paths
@@ -334,8 +290,8 @@ Both backend and frontend support hot reload:
 # Backend debugging with breakpoints
 poetry run python -m debugpy --listen 5678 --wait-for-client -m uvicorn chatbot_ai_system.server.main:app
 
-# View logs
-docker compose logs -f
+# View logs from the local stack
+make logs
 
 # Check Redis
 docker exec -it redis redis-cli

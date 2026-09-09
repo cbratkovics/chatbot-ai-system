@@ -164,3 +164,4 @@ benchmarks/results/tmp/
 
 # Empty backup files written by the database-backup helper during test runs
 backups/
+evals/results/last-failed.*

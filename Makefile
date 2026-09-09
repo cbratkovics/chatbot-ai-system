@@ -1,7 +1,7 @@
 # chatbot-ai-system developer targets. `make` alone lists them.
 .DEFAULT_GOAL := help
 .PHONY: help install dev dev-frontend test test-cov lint format typecheck check build-frontend \
-        up up-full down logs docker-build bench evidence clean
+        up up-full down logs docker-build bench evidence evals clean
 
 POETRY   := poetry
 COMPOSE  := docker compose
@@ -67,6 +67,10 @@ bench: ## Hit the live demo 20x and write benchmarks/results/bench_demo_latest.j
 
 evidence: ## Failover control-flow timing; writes the committed benchmarks/results/ files
 	BENCHMARK_RESULTS_DIR=benchmarks/results $(POETRY) run pytest tests/test_provider_failover.py -q
+
+EVALS_BASE_URL ?= http://localhost:8000
+evals: ## System evals -> evals/results/latest.{json,md}. Backend needs DEMO_GUARDRAILS_ENABLED=false RATE_LIMIT_ENABLED=false
+	$(POETRY) run python -m evals.run --base-url $(EVALS_BASE_URL) $(EVALS_ARGS)
 
 # ---- housekeeping ----------------------------------------------------------------
 clean: ## Remove caches and build/coverage output

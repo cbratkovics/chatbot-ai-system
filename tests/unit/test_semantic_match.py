@@ -140,6 +140,7 @@ def test_below_threshold_is_a_miss_that_reports_the_nearest_candidate(client: Te
     assert t["cache"]["status"] == "miss" and t["cache"]["match"] is None
     assert t["cache"]["semantic"] == "miss"
     assert 0.6 < t["cache"]["similarity"] < 0.85  # nearest candidate, shown so the miss is explainable
+    assert t["cache"]["nearest_key"] and t["cache"]["matched_key"] is None
     assert fake_chat_provider.calls == 2
 
 

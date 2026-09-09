@@ -54,3 +54,5 @@ def test_health_advertises_the_toggle(client: TestClient, monkeypatch):
     demo = client.get("/api/v1/chat/health").json()["demo"]
     assert demo["failure_toggle_enabled"] is True
     assert demo["simulate_header"] == "x-demo-simulate-failure"
+    limit = client.get("/api/v1/chat/health").json()["rate_limit"]
+    assert set(limit) == {"enabled", "requests", "period_seconds"}

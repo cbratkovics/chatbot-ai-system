@@ -38,7 +38,7 @@ services:
       - key: SEMANTIC_CACHE_ENABLED
         value: true
       - key: SEMANTIC_CACHE_THRESHOLD
-        value: 0.85
+        value: 0.76
       - key: SEMANTIC_CACHE_MAX_ENTRIES
         value: 512
       - key: ENABLE_VECTOR_SEARCH

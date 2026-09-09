@@ -65,8 +65,10 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = Field(
         default=3600, validation_alias=AliasChoices("CACHE_TTL_SECONDS", "CACHE_TTL")
     )
+    # F1-optimal threshold from the cache paraphrase eval sweep (evals/results/latest.json,
+    # text-embedding-3-small, 68 pairs, run 2026-09-09). Change it by re-running `make evals`.
     semantic_cache_threshold: float = Field(
-        default=0.85, validation_alias="SEMANTIC_CACHE_THRESHOLD"
+        default=0.76, validation_alias="SEMANTIC_CACHE_THRESHOLD"
     )
     cache_compression_enabled: bool = Field(
         default=False, validation_alias="CACHE_COMPRESSION_ENABLED"

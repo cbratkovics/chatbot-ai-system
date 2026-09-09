@@ -33,6 +33,10 @@ to read the precision/recall of that matching in `evals/results/latest.json` (AD
   the prompts this worker answered; that is documented, not hidden.
 - **Threshold from the eval, not by hand.** `SEMANTIC_CACHE_THRESHOLD` is set to the F1-optimal
   value from the threshold sweep in `evals/results/latest.json` and changes only with a new run.
+  First run (2026-09-09, 68 pairs, `text-embedding-3-small`): F1 peaks at **0.76** (precision
+  0.57, recall 0.91 on the adversarial set). `text-embedding-3-large` was measured on the same
+  pairs and peaked at F1 0.69 at 0.80, within one pair of the small model at 6.5x the price per
+  lookup, so the small model stays.
 - **Degrade honestly.** Any embedding failure (no key, timeout, quota, network) makes the
   request behave exactly as before: exact-match lookup, provider on miss, and telemetry
   `cache.match = null`, `cache.semantic = "unavailable"`.
@@ -53,4 +57,8 @@ embedding cost it actually paid, not `$0.00`.
   and remains only for the full-deployment cache middleware.
 - Negation and entity swaps are the known weakness of embedding similarity; the cache
   paraphrase eval includes those traps on purpose, and its confusion matrix is the honest
-  statement of how often they get through at the chosen threshold.
+  statement of how often they get through at the chosen threshold. At 0.76 every negation trap
+  in the set is served the un-negated answer, and precision on the adversarial set is 0.57: the
+  F1 optimum trades wrong hits for paraphrase recall. A production deployment would add a
+  lexical guard (negation and entity agreement) or accept a higher threshold with lower recall;
+  both are one env var or one function away and both would be measured by the same eval.

@@ -1,0 +1,68 @@
+{"id": "par001", "kind": "paraphrase", "label": "hit", "a": "What is the difference between P50 and P95 latency?", "b": "How do P50 and P95 latency differ?"}
+{"id": "par002", "kind": "paraphrase", "label": "hit", "a": "What does a semantic cache do?", "b": "Explain what semantic caching does."}
+{"id": "par003", "kind": "paraphrase", "label": "hit", "a": "Why would a chatbot fail over to a second provider?", "b": "What makes a chatbot switch to a backup provider?"}
+{"id": "par004", "kind": "paraphrase", "label": "hit", "a": "How does a circuit breaker work in distributed systems?", "b": "Explain the circuit breaker pattern for distributed systems."}
+{"id": "par005", "kind": "paraphrase", "label": "hit", "a": "What is time to first token?", "b": "Define time to first token."}
+{"id": "par006", "kind": "paraphrase", "label": "hit", "a": "How are Server-Sent Events different from WebSockets?", "b": "What is the difference between SSE and WebSockets?"}
+{"id": "par007", "kind": "paraphrase", "label": "hit", "a": "What is exponential backoff?", "b": "Explain exponential backoff."}
+{"id": "par008", "kind": "paraphrase", "label": "hit", "a": "Why do LLM APIs return a 429 status code?", "b": "What causes an LLM API to respond with HTTP 429?"}
+{"id": "par009", "kind": "paraphrase", "label": "hit", "a": "What is a rate limiter?", "b": "Explain what a rate limiter does."}
+{"id": "par010", "kind": "paraphrase", "label": "hit", "a": "How do you estimate the cost of an LLM request?", "b": "How can I calculate what an LLM request will cost?"}
+{"id": "par011", "kind": "paraphrase", "label": "hit", "a": "What is a text embedding?", "b": "Explain what an embedding of a piece of text is."}
+{"id": "par012", "kind": "paraphrase", "label": "hit", "a": "What does cosine similarity measure?", "b": "What is cosine similarity a measure of?"}
+{"id": "par013", "kind": "paraphrase", "label": "hit", "a": "What is a cache hit rate?", "b": "How is cache hit rate defined?"}
+{"id": "par014", "kind": "paraphrase", "label": "hit", "a": "What is idempotency in an API?", "b": "Explain API idempotency."}
+{"id": "par015", "kind": "paraphrase", "label": "hit", "a": "How does an LRU cache evict entries?", "b": "What eviction policy does an LRU cache use?"}
+{"id": "par016", "kind": "paraphrase", "label": "hit", "a": "What is a token in the context of language models?", "b": "In language models, what is a token?"}
+{"id": "par017", "kind": "paraphrase", "label": "hit", "a": "Why is P99 latency important?", "b": "What makes P99 latency worth tracking?"}
+{"id": "par018", "kind": "paraphrase", "label": "hit", "a": "What is a health check endpoint for?", "b": "What purpose does a health check endpoint serve?"}
+{"id": "par019", "kind": "paraphrase", "label": "hit", "a": "What is a retry storm?", "b": "Explain the concept of a retry storm."}
+{"id": "par020", "kind": "paraphrase", "label": "hit", "a": "How does streaming reduce perceived latency?", "b": "Why does streaming make responses feel faster?"}
+{"id": "par021", "kind": "paraphrase", "label": "hit", "a": "What is a fallback model?", "b": "What does it mean to have a fallback model?"}
+{"id": "par022", "kind": "paraphrase", "label": "hit", "a": "What is Prometheus used for?", "b": "What is the purpose of Prometheus?"}
+{"id": "par023", "kind": "paraphrase", "label": "hit", "a": "What is a request id used for?", "b": "Why do APIs attach a request id to every call?"}
+{"id": "par024", "kind": "paraphrase", "label": "hit", "a": "What is the purpose of a TTL on a cache entry?", "b": "Why do cache entries have a TTL?"}
+{"id": "par025", "kind": "paraphrase", "label": "hit", "a": "What is prompt injection?", "b": "Explain prompt injection attacks."}
+{"id": "par026", "kind": "paraphrase", "label": "hit", "a": "How do you measure the throughput of an API?", "b": "What is the way to measure an API's throughput?"}
+{"id": "par027", "kind": "paraphrase", "label": "hit", "a": "What is a load balancer?", "b": "Explain what a load balancer does."}
+{"id": "par028", "kind": "paraphrase", "label": "hit", "a": "What does graceful degradation mean?", "b": "Define graceful degradation."}
+{"id": "par029", "kind": "paraphrase", "label": "hit", "a": "What is the difference between latency and throughput?", "b": "How do latency and throughput differ?"}
+{"id": "par030", "kind": "paraphrase", "label": "hit", "a": "What is a cold start?", "b": "Explain what a cold start is."}
+{"id": "nor031", "kind": "normalisation", "label": "hit", "a": "what is a semantic cache miss", "b": "What is a semantic cache miss?"}
+{"id": "nor032", "kind": "normalisation", "label": "hit", "a": "Explain   the difference between   P50 and P99   latency.", "b": "Explain the difference between P50 and P99 latency"}
+{"id": "nor033", "kind": "normalisation", "label": "hit", "a": "HOW DOES SSE STREAMING WORK?", "b": "how does sse streaming work"}
+{"id": "int034", "kind": "intent", "label": "miss", "a": "How do I reduce P95 latency in an API?", "b": "How do I measure P95 latency in an API?"}
+{"id": "int035", "kind": "intent", "label": "miss", "a": "How do I enable Redis caching in FastAPI?", "b": "How do I disable Redis caching in FastAPI?"}
+{"id": "int036", "kind": "intent", "label": "miss", "a": "What is the cost of GPT-4o per million input tokens?", "b": "What is the cost of GPT-4o per million output tokens?"}
+{"id": "int037", "kind": "intent", "label": "miss", "a": "How do I stream responses with Server-Sent Events in FastAPI?", "b": "How do I stream responses with WebSockets in FastAPI?"}
+{"id": "int038", "kind": "intent", "label": "miss", "a": "Write a haiku about caching.", "b": "Write a limerick about caching."}
+{"id": "int039", "kind": "intent", "label": "miss", "a": "Summarize the benefits of semantic caching in two sentences.", "b": "List the drawbacks of semantic caching in two sentences."}
+{"id": "int040", "kind": "intent", "label": "miss", "a": "Translate 'cache miss' into French.", "b": "Translate 'cache miss' into German."}
+{"id": "int041", "kind": "intent", "label": "miss", "a": "How many tokens are in a typical English sentence?", "b": "How many characters are in a typical English sentence?"}
+{"id": "int042", "kind": "intent", "label": "miss", "a": "What port does Redis listen on by default?", "b": "What port does PostgreSQL listen on by default?"}
+{"id": "int043", "kind": "intent", "label": "miss", "a": "Explain how to set a cache TTL of one hour.", "b": "Explain how to set a cache TTL of one minute."}
+{"id": "int044", "kind": "intent", "label": "miss", "a": "Give me a Python example of exponential backoff.", "b": "Give me a JavaScript example of exponential backoff."}
+{"id": "int045", "kind": "intent", "label": "miss", "a": "What is the maximum context window of GPT-4o-mini?", "b": "What is the maximum output length of GPT-4o-mini?"}
+{"id": "int046", "kind": "intent", "label": "miss", "a": "How do I configure a fallback provider in this system?", "b": "How do I configure the primary provider in this system?"}
+{"id": "int047", "kind": "intent", "label": "miss", "a": "What is the P50 latency of a cache hit?", "b": "What is the P50 latency of a cache miss?"}
+{"id": "int048", "kind": "intent", "label": "miss", "a": "Explain circuit breakers to a junior engineer in two sentences.", "b": "Explain circuit breakers to a senior engineer in two sentences."}
+{"id": "neg049", "kind": "negation", "label": "miss", "a": "What should a semantic cache store?", "b": "What should a semantic cache not store?"}
+{"id": "neg050", "kind": "negation", "label": "miss", "a": "When should a request be retried?", "b": "When should a request never be retried?"}
+{"id": "neg051", "kind": "negation", "label": "miss", "a": "Which errors trigger failover?", "b": "Which errors do not trigger failover?"}
+{"id": "neg052", "kind": "negation", "label": "miss", "a": "Is it safe to cache personalized responses?", "b": "Is it unsafe to cache personalized responses?"}
+{"id": "neg053", "kind": "negation", "label": "miss", "a": "List reasons to use WebSockets for chat streaming.", "b": "List reasons not to use WebSockets for chat streaming."}
+{"id": "neg054", "kind": "negation", "label": "miss", "a": "Why is Redis a good choice for a shared cache?", "b": "Why is Redis a poor choice for a shared cache?"}
+{"id": "neg055", "kind": "negation", "label": "miss", "a": "What happens when the cache is enabled?", "b": "What happens when the cache is disabled?"}
+{"id": "neg056", "kind": "negation", "label": "miss", "a": "Should I retry on HTTP 429?", "b": "Should I avoid retrying on HTTP 429?"}
+{"id": "neg057", "kind": "negation", "label": "miss", "a": "Explain why streaming improves user experience.", "b": "Explain why streaming can hurt user experience."}
+{"id": "neg058", "kind": "negation", "label": "miss", "a": "Which providers are configured?", "b": "Which providers are not configured?"}
+{"id": "ent059", "kind": "entity", "label": "miss", "a": "How much does gpt-4o-mini cost per million tokens?", "b": "How much does claude-3-5-haiku cost per million tokens?"}
+{"id": "ent060", "kind": "entity", "label": "miss", "a": "What is OpenAI's rate limit for the free tier?", "b": "What is Groq's rate limit for the free tier?"}
+{"id": "ent061", "kind": "entity", "label": "miss", "a": "How do I authenticate to the Anthropic API?", "b": "How do I authenticate to the OpenAI API?"}
+{"id": "ent062", "kind": "entity", "label": "miss", "a": "What is the default port for FastAPI with uvicorn?", "b": "What is the default port for Flask with gunicorn?"}
+{"id": "ent063", "kind": "entity", "label": "miss", "a": "Explain how Render's free tier handles idle instances.", "b": "Explain how Vercel's free tier handles idle instances."}
+{"id": "ent064", "kind": "entity", "label": "miss", "a": "What is the capital of France?", "b": "What is the capital of Spain?"}
+{"id": "ent065", "kind": "entity", "label": "miss", "a": "Who wrote The Pragmatic Programmer?", "b": "Who wrote Clean Code?"}
+{"id": "ent066", "kind": "entity", "label": "miss", "a": "What year was Python 3 released?", "b": "What year was Python 2 released?"}
+{"id": "ent067", "kind": "entity", "label": "miss", "a": "How do I install the openai Python package?", "b": "How do I install the anthropic Python package?"}
+{"id": "ent068", "kind": "entity", "label": "miss", "a": "Convert 100 milliseconds to seconds.", "b": "Convert 100 seconds to milliseconds."}

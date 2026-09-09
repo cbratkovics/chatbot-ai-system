@@ -156,6 +156,8 @@ class OpenAIProvider(BaseProvider, StreamingOpenAIMixin):
                     create_kwargs["user"] = kwargs["user"]
                 if "seed" in kwargs:
                     create_kwargs["seed"] = kwargs["seed"]
+                if "reasoning_effort" in kwargs:
+                    create_kwargs["reasoning_effort"] = kwargs["reasoning_effort"]
 
                 response = await self.client.chat.completions.create(**create_kwargs)
 

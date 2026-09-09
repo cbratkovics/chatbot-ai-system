@@ -486,6 +486,7 @@ class Lookup:
     similarity: Optional[float] = None
     semantic: str = "disabled"  # disabled | not_needed | hit | miss | unavailable
     matched_key: Optional[str] = None
+    nearest_key: Optional[str] = None  # closest indexed prompt, hit or miss (evals use it)
     threshold: Optional[float] = None
     namespace: Optional[str] = None
     prompt: Optional[str] = None
@@ -503,6 +504,7 @@ class Lookup:
             "similarity": self.similarity,
             "semantic": self.semantic,
             "matched_key": self.matched_key,
+            "nearest_key": self.nearest_key,
             "threshold": self.threshold,
         }
         if self.hit and self.hit.get("cached_at"):
@@ -560,6 +562,7 @@ async def _lookup(ctx: PreparedRequest, settings: Settings) -> Lookup:
     if nearest is None:
         return lookup
     lookup.similarity = nearest.similarity
+    lookup.nearest_key = nearest.cache_key
     if nearest.similarity < settings.semantic_cache_threshold:
         return lookup
     entry = await ctx.backend.get_cached_response(nearest.cache_key)
@@ -951,6 +954,11 @@ async def health_check(settings: Settings = Depends(get_settings)) -> Dict[str, 
         "semantic_cache": semantic_status(settings),
         "streaming": "sse",
         "guardrails": get_guard(settings).snapshot(),
+        "rate_limit": {
+            "enabled": settings.rate_limit_enabled,
+            "requests": settings.rate_limit_requests,
+            "period_seconds": settings.rate_limit_period,
+        },
         "demo": {
             "failure_toggle_enabled": settings.demo_failure_toggle_enabled,
             "simulate_primary_failure": settings.demo_simulate_primary_failure,

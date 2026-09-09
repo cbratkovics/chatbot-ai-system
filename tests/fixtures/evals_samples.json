@@ -1,0 +1,19 @@
+{
+  "pair_records": [
+    {"id": "par001", "kind": "paraphrase", "label": "hit", "expected_hit": true, "predicted_hit": true, "correct_entry": true, "nearest_is_own": true, "similarity": 0.96},
+    {"id": "par002", "kind": "paraphrase", "label": "hit", "expected_hit": true, "predicted_hit": true, "correct_entry": true, "nearest_is_own": true, "similarity": 0.88},
+    {"id": "par003", "kind": "paraphrase", "label": "hit", "expected_hit": true, "predicted_hit": false, "correct_entry": true, "nearest_is_own": true, "similarity": 0.81},
+    {"id": "par004", "kind": "paraphrase", "label": "hit", "expected_hit": true, "predicted_hit": true, "correct_entry": false, "nearest_is_own": false, "similarity": 0.90},
+    {"id": "int001", "kind": "intent", "label": "miss", "expected_hit": false, "predicted_hit": false, "correct_entry": true, "nearest_is_own": true, "similarity": 0.79},
+    {"id": "int002", "kind": "intent", "label": "miss", "expected_hit": false, "predicted_hit": true, "correct_entry": true, "nearest_is_own": true, "similarity": 0.91},
+    {"id": "neg001", "kind": "negation", "label": "miss", "expected_hit": false, "predicted_hit": true, "correct_entry": true, "nearest_is_own": true, "similarity": 0.93},
+    {"id": "neg002", "kind": "negation", "label": "miss", "expected_hit": false, "predicted_hit": false, "correct_entry": true, "nearest_is_own": true, "similarity": 0.84},
+    {"id": "ent001", "kind": "entity", "label": "miss", "expected_hit": false, "predicted_hit": false, "correct_entry": true, "nearest_is_own": false, "similarity": 0.60},
+    {"id": "ent002", "kind": "entity", "label": "miss", "expected_hit": false, "predicted_hit": false, "correct_entry": true, "nearest_is_own": false, "similarity": null}
+  ],
+  "sse_good": [["meta", {"request_id": "r1", "cache": {"status": "miss"}}], ["delta", {"content": "Hi"}], ["delta", {"content": "!"}], ["done", {"request_id": "r1", "usage": {"source": "provider"}, "cache": {"status": "miss"}}]],
+  "sse_error_only": [["error", {"error": {"code": "provider_rate_limited"}}]],
+  "sse_bad_order": [["delta", {"content": "x"}], ["meta", {"request_id": "r2"}], ["done", {"request_id": "r2", "usage": {"source": "provider"}, "cache": {"status": "miss"}}], ["delta", {"content": "late"}]],
+  "failover_good": {"failover": true, "simulated_failure": true, "provider": "groq", "model": "openai/gpt-oss-20b", "attempts": [{"provider": "openai", "model": "gpt-4o-mini", "outcome": "failed", "status_code": 503, "error_code": "simulated_outage"}, {"provider": "groq", "model": "openai/gpt-oss-20b", "outcome": "ok", "latency_ms": 700}]},
+  "failover_no_failover": {"failover": false, "provider": "openai", "attempts": [{"provider": "openai", "model": "gpt-4o-mini", "outcome": "ok"}]}
+}

@@ -25,6 +25,9 @@ from typing import Any, Dict, List
 
 import httpx
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from evals.stats import percentile  # noqa: E402 - shared with the evals so the numbers agree
+
 DEFAULT_BASE_URL = "https://chatbot-ai-system.onrender.com"
 DEFAULT_PROMPTS = [
     "In one sentence, what does a semantic cache do?",
@@ -33,14 +36,6 @@ DEFAULT_PROMPTS = [
     "Explain circuit breakers to a junior engineer in two sentences.",
     "Why would a chatbot fail over to a second provider?",
 ]
-
-
-def percentile(values: List[float], pct: float) -> float:
-    if not values:
-        return 0.0
-    ordered = sorted(values)
-    index = min(len(ordered) - 1, max(0, round((pct / 100) * (len(ordered) - 1))))
-    return ordered[index]
 
 
 def run(args: argparse.Namespace) -> Dict[str, Any]:

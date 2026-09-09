@@ -1,5 +1,5 @@
 # Multi-stage build for optimization
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
@@ -15,9 +15,10 @@ RUN pip install poetry==2.1.4
 # Copy dependency files
 COPY pyproject.toml poetry.lock ./
 
-# Install dependencies
+# Install dependencies only. The project itself is not installed here (--no-root): this
+# stage has no source or README, and the runtime stage imports the app via PYTHONPATH=/app/src.
 RUN poetry config virtualenvs.create false && \
-    poetry install --only main --no-interaction --no-ansi
+    poetry install --only main --no-root --no-interaction --no-ansi
 
 # Runtime stage
 FROM python:3.11-slim

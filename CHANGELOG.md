@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Live demo outage: OpenAI `insufficient_quota` was retried as a rate limit and surfaced as "Request failed"; it is now a non-retryable 402 with a structured error envelope, and the request fails over to Groq (`docs/DIAGNOSIS.md`, ADR 0003).
+- Unhandled 500s now carry CORS headers (error-envelope middleware inside CORS).
+- Unreachable `REDIS_URL` no longer blocks startup for ~75 s; it falls back to an in-process cache within 2 s (ADR 0001).
+- OpenAI streaming mixin crashed on the SDK's trailing usage chunk and let raw SDK errors escape the failover chain.
+- 79 failing integration tests triaged: fixtures repaired, drift fixed, 19 tests for APIs that never existed deleted with git evidence (`docs/TEST_TRIAGE.md`).
+
+### Added
+- Provider failover chain with per-request attempt log; Groq via the OpenAI-compatible endpoint (no new SDK).
+- SSE streaming on `POST /api/v1/chat/completions` (ADR 0005) and a per-message telemetry chip in the UI.
+- Demo guardrails: per-IP limits, token caps, daily budget (ADR 0004); env-gated "simulate provider failure" toggle.
+- `scripts/bench_demo.py`, `docs/DEMO_SCRIPT.md`, five ADRs, `docs/audits/`.
+- `make help` with `install`, `dev`, `check`, `up`, `bench`, and friends.
+
+### Changed
+- Default model `gpt-4o-mini`; legacy ids (`gpt-3.5-turbo`) map forward.
+- Vector search is off by default and never imports Pinecone unless `ENABLE_VECTOR_SEARCH=true` (ADR 0002).
+- `render.yaml` targets the free tier: one worker, no Redis service.
+- README metrics restricted to committed artifacts; measured coverage (31%) replaces the "85%+" claim.
+- Repository layout: `config/`, `deploy/`, `demo/`, `examples/`, `use-cases/`, `nginx/`, `redis/`, `monitoring/` and 20+ legacy scripts removed or merged under `docker/` and `infrastructure/` (`docs/audits/REPO_AUDIT.md`).
+- Poetry metadata moved to PEP 621 `[project]`; `mypy.ini` folded into `pyproject.toml`.
+
 ## [1.1.0] - 2025-01-10
 
 ### Added

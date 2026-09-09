@@ -220,9 +220,9 @@ The demo path is `api/chat.py`, `providers/chain.py`, `cache/memory_cache.py`,
 `api/guardrails.py`, `api/errors.py`, and the frontend. The rest of `src/chatbot_ai_system/`
 (about 34k lines in total) is the full-deployment surface: WebSocket streaming with its own
 protocol, a provider orchestrator with load-balancing strategies and circuit breakers,
-multi-tenancy and auth routers, Redis and Pinecone integrations, Prometheus/Grafana/Jaeger
-configuration under `monitoring/`, Terraform under `infrastructure/`, and use-case templates
-under `use-cases/`. Modules that are design sketches rather than runnable code say so in their
+multi-tenancy and auth routers, Redis and Pinecone integrations, Terraform, Helm charts, and the
+Prometheus/Grafana/Jaeger configuration under `infrastructure/` (its README says what is and is
+not exercised). Modules that are design sketches rather than runnable code say so in their
 first line (`infrastructure/global_routing.py`, `providers/provider_a.py`, `providers/provider_b.py`,
 `infrastructure/connection_pool.py`). Known gaps in that surface are listed honestly in
 [`docs/TEST_TRIAGE.md`](docs/TEST_TRIAGE.md#escalations-places-where-the-code-not-the-test-looks-wrong).

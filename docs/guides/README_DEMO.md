@@ -17,7 +17,7 @@ git checkout demo
 
 2. **Run automated setup:**
 ```bash
-./scripts/setup/setup_demo.sh
+make up   # docker compose up -d with the root docker-compose.yml
 ```
 
 3. **Add your API keys to `.env`:**
@@ -53,5 +53,5 @@ For full enterprise features, check the `main` branch.
 ## Stop Demo
 
 ```bash
-docker-compose -f config/docker/compose/docker-compose.demo.yml down
+docker compose down
 ```

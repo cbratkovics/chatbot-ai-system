@@ -1,3 +1,7 @@
+# Full-deployment stack: nginx, backend, frontend, redis, postgres, prometheus, grafana.
+# The public demo does NOT run this (it runs on Render + Vercel with no Redis/Postgres).
+# Run from the repo root:  make up-full   (docker compose -f docker/docker-compose.prod.yml up -d)
+# Paths are relative to this file's directory (docker/), hence the ../ prefixes.
 version: '3.8'
 
 services:
@@ -46,7 +50,7 @@ services:
   # Backend API service (production)
   backend:
     build:
-      context: .
+      context: ..
       dockerfile: docker/dockerfiles/Dockerfile.production
       args:
         BUILD_DATE: ${BUILD_DATE}
@@ -84,7 +88,7 @@ services:
       - ENABLE_VECTOR_SEARCH=${ENABLE_VECTOR_SEARCH:-false}
       - VECTOR_SEARCH_TOP_K=${VECTOR_SEARCH_TOP_K:-5}
     volumes:
-      - ./logs:/app/logs
+      - ../logs:/app/logs
       - backend-data:/app/data
     depends_on:
       redis:
@@ -128,7 +132,7 @@ services:
   # Frontend Next.js service (production)
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${API_URL:-https://api.yourdomain.com}
@@ -226,8 +230,6 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ./scripts/backup:/backup
     networks:
       - chatbot-network
     restart: always
@@ -262,7 +264,7 @@ services:
     expose:
       - "9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -298,7 +300,7 @@ services:
       - GF_INSTALL_PLUGINS=redis-datasource
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../infrastructure/monitoring/grafana:/etc/grafana/provisioning/dashboards-src:ro
     depends_on:
       - prometheus
     networks:

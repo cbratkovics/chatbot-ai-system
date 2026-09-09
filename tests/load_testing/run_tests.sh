@@ -263,7 +263,7 @@ fi
 # Check if locust is installed
 if ! command -v locust &> /dev/null; then
     echo -e "${RED}❌ Locust is not installed${NC}"
-    echo "Please install requirements: pip install -r config/requirements/base.txt"
+    echo "Please install requirements: poetry install"
     exit 1
 fi
 

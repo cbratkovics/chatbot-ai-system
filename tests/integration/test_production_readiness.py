@@ -315,8 +315,8 @@ class TestProductionReadiness:
         root = REPO_ROOT
 
         # Check docker-compose files exist
-        assert (root / "docker-compose.yml").exists()
-        assert (root / "docker-compose.prod.yml").exists()
+        assert (root / "docker-compose.yml").exists()  # local dev stack
+        assert (root / "docker" / "docker-compose.prod.yml").exists()  # full deployment
 
     def test_env_example_exists(self):
         """Test .env.example exists with all required variables."""

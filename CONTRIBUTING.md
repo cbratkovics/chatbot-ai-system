@@ -28,8 +28,6 @@ Thank you for helping improve this project! Please read this guide before openin
 │   └── config/                 # Configuration system (new!)
 ├── frontend/                   # Next.js TypeScript UI
 │   └── config/                 # Frontend config extraction (new!)
-├── use-cases/                  # Template configurations (new!)
-│   └── customer-support/       # Example: Customer support template
 ├── tests/                      # Unit, integration, e2e, load tests
 ├── benchmarks/                 # Performance benchmarking
 ├── docs/                       # Documentation
@@ -190,55 +188,6 @@ Update these files when applicable:
 - `.env.example` - New environment variables
 - `frontend/.env.example` - New frontend configuration options
 
-## Contributing Templates (New!)
-
-We welcome new use-case templates! Each template should demonstrate a specific chatbot application.
-
-### Creating a New Template
-
-1. **Create directory structure:**
-```bash
-mkdir -p use-cases/your-use-case
-cd use-cases/your-use-case
-```
-
-2. **Add required files:**
-```
-your-use-case/
-├── .env.example           # Complete configuration
-├── system-prompt.txt      # Customized system prompt
-├── theme.config.ts        # (Optional) UI theme overrides
-└── README.md             # Setup and customization guide
-```
-
-3. **Follow the pattern:**
-- Study existing templates (e.g., `customer-support/`)
-- Include clear setup instructions
-- Document all customization points
-- Add example interactions
-- Include disclaimers if needed (e.g., medical, legal advice)
-
-4. **Test thoroughly:**
-```bash
-# Test with the template configuration
-cp use-cases/your-use-case/.env.example .env
-# Add API keys
-poetry run uvicorn chatbot_ai_system.server.main:app --reload
-# Verify behavior matches intended use case
-```
-
-5. **Open PR with:**
-- Template files
-- Updated `docs/USE_CASES.md` (if exists)
-- Screenshots or demo interactions
-
-### Template Guidelines
-
-- **System prompts** should be specific and actionable
-- **Include safety guardrails** for sensitive use cases
-- **Document limitations** clearly
-- **Provide customization examples**
-- **Use appropriate tone** for the use case
 
 ## Configuration System
 

@@ -82,12 +82,24 @@ async def async_client():
 
 @pytest.fixture(autouse=True)
 def _reset_chat_singletons():
-    """Fresh demo guardrails per test so per-IP limits never leak between tests."""
+    """Fresh, hermetic chat-route state for every test.
+
+    - guardrails: per-IP limits never leak between tests
+    - cache: a new in-process MemoryCache, never built from REDIS_URL. CI runs a real Redis
+      service and exports REDIS_URL, and a cache that persists across tests turned every
+      "second request" into a HIT (see the 2026-09-09 CI failure). Redis-backed behaviour is
+      covered by the ``live`` test gated on TEST_REDIS_URL.
+    """
     from chatbot_ai_system.api import chat as chat_api
+    from chatbot_ai_system.cache.memory_cache import MemoryCache
 
     chat_api.demo_guard = None
+    chat_api.cache = MemoryCache(ttl_seconds=3600, max_entries=512)
+    chat_api.cache_key_generator = None
     yield
     chat_api.demo_guard = None
+    chat_api.cache = None
+    chat_api.cache_key_generator = None
 
 
 @pytest.fixture

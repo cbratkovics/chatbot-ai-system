@@ -16,7 +16,7 @@ Thank you for helping improve this project! Please read this guide before openin
 ## Prerequisites
 
 - **Python** 3.12+
-- **Poetry** ≥ 1.7
+- **Poetry** ≥ 2.0
 - **Node.js** 20 LTS (for frontend)
 - **Docker** (optional, for Redis and local infrastructure)
 - **Git** (for version control)

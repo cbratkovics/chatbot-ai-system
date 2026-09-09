@@ -3,18 +3,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from chatbot_ai_system.api import chat as chat_api
 from chatbot_ai_system.providers.chain import SIMULATED_OUTAGE
 
 BODY = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "fail over"}]}
 HEADER = {"X-Demo-Simulate-Failure": "1"}
-
-
-@pytest.fixture(autouse=True)
-def _fresh_cache():
-    chat_api.cache = None
-    yield
-    chat_api.cache = None
 
 
 def _enable_toggle(monkeypatch, enabled: bool):

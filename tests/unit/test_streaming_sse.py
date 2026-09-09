@@ -5,7 +5,6 @@ from typing import Dict, List
 import pytest
 from fastapi.testclient import TestClient
 
-from chatbot_ai_system.api import chat as chat_api
 from chatbot_ai_system.providers.base import RateLimitError
 
 BODY = {"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "stream please"}], "stream": True}
@@ -26,13 +25,6 @@ def parse_sse(text: str) -> List[Dict]:
         if event:
             events.append({"event": event, "data": data})
     return events
-
-
-@pytest.fixture(autouse=True)
-def _fresh_cache():
-    chat_api.cache = None
-    yield
-    chat_api.cache = None
 
 
 def test_stream_emits_meta_delta_done(client: TestClient, fake_chat_provider):

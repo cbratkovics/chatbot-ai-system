@@ -124,28 +124,28 @@ class TestConfiguration:
         assert settings.port == 9000
         assert settings.openai_api_key.get_secret_value() == "sk-test-key"
 
-    def test_settings_validation(self):
-        """Test settings validation."""
+    def test_settings_validation(self, monkeypatch):
+        """Settings validate their inputs; an invalid port is an error, not a silent default."""
+        import pytest
+        from pydantic import ValidationError
+
         from chatbot_ai_system.config.settings import Settings
 
-        # Test that valid settings work
-        settings = Settings(port=8080)
-        assert isinstance(settings.port, int)
-        # Port value is valid (within range)
-        assert 1 <= settings.port <= 65535
+        # Hermetic: no PORT from the shell or a .env file may override the explicit value.
+        monkeypatch.delenv("PORT", raising=False)
 
-        # Test that settings have proper types
+        settings = Settings(_env_file=None, PORT=8080)
+        assert settings.port == 8080
         assert isinstance(settings.workers, int)
         assert settings.workers >= 1
-
-        # Test that invalid strings fall back to default
-        settings_invalid = Settings(port="not-a-number")
-        assert isinstance(settings_invalid.port, int)
-        assert settings_invalid.port == 8000  # Falls back to default
-
-        # Test that settings have proper configuration
         assert hasattr(settings, "model_config")
-        assert settings.port >= 1  # Port is validated to be positive
+
+        # Before populate_by_name was enabled, this kwarg was silently dropped and the old
+        # assertion (port == 8000) documented that bug. Validation is the correct behaviour.
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None, PORT="not-a-number")
+        with pytest.raises(ValidationError):
+            Settings(_env_file=None, PORT=70000)
 
 
 @pytest.mark.unit

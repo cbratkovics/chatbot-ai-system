@@ -4,7 +4,7 @@ Thank you for helping improve this project! Please read this guide before openin
 
 ## Project Overview
 
-**Purpose:** A multi-provider AI chat service whose engineering is visible on screen: provider failover, an optional cache, SSE streaming, demo guardrails, and per-message telemetry. The public demo runs on Render + Vercel for ~$0/month; the repository also carries a larger full-deployment surface that the demo does not exercise.
+**Purpose:** A multi-provider AI chat service whose engineering is visible on screen: provider failover, an optional cache, SSE streaming, demo guardrails, and per-message telemetry. The public release exports static overview and evaluation pages, with no live generation; the repository also carries a larger full-deployment surface that the demo does not exercise.
 
 **Core Values:**
 - **Clarity** - Clear code and documentation
@@ -16,7 +16,7 @@ Thank you for helping improve this project! Please read this guide before openin
 
 - **Python** 3.12+
 - **Poetry** ≥ 2.0
-- **Node.js** 20 LTS (for frontend)
+- **Node.js** 24.x (for frontend)
 - **Docker** (optional: only for `make up`; the API boots with no Redis or database)
 - **Git** (for version control)
 
@@ -32,7 +32,7 @@ Thank you for helping improve this project! Please read this guide before openin
 ├── benchmarks/              # harnesses + committed results
 ├── scripts/                 # bench_demo.py
 ├── docker-compose.yml       # local dev stack (make up)
-├── render.yaml              # Render blueprint for the demo backend
+├── docs/deployment/render.legacy.yaml # historical hosted-backend example only
 └── Makefile                 # make help lists every target
 ```
 
@@ -47,8 +47,8 @@ git clone https://github.com/cbratkovics/chatbot-ai-system.git
 cd chatbot-ai-system
 
 make install                      # poetry install + (cd frontend && npm ci)
-cp .env.example .env              # add OPENAI_API_KEY; GROQ_API_KEY enables failover
-cp frontend/.env.example frontend/.env.local
+# Optional local backend only: configure provider keys securely (calls may incur charges).
+# The static site needs no frontend variables; production rejects legacy backend settings.
 poetry run pre-commit install     # optional
 
 make dev                          # API on http://localhost:8000 (hot reload)
@@ -178,7 +178,7 @@ construct `Settings(_env_file=None, DEFAULT_MODEL=...)` when they need an explic
 When adding an option:
 1. Add the field with an env alias and a default that keeps the demo working without it.
 2. Document it in `.env.example` (and `frontend/.env.example` for `NEXT_PUBLIC_*`).
-3. Add it to `render.yaml` only if the demo needs a non-default value.
+3. Document it for optional local backend use; do not add services to the static public release.
 4. If it changes behaviour worth explaining in an interview, write an ADR in `docs/adr/`.
 
 ## Security

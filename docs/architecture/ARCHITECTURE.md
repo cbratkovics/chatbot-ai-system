@@ -1,16 +1,18 @@
 # AI Chatbot System Architecture
 
+> The public release is now a static overview and recorded evaluation site ([ADR 0008](../adr/0008-static-public-evidence.md)).
+> The diagrams below describe the retained optional gateway and historical hosting, not a live
+> backend behind the public demo. No services are automatically provisioned by these examples.
+
 ## System Overview
 
 The AI Chatbot System is an enterprise-grade, multi-tenant platform that provides intelligent conversational AI capabilities with support for multiple model providers, real-time streaming, semantic caching, and comprehensive monitoring.
 
 ## Architecture Diagram
 
-Two views. The first is what actually runs at the public demo URL; the second is the full
-deployment the codebase supports. Anything in the second that is not in the first is opt-in
-through configuration and is not exercised by the demo.
+Two optional gateway views: the former hosted demo topology and the larger reference deployment. Neither is required to serve the static public site.
 
-### What runs in the demo (Vercel Hobby + Render free tier, $0/month infrastructure)
+### Historical hosted gateway topology (not the current static release)
 
 ```mermaid
 flowchart LR

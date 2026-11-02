@@ -43,3 +43,7 @@ next-env.d.ts
 # Environment files
 .env.local
 .env.production.local
+
+# Browser checks against the static export
+/test-results/
+/playwright-report/

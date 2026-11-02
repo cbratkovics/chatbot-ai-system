@@ -7,13 +7,14 @@
     "npm": ">=9"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev --turbopack",
     "prebuild": "node -e \"console.log('Node:', process.version); console.log('Platform:', process.platform, process.arch)\"",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "build": "NEXT_TELEMETRY_DISABLED=1 next build",
+    "start": "python3 scripts/serve-export.py --port 3000",
+    "lint": "eslint .",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.vitest.json"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.vitest.json",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.14",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.64.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -41,5 +43,8 @@
   },
   "overrides": {
     "prismjs": "^1.30.0"
+  },
+  "allowScripts": {
+    "sharp@0.34.4": true
   }
 }

@@ -17,7 +17,7 @@ export function LatencySection({ evalResult: l }: { evalResult?: LatencyEval }) 
   return (
     <Section id="latency" title="Latency by path">
       <Explainer>
-        Client numbers are wall time measured by the machine that ran the evals, including the network; server numbers are what the backend
+        These are historical localhost measurements, not current hosted latency. Client numbers are wall time measured by the machine that ran the evals, including the network; server numbers are what the backend
         reported for the same requests in its done event. P50 is the typical request, P95 and P99 are the slow tail. Every request the other
         evals made is pooled here, plus a block of exact repeats so the hit path has enough samples.
       </Explainer>

@@ -1,10 +1,12 @@
 # Production Deployment Checklist
 
-> **Superseded (2026-09-08).** This document predates the demo's current design and describes a
-> WebSocket-based frontend and manual deployment steps that no longer exist. The demo streams over
-> Server-Sent Events (ADR 0005) and the frontend ships no WebSocket client. Current instructions:
-> [`frontend/DEPLOYMENT.md`](../frontend/DEPLOYMENT.md), [`render.yaml`](../render.yaml) and the
-> README's Quick start. Kept for the full-deployment history only.
+> **Historical hosted-stack reference only (2026-11-02).** None of the provisioning or
+> deployment steps below apply to the static public release. Do not execute them to publish
+> the demo. Current instructions: [static hosting](../frontend/DEPLOYMENT.md) and
+> [optional local gateway](LOCAL_DEVELOPMENT.md). The former root Render blueprint is now
+> [render.legacy.yaml](deployment/render.legacy.yaml); it is not evidence of live infrastructure.
+> Existing Render resources have not been changed by this release.
+
 
 ## Pre-Deployment
 

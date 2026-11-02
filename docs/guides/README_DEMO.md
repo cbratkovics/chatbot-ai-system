@@ -1,5 +1,9 @@
 # AI Chatbot System - Demo Branch
 
+> Historical demo-branch instructions only. The default release is now a static overview and
+> recorded evaluations, with no services or provider keys. See [current setup](../../README.md)
+> and [static hosting](../../frontend/DEPLOYMENT.md). Do not run this old setup for public hosting.
+
 ## 5-Minute Quick Start
 
 ### Prerequisites

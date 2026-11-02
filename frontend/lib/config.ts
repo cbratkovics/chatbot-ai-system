@@ -1,26 +1,16 @@
-/** Backend base URL. The only variable the demo needs is NEXT_PUBLIC_API_URL (ADR 0005: SSE, no WebSocket). */
-const DEFAULT_API = 'https://chatbot-ai-system.onrender.com/api/v1';
-
-function stripTrailingSlash(u: string) {
-  return u.endsWith('/') ? u.slice(0, -1) : u;
-}
-
-/** Accepts a bare origin or a full /api/v1 URL and normalises to `<origin>/api/v1`. */
-function normalizeApiUrl(urlStr: string) {
-  try {
-    if (!urlStr) return DEFAULT_API;
-    const u = new URL(urlStr);
-    let p = u.pathname.replace(/\/+$/, '');
-    if (!/^\/api\//.test(p)) p = p === '' ? '/api/v1' : p + '/api/v1';
-    u.pathname = p;
-    u.search = '';
-    u.hash = '';
-    return stripTrailingSlash(u.toString());
-  } catch {
-    return DEFAULT_API;
+/** Local-reference chat only. The public site never imports this module. */
+export function getLocalApiConfig(raw = process.env.NEXT_PUBLIC_API_URL) {
+  if (process.env.NODE_ENV !== 'development') {
+    throw new Error('Live chat is a local-development reference only.');
   }
+  if (!raw) throw new Error('Set NEXT_PUBLIC_API_URL explicitly to a loopback backend URL.');
+  const url = new URL(raw);
+  if (!['http:', 'https:'].includes(url.protocol) ||
+      !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) ||
+      url.username || url.password || url.search || url.hash ||
+      !['', '/', '/api/v1', '/api/v1/'].includes(url.pathname)) {
+    throw new Error('Local chat requires a loopback origin or /api/v1 URL without credentials, query or fragment.');
+  }
+  url.pathname = '/api/v1';
+  return { baseURL: url.toString().replace(/\/$/, ''), timeout: 30_000 };
 }
-
-const baseURL = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL ?? '');
-
-export const API_CONFIG = { baseURL, timeout: 30000 };

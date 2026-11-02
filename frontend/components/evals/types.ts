@@ -149,4 +149,4 @@ export type EvalArtifact = {
   cost?: { requests?: number; estimated_usd_spent?: number; avoided_usd?: number; note?: string };
 };
 
-export type ArtifactSource = 'live' | 'static';
+export type ArtifactSource = 'committed';

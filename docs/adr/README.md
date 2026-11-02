@@ -11,3 +11,4 @@ Short records of the decisions that shape the demo. Format: context, decision, c
 | [0005](0005-sse-streaming-over-websocket.md) | Server-Sent Events, not WebSocket, for the demo's streaming path |
 | [0006](0006-system-evals-as-committed-artifacts.md) | System evals as committed artifacts; the UI shows observed numbers only |
 | [0007](0007-semantic-cache-on-the-demo-path.md) | Embedding-based semantic cache on the demo path (supersedes the exact-match-only part of 0001) |
+| [0008](0008-static-public-evidence.md) | Static public overview and recorded evidence; gateway remains local reference |

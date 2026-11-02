@@ -56,41 +56,21 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend Next.js service
+  # Optional local static frontend; does not require or connect to backend services.
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
-        NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws/chat
     container_name: chatbot-frontend
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-      - NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws/chat
-      - NEXT_PUBLIC_ENABLE_CACHE=true
-      - NEXT_PUBLIC_ENABLE_STREAMING=true
-    volumes:
-      - ./frontend/app:/app/app:ro
-      - ./frontend/components:/app/components:ro
-      - ./frontend/lib:/app/lib:ro
-      - ./frontend/hooks:/app/hooks:ro
-      - ./frontend/types:/app/types:ro
-      - ./frontend/public:/app/public:ro
-    depends_on:
-      - backend
-    networks:
-      - chatbot-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
 
   # Redis cache service
   redis:

@@ -1,101 +1,102 @@
-# Frontend Deployment (Vercel Hobby)
+# Static public hosting
 
-The frontend is a Next.js 15 app deployed on Vercel. It talks to one backend URL and
-nothing else. There is no Redis, Pinecone, or database requirement for the demo: the
-backend degrades gracefully and reports what it is using on `/health`.
+This release exports the project overview and recorded `/evals/` page. It does not host chat,
+Python, Redis, a database or provider/embedding calls. The existing Vercel project is the initial
+target. A feature-branch preview may be created for review; production promotion is a separate
+action. This release preparation does not alter existing Render resources.
 
-## What runs in the demo
+## Exact Vercel settings (owner action after review)
 
-| Component | Demo | Full deployment |
-|---|---|---|
-| Frontend | Vercel Hobby (this app) | same |
-| Backend API | Render free tier, one uvicorn worker | any container host |
-| Response cache | in-process LRU (per worker, resets on deploy) | Redis via `REDIS_URL` |
-| Providers | OpenAI `gpt-4o-mini` → Groq `openai/gpt-oss-20b` failover | any subset of OpenAI / Anthropic / Groq |
-| Vector search | off (`ENABLE_VECTOR_SEARCH=false`) | Pinecone behind the flag |
-
-## Vercel project settings
-
-1. Root Directory: `frontend`
-2. Framework preset: Next.js
-3. Node version: 20.x
-4. Build / install commands: defaults (`npm run build`, `npm ci`)
-
-## Environment variables (Vercel dashboard)
-
-```bash
-NEXT_PUBLIC_API_URL=https://chatbot-ai-system.onrender.com
-```
-
-That is the only variable the demo needs. The app appends `/api/v1` if it is missing
-and falls back to the Render URL above when the variable is unset. Optional:
-
-```bash
-NEXT_PUBLIC_APP_NAME=AI Chat System
-```
-
-## Backend environment variables (Render dashboard)
-
-See `render.yaml` at the repo root for the full list with defaults. The ones that matter:
-
-| Variable | Purpose |
+| Setting | Value |
 |---|---|
-| `OPENAI_API_KEY` | primary provider. Set a hard monthly limit in the OpenAI dashboard. |
-| `GROQ_API_KEY` | free-tier fallback provider (optional but recommended for the failover demo) |
-| `CORS_ORIGINS` | JSON array containing your Vercel origin, e.g. `["https://chatbot-ai-system.vercel.app"]` |
-| `DEFAULT_MODEL` | `gpt-4o-mini` |
-| `FALLBACK_MODELS` | `groq:openai/gpt-oss-20b` |
-| `DEMO_*` | per-IP rate limits, token cap, history cap, daily token budget |
-| `DEMO_FAILURE_TOGGLE_ENABLED` | `true` shows the "Simulate provider failure" switch; the UI then sends `X-Demo-Simulate-Failure: 1` |
-| `REDIS_URL` | leave unset on the free tier; the in-process cache is used automatically |
+| Account / plan | Eligible Vercel Hobby account, within free usage limits |
+| Root Directory | `frontend` |
+| Framework Preset | Next.js (static export configured in `next.config.js`) |
+| Node.js Version | `24.x` |
+| Install Command | `npm ci` |
+| Build Command | `npm run build` |
+| Output Directory | `.next` for Vercel’s Next.js adapter (explicit in `vercel.json`); exported static files remain `out/` |
+| Environment variables | None required; remove `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` in all deployment scopes |
 
-## Cold starts
+The Vercel adapter reads `.next/routes-manifest.json` before detecting `.next/export-detail.json`
+and collecting the static `out/` directory. Do not set the Vercel Output Directory to `out`, set
+Next's `distDir` to `out`, or copy a fake manifest into `out/`. The checked-in `.next` setting also
+overrides an older dashboard `out` value. Keep the Next.js preset. Plain static hosts serve `out/`
+directly; this distinction is specific to Vercel's framework adapter.
 
-Render's free tier sleeps after 15 minutes idle and takes 30–60 s to wake. The UI
-handles this: the status pill shows "Waking up the backend", the first request has a
-60 s timeout and one retry, and later requests use a 30 s timeout.
+No rewrites, SPA fallback, functions, API routes, proxy, font service, analytics account or backend
+host is needed. Keep Web Analytics and Speed Insights disabled in the project dashboard (they
+could inject scripts outside repository control). The export uses directory-style trailing
+slashes; `/evals` redirects to `/evals/` and resolves to `evals/index.html` on a static host.
 
-## Verify after deploy
+`vercel.json` allows connections only to the site's own origin. The static Next.js hydration
+scripts need `script-src 'unsafe-inline'`; `unsafe-eval` and external connection/image/font
+allowlists have been removed. Do not add hosted provider keys, even to preview environments.
+Vercel is configured to apply these headers from `frontend/vercel.json`; verify the actual preview
+response headers before accepting the host configuration. The local server only validates the
+policy against exported assets, not the remote host. Another static host must apply equivalent
+headers separately.
+
+## Reproduce before release
 
 ```bash
-# backend health: cache backend and configured providers
-curl https://chatbot-ai-system.onrender.com/health
-
-# models the demo can serve (default first)
-curl https://chatbot-ai-system.onrender.com/api/v1/chat/models
-
-# a completion; response includes telemetry{provider, model, cache, latency_ms, usage, cost_usd, attempts}
-curl -X POST https://chatbot-ai-system.onrender.com/api/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Say hi in three words."}]}'
-
-# the same, streamed as Server-Sent Events (what the UI uses)
-curl -N -X POST https://chatbot-ai-system.onrender.com/api/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Count to five."}],"stream":true}'
+npm ci
+npm run lint
+npm test
+npx tsc --noEmit
+npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:browser
+npm start                       # static out/, with the same configured headers
 ```
 
-Expected `/health`:
+Screenshots and request audits are written under `test-results/`; the browser test uses no
+successful network mocks and fails on external requests, page errors or escaped live code.
+The test server is only a file server. To host portably, copy `out/` to any directory-style
+static host; there is no runtime Node/Python application to deploy.
 
-```json
-{"status": "healthy", "checks": {"cache": "memory", "ai_providers": "configured: openai, groq", "default_model": "gpt-4o-mini", "fallback_chain": ["groq:openai/gpt-oss-20b"]}}
-```
+## Build warnings
 
-Errors are always `{"error": {"code", "message", "provider", "request_id"}}` with a real
-status (401/402/404/422/429/502/503/504). The UI shows that line verbatim, so a
-provider billing problem reads as `402 provider_quota_exhausted [openai]: …`, not
-"Request failed".
+Verify the deployment header names `review/static-evidence-site` and the intended review commit.
+A successful build of the older `main` commit `f900816` does not validate this static release;
+that older build still probes a backend and the Vercel adapter creates serverless functions.
+Retry the feature-branch Preview, without promoting production.
 
-## CORS
+- Browser-data age warnings: the lockfile refreshes `baseline-browser-mapping` and `caniuse-lite`.
+  Commit targeted dataset updates when these age again; do not suppress the warnings or broaden
+  this into an application/framework upgrade.
+- npm `allowScripts`: `package.json` explicitly approves only the reviewed `sharp@0.34.4` install
+  script under npm 12's policy. Its `node install/check.js` checks whether a native source build
+  is needed; other packages are not blanket-approved. Review a changed Sharp version's script
+  before updating this exact version entry. Older npm versions may not enforce this policy.
+- `Unknown env config "cache-dir"`: this is an injected npm environment setting, not a supported
+  project `.npmrc` option. If `NPM_CONFIG_CACHE_DIR` / `npm_config_cache_dir` is configured in this
+  Vercel project's build environment, remove it. If a cache override is intended, use npm's
+  supported `NPM_CONFIG_CACHE` / `npm_config_cache` name, preserving any chosen path privately.
+  If the setting is not in project/team configuration, it may be platform-injected; the owner
+  should report it to Vercel. Repository package scripts run after npm reads the environment,
+  so adding an unset command there cannot fix the initial install warning. No cloud settings
+  are changed by this repository update.
+- Next.js telemetry is disabled by the existing `NEXT_TELEMETRY_DISABLED=1` build/dev scripts.
+  A telemetry banner from `next build` without that prefix indicates an older deployed command.
 
-The backend's `CORS_ORIGINS` must include the exact Vercel origin. Preview deployments
-have unique origins; add them explicitly or test previews against a local backend.
-`frontend/vercel.json` already allows `connect-src` to the Render host.
+## Minimal production verification checklist
 
-## Troubleshooting
+- Open overview and directly refresh `/evals` and `/evals/` on the actual public domain, on desktop
+  and mobile; check keyboard navigation, tooltips and the full sweep table.
+- Inspect Network from before navigation: only same-origin static files; no Render/provider/
+  embedding/Pinecone, remote fonts, analytics, sockets or beacons. Verify response CSP/headers.
+- Confirm static labelling, no composer/online/loading state, and historical run metadata:
+  September 9, 2026, dirty `9ccfc09`, localhost, 187 requests; precision 56.6%, 23 false positives.
+- Inspect the deployed build output for static assets only, no functions/proxy routes/secrets.
+  A local build does not prove the platform's deployed output or dashboard injection settings.
+- Confirm both this site and SQL Genius meet free hosting eligibility/limits. SQL Genius is
+  outside this repository and has not been verified by this change.
+- Before retiring old resources, preserve important data and verify actual Render services,
+  Redis instances and billing in the owner's account. The old blueprint names are not proof of
+  inventory. Then the owner can retire unused resources separately. Do not revoke shared keys
+  without checking their consumers. **No Render resource has been changed by this task.**
 
-- **"Backend unreachable" after 60 s**: the Render service is down or still building. Check the Render dashboard logs.
-- **`401 provider_auth_error`**: the key named in the message is missing on Render.
-- **`402 provider_quota_exhausted`**: that provider's account has no credits. Failover to Groq only happens if `GROQ_API_KEY` is set.
-- **`429 rate_limited` / `daily_limit_reached` / `demo_budget_exhausted`**: demo guardrails. Raise the `DEMO_*` limits on Render if you need more for a session.
-- **Build errors on Vercel**: see `TAILWIND_V3_MIGRATION.md`; Tailwind v3 is used deliberately because v4's native binaries did not install on Vercel.
+Historical optional backend hosting: `docs/deployment/render.legacy.yaml`. Do not import it for
+the static release. Local provider-backed work may incur charges and is not the $0 public runtime.

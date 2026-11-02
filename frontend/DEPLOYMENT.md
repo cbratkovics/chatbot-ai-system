@@ -15,8 +15,14 @@ action. This release preparation does not alter existing Render resources.
 | Node.js Version | `24.x` |
 | Install Command | `npm ci` |
 | Build Command | `npm run build` |
-| Output Directory | `out` |
+| Output Directory | `.next` for Vercel’s Next.js adapter (explicit in `vercel.json`); exported static files remain `out/` |
 | Environment variables | None required; remove `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` in all deployment scopes |
+
+The Vercel adapter reads `.next/routes-manifest.json` before detecting `.next/export-detail.json`
+and collecting the static `out/` directory. Do not set the Vercel Output Directory to `out`, set
+Next's `distDir` to `out`, or copy a fake manifest into `out/`. The checked-in `.next` setting also
+overrides an older dashboard `out` value. Keep the Next.js preset. Plain static hosts serve `out/`
+directly; this distinction is specific to Vercel's framework adapter.
 
 No rewrites, SPA fallback, functions, API routes, proxy, font service, analytics account or backend
 host is needed. Keep Web Analytics and Speed Insights disabled in the project dashboard (they

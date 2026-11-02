@@ -29,7 +29,7 @@
       ]
     }
   ],
-  "outputDirectory": "out",
+  "outputDirectory": ".next",
   "trailingSlash": true,
   "installCommand": "npm ci"
 }

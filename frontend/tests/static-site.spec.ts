@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const ORIGIN = 'http://127.0.0.1:4173';
@@ -110,6 +110,14 @@ test('overview, recorded evals, navigation and refresh need only static assets',
 test('static output and public build reject backend activation', async ({ request }) => {
   const response = await request.get('/evals/');
   expect(response.headers()['content-security-policy']).toContain("connect-src 'self'");
+  // Vercel's Next adapter reads Next manifests before detecting the static export.
+  const hostConfig = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  expect(hostConfig.framework).toBe('nextjs');
+  expect(hostConfig.outputDirectory).toBe('.next');
+  expect(JSON.parse(readFileSync('.next/routes-manifest.json', 'utf8')).version).toBe(3);
+  const exportDetail = JSON.parse(readFileSync('.next/export-detail.json', 'utf8'));
+  expect(exportDetail.success).toBe(true);
+  expect(basename(exportDetail.outDirectory)).toBe('out');
   const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((entry) => entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)]);
   const files = walk('out');
   expect(files.some((file) => /(?:api\/|\.func\/|_worker\.js|server\.js|\.map$)/.test(file))).toBe(false);

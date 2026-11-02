@@ -115,9 +115,24 @@ These are local visual evidence, not screenshots of a deployed site.
 ## Host settings and owner verification
 
 Existing Vercel project: eligible Hobby account, root **frontend**, Node **24.x**, install
-**npm ci**, build **npm run build**, output **out**, no backend environment variables. Remove
+**npm ci**, build **npm run build**, adapter Output Directory **.next** (static artifact **out/**),
+no backend environment variables. Remove
 `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` from every deployment scope. Keep dashboard-injected
 Web Analytics/Speed Insights disabled. No replacement Python host is needed.
+
+The earlier `out` host-override instruction was incorrect for Vercel CLI 65.4.0's Next adapter.
+That adapter reads Next manifests from its Output Directory before detecting the static export.
+The reviewed correction explicitly sets `.next`, retaining the Next.js preset and portable `out/`.
+A plain `next build` success alone does not validate this adapter packaging step.
+
+Local correction validation used the published `@vercel/next@27.0.0` bundled with Vercel CLI
+65.4.0, installed in an isolated tooling directory. Its actual build/packaging API reproduced
+`NEXT_NO_ROUTES_MANIFEST` with `outputDirectory: out`; `.next` returned 32 static `FileFsRef`
+outputs, including overview/evals, and zero functions. No Vercel deployment or account
+credentials were used.
+Frontend lint, type checks, 19 unit tests and four exported-site browser checks passed again;
+the browser regression check now verifies the internal manifests and successful `out/` export.
+Actual Preview response headers and the new hosted packaging result remain external checks.
 
 Before retiring paid resources, use the minimal production checklist in
 [frontend/DEPLOYMENT.md](../frontend/DEPLOYMENT.md): verify real-domain static paths, Network/CSP,

@@ -8,7 +8,7 @@ Validation: attach frontend lint/unit/type/build/browser results and offline bac
 Include request audits/screenshots from `frontend/test-results/`, known limitations and the exact
 run provenance. Do not regenerate paid benchmark data as a release step.
 
-Host: existing Vercel project, root `frontend`, Node 24, `npm ci`, `npm run build`, output `out`.
+Host: existing Vercel project, root `frontend`, Node 24, `npm ci`, `npm run build`, adapter Output Directory `.next` (static artifact `out/`).
 No backend environment variables; keep dashboard-injected analytics disabled. Follow
 `frontend/DEPLOYMENT.md` for the owner-run production verification checklist.
 

@@ -65,7 +65,8 @@ npm run test:browser
 ```
 
 [Vercel settings and production verification](frontend/DEPLOYMENT.md) specify root `frontend`,
-build `npm run build`, output `out`. No deployment command is run by these instructions.
+build `npm run build`, adapter Output Directory `.next`. The portable static artifact remains
+`out/`; Vercel discovers it through Next’s export metadata. No deployment command is run by these instructions.
 
 ## Read the recorded evidence
 

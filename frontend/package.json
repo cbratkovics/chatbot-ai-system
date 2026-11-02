@@ -43,5 +43,8 @@
   },
   "overrides": {
     "prismjs": "^1.30.0"
+  },
+  "allowScripts": {
+    "sharp@0.34.4": true
   }
 }

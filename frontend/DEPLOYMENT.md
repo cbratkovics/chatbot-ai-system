@@ -50,6 +50,31 @@ successful network mocks and fails on external requests, page errors or escaped 
 The test server is only a file server. To host portably, copy `out/` to any directory-style
 static host; there is no runtime Node/Python application to deploy.
 
+## Build warnings
+
+Verify the deployment header names `review/static-evidence-site` and the intended review commit.
+A successful build of the older `main` commit `f900816` does not validate this static release;
+that older build still probes a backend and the Vercel adapter creates serverless functions.
+Retry the feature-branch Preview, without promoting production.
+
+- Browser-data age warnings: the lockfile refreshes `baseline-browser-mapping` and `caniuse-lite`.
+  Commit targeted dataset updates when these age again; do not suppress the warnings or broaden
+  this into an application/framework upgrade.
+- npm `allowScripts`: `package.json` explicitly approves only the reviewed `sharp@0.34.4` install
+  script under npm 12's policy. Its `node install/check.js` checks whether a native source build
+  is needed; other packages are not blanket-approved. Review a changed Sharp version's script
+  before updating this exact version entry. Older npm versions may not enforce this policy.
+- `Unknown env config "cache-dir"`: this is an injected npm environment setting, not a supported
+  project `.npmrc` option. If `NPM_CONFIG_CACHE_DIR` / `npm_config_cache_dir` is configured in this
+  Vercel project's build environment, remove it. If a cache override is intended, use npm's
+  supported `NPM_CONFIG_CACHE` / `npm_config_cache` name, preserving any chosen path privately.
+  If the setting is not in project/team configuration, it may be platform-injected; the owner
+  should report it to Vercel. Repository package scripts run after npm reads the environment,
+  so adding an unset command there cannot fix the initial install warning. No cloud settings
+  are changed by this repository update.
+- Next.js telemetry is disabled by the existing `NEXT_TELEMETRY_DISABLED=1` build/dev scripts.
+  A telemetry banner from `next build` without that prefix indicates an older deployed command.
+
 ## Minimal production verification checklist
 
 - Open overview and directly refresh `/evals` and `/evals/` on the actual public domain, on desktop

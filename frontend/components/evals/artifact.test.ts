@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { chooseArtifact, fmtDate, fmtRatio, parseArtifact, pathFrom, sweepPoints } from './artifact';
+import { readFileSync } from 'node:fs';
+import committedArtifact from '../../lib/evals/latest.json';
+import { fmtDate, fmtRatio, parseArtifact, pathFrom, sweepPoints } from './artifact';
 import type { EvalArtifact, SweepRow } from './types';
 
 const art = (timestamp: string): EvalArtifact => ({ schema_version: 1, run: { timestamp, base_url: 'x' } });
@@ -14,16 +16,12 @@ describe('parseArtifact', () => {
   });
 });
 
-describe('chooseArtifact', () => {
-  it('falls back to the static copy when live is missing or older', () => {
-    const s = art('2026-09-09T10:00:00+00:00');
-    expect(chooseArtifact(s, null)).toEqual({ artifact: s, source: 'static' });
-    expect(chooseArtifact(s, art('2026-09-08T10:00:00+00:00')).source).toBe('static');
-  });
-  it('prefers live when it is the same run or newer', () => {
-    const s = art('2026-09-09T10:00:00+00:00');
-    expect(chooseArtifact(s, art('2026-09-09T10:00:00+00:00')).source).toBe('live');
-    expect(chooseArtifact(s, art('2026-09-10T10:00:00+00:00')).source).toBe('live');
+describe('committed evidence provenance', () => {
+  it('retains the original run and metrics, with only the existing top-level samples omission', () => {
+    const original = JSON.parse(readFileSync('../evals/results/latest.json', 'utf8'));
+    delete original.samples;
+    expect(committedArtifact).toEqual(original);
+    expect(parseArtifact(committedArtifact)?.run.commit_dirty).toBe(true);
   });
 });
 

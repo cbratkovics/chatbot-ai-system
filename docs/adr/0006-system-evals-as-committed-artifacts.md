@@ -2,6 +2,9 @@
 
 **Status:** accepted (2026-09-09)
 
+> Public live-artifact preference superseded by [ADR 0008](0008-static-public-evidence.md).
+> The public site now embeds only the committed artifact and contacts no backend.
+
 ## Context
 
 The README used to carry a benchmark table with placeholders ("*run the script*") and a demo

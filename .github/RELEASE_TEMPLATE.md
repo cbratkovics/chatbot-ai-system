@@ -1,140 +1,17 @@
-# AI Chatbot Demo - Release v1.0.0
+# Static evidence site release
 
-## Overview
+Public experience: static project overview and committed historical evaluations. No live model
+generation, backend, Redis, database or embedding API. Backend and original chat UI remain local
+reference; optional provider-backed work can incur developer charges.
 
-This is the **demo release** of the AI Chatbot System - a streamlined, production-ready version that can be deployed in under 5 minutes.
+Validation: attach frontend lint/unit/type/build/browser results and offline backend results.
+Include request audits/screenshots from `frontend/test-results/`, known limitations and the exact
+run provenance. Do not regenerate paid benchmark data as a release step.
 
-## Highlights
+Host: existing Vercel project, root `frontend`, Node 24, `npm ci`, `npm run build`, output `out`.
+No backend environment variables; keep dashboard-injected analytics disabled. Follow
+`frontend/DEPLOYMENT.md` for the owner-run production verification checklist.
 
-- **One-Command Setup** - Just run `./setup_demo.sh`
-- **Multi-LLM Support** - OpenAI & Anthropic providers
-- **Semantic Caching** - exact key first, then embedding similarity (Redis optional)
-- **Real-time Streaming** - Server-Sent Events
-- **Professional UI** - Modern React/Next.js interface
-
-## Quick Start
-
-### 1. Download & Extract
-
-```bash
-# Download the release
-wget https://github.com/cbratkovics/chatbot-ai-system/archive/refs/tags/v1.0.0-demo.tar.gz
-tar -xzf v1.0.0-demo.tar.gz
-cd chatbot-ai-system-1.0.0-demo
-```
-
-### 2. Configure
-
-```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env and add your API keys
-```
-
-### 3. Deploy
-
-```bash
-./setup_demo.sh
-```
-
-### 4. Access
-
-- **Chat UI:** <http://localhost:3000>
-- **API Docs:** <http://localhost:8000/docs>
-
-## What's Included
-
-### Core Features
-
-- Multiple LLM provider support
-- Semantic caching system
-- SSE streaming
-- Rate limiting (demo guardrails: 10 req/min per IP)
-- Health monitoring
-- Interactive API documentation
-
-### Files & Structure
-
-- **backend/** - FastAPI application
-- **frontend/** - Next.js UI
-- **docker-compose.demo.yml** - Service orchestration
-- **setup_demo.sh** - Automated setup
-- **README.demo.md** - Complete documentation
-
-## System Requirements
-
-- Docker & Docker Compose
-- 4GB RAM minimum
-- 2GB disk space
-- macOS, Linux, or Windows with WSL2
-
-## API Keys Required
-
-At least one of:
-
-- OpenAI API Key ([Get one here](https://platform.openai.com/api-keys))
-- Anthropic API Key ([Get one here](https://console.anthropic.com/account/keys))
-
-## Performance
-
-- **Setup Time:** < 5 minutes
-- **Memory Usage:** ~500MB
-- **Docker Build:** ~2 minutes
-- **Dependencies:** 35 packages
-
-## Known Issues
-
-- Redis connection errors are handled gracefully
-- Rate limiting is per-IP in demo mode
-
-## Changelog
-
-### Added
-
-- Streamlined demo configuration
-- One-command setup script
-- Comprehensive documentation
-- Health check endpoints
-- Automatic API key validation
-
-### Changed
-
-- Reduced dependencies by 65%
-- Simplified Docker configuration
-- Optimized build process
-- Improved error messages
-
-### Removed
-
-- Complex enterprise features
-- Kubernetes configurations
-- Extensive test suites
-- FinOps dashboards
-
-## Contributing
-
-Contributions welcome! Please submit PRs to the `demo` branch.
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Credits
-
-- OpenAI for GPT models
-- Anthropic for Claude models
-- FastAPI framework
-- Next.js framework
-
-## Support
-
-- Create an issue for bugs
-- Check README.demo.md for troubleshooting
-- Join our Discord community
-
----
-
-**Download Now:** [v1.0.0-demo.tar.gz](https://github.com/cbratkovics/chatbot-ai-system/releases/download/v1.0.0-demo/v1.0.0-demo.tar.gz)
-
-**Docker Images:** Available on Docker Hub
-
-**Documentation:** [README.demo.md](README.demo.md)
+Release notes must state whether deployment was actually performed and whether any Render
+resources were changed. Local preparation alone does neither. Verify actual old services and
+preserve important data before the owner retires them; do not revoke shared credentials.

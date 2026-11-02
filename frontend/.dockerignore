@@ -4,3 +4,7 @@ node_modules
 .env.local
 .env.production
 *.log
+
+out
+test-results
+playwright-report

@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Hit the live demo API with repeated prompts and report what the telemetry says.
+"""Optional local provider-backed benchmark; may incur developer provider charges.
 
-Every number in the README's "Measured on the live demo" table must come from this script's
-output file. It uses only the public JSON endpoint and the telemetry the API already returns.
+Not part of static public release verification or CI. The default target is localhost,
+never a hosted demo. Results are new measurements only when explicitly run.
 
-    poetry run python scripts/bench_demo.py                       # 20 requests, default prompts
-    poetry run python scripts/bench_demo.py --base-url http://localhost:8000 --runs 40 --rpm 60
-    poetry run python scripts/bench_demo.py --simulate-failure    # needs DEMO_FAILURE_TOGGLE_ENABLED
+    poetry run python scripts/bench_demo.py --base-url http://localhost:8000 --runs 20
+    poetry run python scripts/bench_demo.py --base-url http://localhost:8000 --simulate-failure
 
-Pacing: the demo guardrails allow 10 requests/min/IP, so the default --rpm is 9. Point it at
-your own instance with the limits raised for a faster run.
+The failure toggle requires DEMO_FAILURE_TOGGLE_ENABLED. Default pacing is 9 requests/min;
+local guardrails do not replace a provider account spend limit.
 """
 
 from __future__ import annotations
@@ -28,7 +27,7 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evals.stats import percentile  # noqa: E402 - shared with the evals so the numbers agree
 
-DEFAULT_BASE_URL = "https://chatbot-ai-system.onrender.com"
+DEFAULT_BASE_URL = "http://localhost:8000"
 DEFAULT_PROMPTS = [
     "In one sentence, what does a semantic cache do?",
     "Name three failure modes of an LLM provider call.",

@@ -2,6 +2,8 @@
 
 import os
 import sys
+import ipaddress
+import socket
 
 # Set test environment before any imports
 os.environ.setdefault("ENVIRONMENT", "test")
@@ -32,8 +34,52 @@ def pytest_runtest_setup(item):
     """
     for marker in item.iter_markers("live"):
         env_var = marker.args[0] if marker.args else "TEST_BASE_URL"
+        if os.environ.get("ALLOW_LIVE_TESTS") != "1":
+            pytest.skip("live test: explicitly set ALLOW_LIVE_TESTS=1 and its target to opt in")
         if not os.environ.get(env_var):
             pytest.skip(f"live test: set {env_var} to run it")
+
+
+@pytest.fixture(autouse=True)
+def block_external_network(monkeypatch, request):
+    """Offline tests may use loopback servers, never a provider or outbound proxy.
+
+    Live-marked tests require an explicit ALLOW_LIVE_TESTS=1 opt-in above.
+    Blocking DNS as well as connect prevents a proxy from forwarding test keys.
+    """
+    if request.node.get_closest_marker("live") and os.environ.get("ALLOW_LIVE_TESTS") == "1":
+        return
+
+    def is_loopback(host):
+        if host in (None, "", "localhost", b"localhost"):
+            return True
+        try:
+            return ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            return False
+
+    original_resolve = socket.getaddrinfo
+    original_connect = socket.socket.connect
+    original_connect_ex = socket.socket.connect_ex
+
+    def resolve(host, *args, **kwargs):
+        if not is_loopback(host):
+            raise RuntimeError("Offline test blocked external DNS/network access")
+        return original_resolve(host, *args, **kwargs)
+
+    def connect(sock, address):
+        if isinstance(address, tuple) and not is_loopback(address[0]):
+            raise RuntimeError("Offline test blocked external network access")
+        return original_connect(sock, address)
+
+    def connect_ex(sock, address):
+        if isinstance(address, tuple) and not is_loopback(address[0]):
+            raise RuntimeError("Offline test blocked external network access")
+        return original_connect_ex(sock, address)
+
+    monkeypatch.setattr(socket, "getaddrinfo", resolve)
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
 
 
 @pytest.fixture(scope="session", autouse=True)

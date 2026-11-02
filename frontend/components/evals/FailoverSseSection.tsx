@@ -39,9 +39,9 @@ export function FailoverSection({ evalResult: f }: { evalResult?: FailoverEval }
   return (
     <Section id="failover" title="Provider failover">
       <Explainer>
-        Each run forces the primary provider to fail with a 503 before it is called, then checks that a different provider answered, that the
+        In the recorded run, each trial forced the primary provider to fail with a 503 before it is called, then checks that a different provider answered, that the
         failure was recorded in the attempt log, and that the first token still streamed. Added latency compares against normal runs made the
-        same way without the outage, so both sides are real provider calls.
+        same way without the outage, so both sides used real provider calls. This small historical sample is not an availability guarantee.
       </Explainer>
       {!f || f.status !== 'ok' ? (
         <Skipped reason={f?.reason} />
@@ -49,7 +49,7 @@ export function FailoverSection({ evalResult: f }: { evalResult?: FailoverEval }
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Tile label="Runs passed" value={`${f.passed}/${f.n}`} sub={fmtRatio(f.success_rate)} why="A run passes only when every check in the table holds: fallback answered, primary failure recorded, different provider, first token delivered, done event, non-empty answer." tone={rateTone(f.success_rate)} />
-            <Tile label="Fallback" value={f.fallback_provider ?? 'n/a'} sub={f.fallback_model ?? ''} why="The provider slot and model that answered after the primary failed, exactly as the chip on the chat page reports it." tone="blue" />
+            <Tile label="Fallback" value={f.fallback_provider ?? 'n/a'} sub={f.fallback_model ?? ''} why="The provider slot and model that answered after the primary failed, as recorded in the evaluation artifact." tone="blue" />
             <Tile label="First token" value={`${fmtMs(lat?.failover.ttfb.p50)} vs ${fmtMs(lat?.baseline.ttfb.p50)}`} sub={`added ${fmtMs(lat?.added_ttfb_p50)} at p50`} why="Median time to the first streamed token with the outage versus without. Negative means the fallback provider was faster than the primary on this run." />
             <Tile label="Total time" value={`${fmtMs(lat?.failover.total.p50)} vs ${fmtMs(lat?.baseline.total.p50)}`} sub={`added ${fmtMs(lat?.added_total_p50)} at p50`} why="Median wall time for the whole streamed answer with the outage versus without, measured by the machine that ran the eval." />
           </div>
@@ -68,7 +68,7 @@ export function SseSection({ evalResult: s }: { evalResult?: SseEval }) {
     <Section id="sse" title="Streaming contract">
       <Explainer>
         Every streamed answer must follow one shape: a meta event, then content deltas, then exactly one done or error event, delivered as
-        Server-Sent Events that are never gzip-compressed. These are the guarantees the chat page relies on, checked across cache hits, misses,
+        Server-Sent Events that are never gzip-compressed. These are the invariants the local chat implementation relies on, checked historically across cache hits, misses,
         bypasses and failovers.
       </Explainer>
       {!s || s.status !== 'ok' ? (

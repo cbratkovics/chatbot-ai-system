@@ -1,4 +1,4 @@
-/** Pure helpers for the /evals page: choosing between the live and build-time artifact, and chart maths. */
+/** Pure helpers for the /evals page: validating the committed artifact and chart maths. */
 
 import type { EvalArtifact, SweepRow } from './types';
 
@@ -8,23 +8,12 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null;
 }
 
-/** Accept a live payload only when it is a schema-1 artifact with a run block. */
+/** Accept a committed payload only when it is a schema-1 artifact with a run block. */
 export function parseArtifact(data: unknown): EvalArtifact | null {
   if (!isRecord(data) || data.schema_version !== SUPPORTED_SCHEMA) return null;
   const run = data.run;
   if (!isRecord(run) || typeof run.timestamp !== 'string') return null;
   return data as unknown as EvalArtifact;
-}
-
-/** Prefer the live artifact when it is valid and at least as new as the build-time copy. */
-export function chooseArtifact(staticArtifact: EvalArtifact, live: EvalArtifact | null): { artifact: EvalArtifact; source: 'live' | 'static' } {
-  if (!live) return { artifact: staticArtifact, source: 'static' };
-  const liveTs = Date.parse(live.run.timestamp);
-  const staticTs = Date.parse(staticArtifact.run.timestamp);
-  if (Number.isFinite(liveTs) && Number.isFinite(staticTs) && liveTs < staticTs) {
-    return { artifact: staticArtifact, source: 'static' };
-  }
-  return { artifact: live, source: 'live' };
 }
 
 export type Point = { x: number; y: number };

@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
-  { href: '/', label: 'Chat' },
-  { href: '/evals', label: 'Evals' },
+  { href: '/', label: 'Overview' },
+  { href: '/evals/', label: 'Evals' },
 ];
 
 export function AppNav() {
@@ -14,7 +14,7 @@ export function AppNav() {
   return (
     <nav aria-label="Primary" className="flex items-center gap-1 text-sm">
       {LINKS.map((l) => {
-        const active = pathname === l.href;
+        const active = pathname.replace(/\/$/, '') === l.href.replace(/\/$/, '');
         return (
           <Link
             key={l.href}

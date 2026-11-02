@@ -39,9 +39,9 @@ class TestProductionReadiness:
         assert "checks" in data
 
     @pytest.mark.asyncio
-    async def test_api_v1_chat_endpoint_exists(self, async_http_client: AsyncClient):
+    async def test_api_v1_chat_endpoint_exists(self, async_http_client: AsyncClient, fake_chat_provider):
         """Test chat endpoint is accessible."""
-        # This should fail authentication but prove endpoint exists
+        # Exercise the real route with the deterministic provider; no paid API call.
         response = await async_http_client.post(
             "/api/v1/chat/completions",
             json={
@@ -50,8 +50,8 @@ class TestProductionReadiness:
             }
         )
 
-        # Expect 401/403 (no auth), 422 (validation), or 500 (server error) but not 404
-        assert response.status_code in [401, 403, 422, 500]
+        assert response.status_code == 200
+        assert response.json()["choices"][0]["message"]["content"] == fake_chat_provider.reply
 
     @pytest.mark.asyncio
     async def test_api_v1_models_endpoint(self, async_http_client: AsyncClient):
@@ -337,18 +337,22 @@ class TestProductionReadiness:
         assert "ENABLE_VECTOR_SEARCH" in content
 
     def test_ci_workflow_exists(self):
-        """Test CI/CD workflow exists."""
-        import pathlib
+        """CI validates the static site and offline gateway without provider secrets."""
+        import yaml
 
-        root = REPO_ROOT
-        ci_workflow = root / ".github" / "workflows" / "ci.yml"
-
-        assert ci_workflow.exists()
-
-        # Check CI includes Pinecone env vars
-        content = ci_workflow.read_text()
-        assert "PINECONE_API_KEY" in content
-        assert "PINECONE_ENVIRONMENT" in content
+        content = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+        workflow = yaml.safe_load(content)
+        assert workflow["env"]["ALLOW_LIVE_TESTS"] == "0"
+        assert workflow["permissions"] == {"contents": "read"}
+        assert "secrets." not in content
+        assert "PINECONE_API_KEY" not in content
+        frontend_commands = [step.get("run", "") for step in workflow["jobs"]["frontend"]["steps"]]
+        backend_commands = [step.get("run", "") for step in workflow["jobs"]["backend"]["steps"]]
+        assert "npm run build" in frontend_commands
+        assert "npm run test:browser" in frontend_commands
+        assert any("pytest tests/" in command for command in backend_commands)
+        assert not any("make evals" in command or "-m evals.run" in command
+                       for command in frontend_commands + backend_commands)
 
     @pytest.mark.asyncio
     async def test_pyproject_toml_is_valid(self):
@@ -456,16 +460,8 @@ class TestSystemSecurity:
         assert hasattr(settings, "cors_origins")
 
     @pytest.mark.asyncio
-    async def test_api_requires_authentication(self, async_http_client: AsyncClient):
-        """Test API endpoints require authentication."""
-        # Try to access protected endpoint without auth
-        response = await async_http_client.post(
-            "/api/v1/chat/completions",
-            json={
-                "messages": [{"role": "user", "content": "test"}],
-                "model": "gpt-3.5-turbo"
-            }
-        )
-
-        # Should fail with 401/403, validation error, or server error - not succeed
-        assert response.status_code in [401, 403, 422, 500]
+    async def test_token_refresh_requires_authentication(self, async_http_client: AsyncClient):
+        """Assert rejection on a protected route, not the intentionally public demo chat."""
+        response = await async_http_client.post("/api/v1/auth/refresh")
+        assert response.status_code == 401
+        assert "No authorization token provided" in response.text

@@ -1,4 +1,6 @@
-# Render blueprint for the free-tier demo.
+# Historical, opt-in hosted-backend example. NOT used by the static public release.
+# Moving this file does not stop or delete any existing Render resource.
+# This blueprint is not an inventory of live services; do not provision it for the public demo.
 # One web service, one worker, no Redis, no Pinecone. Every external dependency is
 # optional: the app falls back to an in-process cache and reports what it is using
 # on /health.
@@ -12,7 +14,7 @@ services:
     # One worker: the free tier has 512 MB and in-process caches/limits are per worker.
     startCommand: "poetry run uvicorn chatbot_ai_system.server.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 65"
     healthCheckPath: /health
-    autoDeploy: true
+    autoDeploy: false
     envVars:
       - key: ENVIRONMENT
         value: production

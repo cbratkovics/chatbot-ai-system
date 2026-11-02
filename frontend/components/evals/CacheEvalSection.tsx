@@ -20,14 +20,19 @@ export function CacheEvalSection({ evalResult: c }: { evalResult?: CacheEval }) 
         Each labelled pair has one question already cached and a second question that either should reuse that answer (a paraphrase) or must not
         (a different ask that shares the words, a negation, or a swapped name or number). Precision is how often a cache hit returned the right
         answer; recall is how many true paraphrases were caught. The threshold is the similarity the cache demands before trusting a match, and
-        it was set where F1 peaked in the sweep below, not by hand.
+        it was selected from the offline estimate below. These adversarial pairs are a stress test, not a production accuracy guarantee.
       </Explainer>
       {!c || c.status !== 'ok' ? (
         <Skipped reason={c?.reason} />
       ) : (
         <>
+          <p className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+            Recorded precision: {fmtRatio(c.precision)} with {c.fp} false positives among {c.n_pairs} pairs.
+            Wrong-answer reuse remains a correctness limitation. The threshold sweep re-scores stored similarities offline;
+            it is not a fresh provider run at each threshold.
+          </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            <Tile label="Precision" value={fmtRatio(c.precision)} sub={`${c.tp} right hits of ${(c.tp ?? 0) + (c.fp ?? 0)} hits`} why="Of every time the cache served a stored answer, how often was it the answer to the question actually asked. A wrong hit is worse than a miss." tone="green" />
+            <Tile label="Precision" value={fmtRatio(c.precision)} sub={`${c.tp} right hits of ${(c.tp ?? 0) + (c.fp ?? 0)} hits`} why="Of every time the cache served a stored answer, how often was it the answer to the question actually asked. A wrong hit is worse than a miss." tone="amber" />
             <Tile label="Recall" value={fmtRatio(c.recall)} sub={`${c.tp} of ${(c.tp ?? 0) + (c.fn ?? 0)} paraphrases caught`} why="Of every question that had a usable cached answer, how often the cache found it. Missed paraphrases cost a provider call, not correctness." tone="blue" />
             <Tile label="F1" value={fmtScore(c.f1)} sub="harmonic mean of the two" why="One number balancing precision and recall equally. The threshold below was chosen where this peaks." tone="purple" />
             <Tile label="Threshold" value={fmtScore(c.threshold, 2)} sub={`F1-optimal in sweep: ${fmtScore(c.best_threshold_by_f1, 2)}`} why="Cosine similarity the cache requires between the new question and a stored one. Lower catches more paraphrases and more traps; higher does the opposite." tone={c.threshold === c.best_threshold_by_f1 ? 'neutral' : 'amber'} />

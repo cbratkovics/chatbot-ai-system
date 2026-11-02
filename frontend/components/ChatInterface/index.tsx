@@ -8,10 +8,14 @@ import { TelemetryChip } from '@/components/evidence/TelemetryChip';
 import type { ChatHealth, ChatMsg, Highlight, HighlightKey, Telemetry } from '@/components/evidence/types';
 import { useMediaQuery } from '@/components/evidence/useMediaQuery';
 import { useSessionStats } from '@/components/evidence/useSessionStats';
-import { API_CONFIG } from '@/lib/config';
+import { getLocalApiConfig } from '@/lib/config';
+
 import { asEnvelope, describeErrorBody, describeHttpError, describeNetworkError, sanitize } from '@/lib/errors';
 import { fetchWithTimeout, readSse } from '@/lib/sse';
 import { cn } from '@/lib/utils';
+
+// Source-only local reference: never import this component into a public route.
+const API_CONFIG = getLocalApiConfig();
 
 type Model = { id?: string; name?: string; provider?: string } | string;
 type BackendState = 'checking' | 'waking' | 'ready' | 'down';
